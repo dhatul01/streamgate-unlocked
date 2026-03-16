@@ -269,6 +269,11 @@ const TokenFactory = () => {
                 <span className="text-[10px] text-muted-foreground">
                   {t.duration_type} {!t.is_public && `· ${t.max_devices} device`}
                 </span>
+                {(sessions[t.id] || 0) > 0 && (
+                  <span className="flex items-center gap-0.5 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    👤 {sessions[t.id]} aktif
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex gap-1">
