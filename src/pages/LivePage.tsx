@@ -13,6 +13,7 @@ const LivePage = () => {
   const tokenCode = searchParams.get("t") || "";
   const [tokenData, setTokenData] = useState<any>(null);
   const [error, setError] = useState("");
+  const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<any>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
@@ -205,6 +206,24 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Realtime: token block detection
+  useEffect(() => {
+    if (!tokenData?.id) return;
+    const channel = supabase
+      .channel("token-block-realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
+        (payload: any) => {
+          if (payload.new.status === "blocked") {
+            setBlocked(true);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [tokenData?.id]);
+
   // Countdown timer
   useEffect(() => {
     if (!nextShowTime || stream?.is_live) {
@@ -264,6 +283,36 @@ const LivePage = () => {
         <div className="text-center">
           <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 animate-float" />
           <p className="text-muted-foreground">Memvalidasi akses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (blocked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md rounded-2xl border-2 border-destructive bg-card p-8 text-center">
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16" />
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+            <span className="text-4xl">🚫</span>
+          </div>
+          <h2 className="mb-3 text-xl font-black text-destructive uppercase tracking-wide">
+            Dilarang Restream
+          </h2>
+          <p className="mb-6 text-sm font-semibold text-foreground leading-relaxed">
+            DILARANG RESTREAM DISINI, KONFIRMASI PADA ADMIN REALTIME UNTUK LEBIH LANJUT
+          </p>
+          <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-6">
+            <p className="text-xs text-muted-foreground">
+              Token Anda telah diblokir karena terdeteksi melakukan pelanggaran. Hubungi admin untuk informasi lebih lanjut.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/")}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            🏠 Ke Halaman Utama
+          </button>
         </div>
       </div>
     );

@@ -10,6 +10,7 @@ import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList 
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Record<string, number>>({});
   const [duration, setDuration] = useState("daily");
   const [maxDevices, setMaxDevices] = useState("1");
   const [bulkCount, setBulkCount] = useState("1");
@@ -31,6 +32,15 @@ const TokenFactory = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setTokens(data || []);
+    // Fetch session counts
+    const { data: sessData } = await supabase.from("token_sessions").select("token_id");
+    if (sessData) {
+      const counts: Record<string, number> = {};
+      sessData.forEach((s: any) => {
+        counts[s.token_id] = (counts[s.token_id] || 0) + 1;
+      });
+      setSessions(counts);
+    }
   };
 
   useEffect(() => { fetchTokens(); }, []);
@@ -259,6 +269,11 @@ const TokenFactory = () => {
                 <span className="text-[10px] text-muted-foreground">
                   {t.duration_type} {!t.is_public && `· ${t.max_devices} device`}
                 </span>
+                {(sessions[t.id] || 0) > 0 && (
+                  <span className="flex items-center gap-0.5 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    👤 {sessions[t.id]} aktif
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex gap-1">
