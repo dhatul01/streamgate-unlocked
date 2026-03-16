@@ -46,6 +46,7 @@ interface SiteSettings {
 }
 
 const Index = () => {
+  const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
