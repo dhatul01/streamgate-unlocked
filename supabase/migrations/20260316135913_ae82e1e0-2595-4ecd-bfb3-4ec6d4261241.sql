@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can read token status" ON public.tokens FOR SELECT TO public USING (true);
