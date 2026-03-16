@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import Watermark from "@/components/viewer/Watermark";
 
 interface VideoPlayerProps {
   playlist: {
@@ -8,6 +9,7 @@ interface VideoPlayerProps {
   };
   autoPlay?: boolean;
   watermarkUrl?: string;
+  tokenCode?: string;
 }
 
 export interface VideoPlayerHandle {
