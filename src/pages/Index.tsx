@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface Show {
   id: string;
@@ -33,6 +40,8 @@ interface SiteSettings {
   whatsapp_number: string;
   purchase_message: string;
   site_title: string;
+  whatsapp_channel: string;
+  subscription_info: string;
 }
 
 const Index = () => {
@@ -42,6 +51,8 @@ const Index = () => {
     whatsapp_number: "",
     purchase_message: "",
     site_title: "RealTime48 Streaming",
+    whatsapp_channel: "",
+    subscription_info: "",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
@@ -60,7 +71,6 @@ const Index = () => {
       ]);
       if (showsRes.data) {
         setShows(showsRes.data as Show[]);
-        // Fetch subscriber counts for subscription shows
         const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
         if (subShows.length > 0) {
           const counts: Record<string, number> = {};
@@ -133,10 +143,77 @@ const Index = () => {
   const regularShows = shows.filter((s) => !s.is_subscription);
   const subscriptionShows = shows.filter((s) => s.is_subscription);
 
+  const menuItems = [
+    ...(settings.whatsapp_channel ? [{
+      icon: <Radio className="h-5 w-5 text-primary" />,
+      label: "Saluran WhatsApp",
+      description: "Ikuti saluran info terbaru",
+      action: () => window.open(settings.whatsapp_channel, "_blank"),
+    }] : []),
+    ...(settings.whatsapp_number ? [{
+      icon: <Phone className="h-5 w-5 text-success" />,
+      label: "Hubungi Admin",
+      description: "Chat langsung via WhatsApp",
+      action: () => window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo admin")}`, "_blank"),
+    }] : []),
+    {
+      icon: <CreditCard className="h-5 w-5 text-yellow-500" />,
+      label: "Informasi Langganan",
+      description: settings.subscription_info || "Info paket berlangganan",
+      action: () => { document.getElementById("subscriptions")?.scrollIntoView({ behavior: "smooth" }); },
+      expandable: !!settings.subscription_info,
+    },
+    {
+      icon: <Ticket className="h-5 w-5 text-primary" />,
+      label: "Data Show",
+      description: `${shows.length} show tersedia`,
+      action: () => { document.getElementById("shows")?.scrollIntoView({ behavior: "smooth" }); },
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="RealTime48" className="h-8 w-8" />
+            <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="rounded-lg bg-secondary p-2 text-secondary-foreground transition hover:bg-secondary/80">
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-80 border-border bg-card">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2 text-foreground">
+                  <img src={logo} alt="" className="h-6 w-6" /> RealTime48
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-2">
+                {menuItems.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={item.action}
+                    className="flex w-full items-start gap-3 rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/30 hover:bg-primary/5"
+                  >
+                    <div className="mt-0.5 shrink-0">{item.icon}</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3">{item.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden pt-16">
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="h-full w-full object-cover opacity-40" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background" />
@@ -206,7 +283,7 @@ const Index = () => {
 
       {/* Subscription Card Section */}
       {subscriptionShows.length > 0 && (
-        <section className="px-4 py-8">
+        <section id="subscriptions" className="px-4 py-8">
           <div className="mx-auto max-w-6xl">
             <motion.h2
               className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl"
@@ -227,7 +304,6 @@ const Index = () => {
                     transition={{ delay: i * 0.15 }}
                     className="group relative overflow-hidden rounded-2xl border-2 border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card transition-all hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
                   >
-                    {/* Premium badge */}
                     <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-yellow-500 px-3 py-1 text-xs font-black text-background">
                       <Sparkles className="h-3 w-3" /> LANGGANAN
                     </div>
@@ -403,7 +479,6 @@ const Index = () => {
             <h3 className="mb-1 text-lg font-bold text-foreground">{selectedShow.title}</h3>
             <p className="mb-4 text-sm text-muted-foreground">{selectedShow.price}</p>
 
-            {/* Step 1: QRIS */}
             {purchaseStep === "qris" && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -437,7 +512,6 @@ const Index = () => {
               </div>
             )}
 
-            {/* Step 2: Info (subscription only) */}
             {purchaseStep === "info" && selectedShow.is_subscription && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm text-success">
@@ -457,7 +531,6 @@ const Index = () => {
               </div>
             )}
 
-            {/* Step 3: Done (subscription only) */}
             {purchaseStep === "done" && selectedShow.is_subscription && (
               <div className="space-y-4 text-center">
                 <CheckCircle className="mx-auto h-12 w-12 text-success" />
