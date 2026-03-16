@@ -10,6 +10,7 @@ import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList 
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Record<string, number>>({});
   const [duration, setDuration] = useState("daily");
   const [maxDevices, setMaxDevices] = useState("1");
   const [bulkCount, setBulkCount] = useState("1");
