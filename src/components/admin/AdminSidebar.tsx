@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, List, Key, Monitor, Settings, LogOut } from "lucide-react";
+import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe } from "lucide-react";
 
 interface AdminSidebarProps {
   activeSection: string;
@@ -11,14 +11,15 @@ const sections = [
   { id: "live", label: "Live Control", icon: Radio },
   { id: "playlist", label: "Playlist", icon: List },
   { id: "tokens", label: "Token Factory", icon: Key },
+  { id: "shows", label: "Show Manager", icon: Theater },
   { id: "monitor", label: "Monitor", icon: Monitor },
+  { id: "site", label: "Website", icon: Globe },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const AdminSidebar = ({ activeSection, onSectionChange, onLogout }: AdminSidebarProps) => {
   return (
     <aside className="hidden w-56 flex-col border-r border-border bg-card md:flex lg:w-64">
-      {/* Logo */}
       <div className="flex items-center gap-3 border-b border-border px-4 py-4">
         <img src={logo} alt="RealTime48" className="h-8 w-8" />
         <span className="text-sm font-bold text-foreground">
@@ -26,7 +27,6 @@ const AdminSidebar = ({ activeSection, onSectionChange, onLogout }: AdminSidebar
         </span>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 space-y-1 p-3">
         {sections.map((s) => {
           const Icon = s.icon;
@@ -47,7 +47,6 @@ const AdminSidebar = ({ activeSection, onSectionChange, onLogout }: AdminSidebar
         })}
       </nav>
 
-      {/* Logout */}
       <div className="border-t border-border p-3">
         <button
           onClick={onLogout}
