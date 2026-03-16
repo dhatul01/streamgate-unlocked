@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import Watermark from "@/components/viewer/Watermark";
 
 interface VideoPlayerProps {
   playlist: {
@@ -8,6 +9,7 @@ interface VideoPlayerProps {
   };
   autoPlay?: boolean;
   watermarkUrl?: string;
+  tokenCode?: string;
 }
 
 export interface VideoPlayerHandle {
@@ -15,7 +17,7 @@ export interface VideoPlayerHandle {
   pause: () => void;
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
@@ -293,6 +295,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
         </>
       )}
+
+      {/* Token code watermark */}
+      {tokenCode && <Watermark tokenCode={tokenCode} />}
 
       {/* Admin watermark image */}
       {watermarkUrl && (

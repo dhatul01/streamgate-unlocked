@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock } from "lucide-react";
+import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList } from "lucide-react";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
@@ -16,6 +16,12 @@ const TokenFactory = () => {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
+  const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("rt48_copied_tokens");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
   const { toast } = useToast();
 
   const fetchTokens = async () => {
@@ -50,10 +56,34 @@ const TokenFactory = () => {
     setGenerating(false);
   };
 
+  const markAsCopied = (code: string) => {
+    setCopiedTokens((prev) => {
+      const next = new Set(prev);
+      next.add(code);
+      localStorage.setItem("rt48_copied_tokens", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const copyLink = (code: string) => {
     const link = `${window.location.origin}/live?t=${code}`;
     navigator.clipboard.writeText(link);
+    markAsCopied(code);
     toast({ title: "Link disalin!" });
+  };
+
+  const bulkCopyUncopiedDaily = () => {
+    const dailyUncopied = tokens.filter(
+      (t) => t.duration_type === "daily" && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
+    );
+    if (dailyUncopied.length === 0) {
+      toast({ title: "Tidak ada token harian baru untuk disalin" });
+      return;
+    }
+    const links = dailyUncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
+    navigator.clipboard.writeText(links);
+    dailyUncopied.forEach((t) => markAsCopied(t.code));
+    toast({ title: `${dailyUncopied.length} link token harian disalin!` });
   };
 
   const blockToken = async (id: string) => {
@@ -166,6 +196,9 @@ const TokenFactory = () => {
             <Trash2 className="mr-1 h-3 w-3" /> Hapus ({selected.size})
           </Button>
         )}
+        <Button variant="outline" size="sm" onClick={bulkCopyUncopiedDaily} title="Salin semua token harian yang belum pernah disalin">
+          <ClipboardList className="mr-1 h-3 w-3" /> Salin Token Harian Baru
+        </Button>
       </div>
 
       {/* Token list */}
@@ -192,6 +225,11 @@ const TokenFactory = () => {
                 {t.is_public && (
                   <span className="flex items-center gap-0.5 rounded-sm bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                     <Globe className="h-2.5 w-2.5" /> PUBLIK
+                  </span>
+                )}
+                {copiedTokens.has(t.code) && (
+                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    ✓ tersalin
                   </span>
                 )}
               </div>

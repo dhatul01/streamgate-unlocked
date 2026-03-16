@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
 import UsernameModal from "@/components/viewer/UsernameModal";
-import Watermark from "@/components/viewer/Watermark";
+
 import logo from "@/assets/logo.png";
 
 const LivePage = () => {
@@ -270,13 +270,12 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {activePlaylist ? (
-            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} />
+            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
             <div className="flex aspect-video w-full items-center justify-center bg-card">
               <p className="text-muted-foreground">Tidak ada sumber video tersedia.</p>
             </div>
           )}
-          {tokenData && <Watermark tokenCode={tokenData.code} />}
         </div>
 
         {playlists.length > 1 && (
