@@ -316,7 +316,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         <>
           <iframe
             src={`https://customer-${playlist.url}.cloudflarestream.com/iframe`}
-            className="absolute inset-0 h-full w-full"
+            className={`h-full w-full ${isFullscreen ? "max-h-screen aspect-video" : "absolute inset-0"}`}
             allow="autoplay; fullscreen"
             allowFullScreen
           />
