@@ -146,6 +146,8 @@ const TokenFactory = () => {
     else setSelected(new Set(filteredTokens.map((t) => t.id)));
   };
 
+  const isExpired = (t: any) => new Date(t.expires_at) < new Date();
+
   const filteredTokens = tokens.filter((t) => {
     const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
@@ -162,8 +164,6 @@ const TokenFactory = () => {
     blocked: tokens.filter(t => t.status === "blocked").length,
     expired: tokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
   };
-
-  const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
   return (
     <div className="space-y-6">
