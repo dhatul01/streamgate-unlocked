@@ -296,6 +296,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         </>
       )}
 
+      {/* Token code watermark */}
+      {tokenCode && <Watermark tokenCode={tokenCode} />}
+
       {/* Admin watermark image */}
       {watermarkUrl && (
         <div className="pointer-events-none absolute bottom-12 right-3 z-20">
