@@ -99,16 +99,37 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
+      // Decode URL at runtime only
+      const decodedUrl = deobfuscate(obfuscate(playlist.url));
       if (!Hls.isSupported()) {
-        videoRef.current!.src = playlist.url;
+        videoRef.current!.src = decodedUrl;
         if (autoPlay) videoRef.current!.play().catch(() => {});
         return;
       }
 
-      const hls = new Hls({ liveSyncDurationCount: 3 });
+      const hls = new Hls({
+        liveSyncDurationCount: 3,
+        // Prevent URL leaking in error logs
+        debug: false,
+      });
       hlsRef.current = hls;
-      hls.loadSource(playlist.url);
+      hls.loadSource(decodedUrl);
       hls.attachMedia(videoRef.current!);
+
+      // Override video src property to hide URL from DOM inspection
+      try {
+        const videoEl = videoRef.current!;
+        const origSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+        Object.defineProperty(videoEl, 'src', {
+          get: () => '',
+          set: (v) => origSrc?.set?.call(videoEl, v),
+          configurable: true,
+        });
+        Object.defineProperty(videoEl, 'currentSrc', {
+          get: () => '',
+          configurable: true,
+        });
+      } catch {}
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         const levels = data.levels.map((l: any, i: number) => ({
