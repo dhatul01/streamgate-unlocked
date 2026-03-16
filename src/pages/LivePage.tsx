@@ -145,6 +145,22 @@ const LivePage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [tokenCode, getFingerprint]);
 
+  // Realtime watermark updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("watermark-settings")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings", filter: "key=eq.watermark_image_url" },
+        (payload: any) => {
+          const newVal = payload.new?.value || "";
+          setWatermarkUrl(newVal);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // Disable right-click on player
   useEffect(() => {
     const handler = (e: MouseEvent) => {
