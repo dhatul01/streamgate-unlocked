@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import VideoPlayer from "@/components/viewer/VideoPlayer";
+import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
 import UsernameModal from "@/components/viewer/UsernameModal";
 import Watermark from "@/components/viewer/Watermark";
@@ -21,6 +21,7 @@ const LivePage = () => {
   const [showUsernameModal, setShowUsernameModal] = useState(true);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const playerRef = useRef<VideoPlayerHandle>(null);
 
   const getFingerprint = useCallback(() => {
     let fp = localStorage.getItem("rt48_fp");
@@ -83,7 +84,6 @@ const LivePage = () => {
 
         const sessData = sessionResult as any;
         if (!sessData.success) {
-          // Device limit reached - redirect to landing
           setError("device_limit");
           setLoading(false);
           return;
@@ -97,7 +97,6 @@ const LivePage = () => {
           status: result.status,
         });
 
-        // Fetch stream data
         const { data: streamData } = await supabase
           .from("streams")
           .select("*")
@@ -105,7 +104,6 @@ const LivePage = () => {
           .single();
         setStream(streamData);
 
-        // Fetch playlists
         const { data: playlistData } = await supabase
           .from("playlists")
           .select("*")
@@ -125,7 +123,7 @@ const LivePage = () => {
     validateToken();
   }, [tokenCode, getFingerprint]);
 
-  // Release session on tab close via secure RPC
+  // Release session on tab close
   useEffect(() => {
     if (!tokenCode) return;
     const fingerprint = getFingerprint();
@@ -133,23 +131,10 @@ const LivePage = () => {
     const handleBeforeUnload = () => {
       const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/release_token_session`;
       const body = JSON.stringify({ _token_code: tokenCode, _fingerprint: fingerprint });
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      };
-      const sent = navigator.sendBeacon(
+      navigator.sendBeacon(
         url,
         new Blob([body], { type: "application/json" })
       );
-      if (!sent) {
-        fetch(url, {
-          method: "POST",
-          headers,
-          body,
-          keepalive: true,
-        });
-      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -168,6 +153,14 @@ const LivePage = () => {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
+  const handlePlaylistSwitch = (p: any) => {
+    // Pause current player before switching
+    if (playerRef.current) {
+      playerRef.current.pause();
+    }
+    setActivePlaylist(p);
+  };
+
   const handleUsernameSet = (name: string) => {
     setUsername(name);
     setShowUsernameModal(false);
@@ -185,7 +178,6 @@ const LivePage = () => {
   }
 
   if (error) {
-    // Device limit reached
     if (error === "device_limit") {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -251,9 +243,7 @@ const LivePage = () => {
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
 
-      {/* Main content */}
       <div className="flex flex-1 flex-col">
-        {/* Header */}
         <header className="flex items-center gap-3 border-b border-border px-4 py-3">
           <img src={logo} alt="RealTime48" className="h-8 w-8" />
           <div className="flex-1">
@@ -274,10 +264,9 @@ const LivePage = () => {
           )}
         </header>
 
-        {/* Player area */}
         <div className="player-area relative">
           {activePlaylist ? (
-            <VideoPlayer playlist={activePlaylist} />
+            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay />
           ) : (
             <div className="flex aspect-video w-full items-center justify-center bg-card">
               <p className="text-muted-foreground">Tidak ada sumber video tersedia.</p>
@@ -286,17 +275,16 @@ const LivePage = () => {
           {tokenData && <Watermark tokenCode={tokenData.code} />}
         </div>
 
-        {/* Playlist switcher */}
         {playlists.length > 1 && (
           <div className="flex gap-2 overflow-x-auto border-t border-border px-4 py-2">
             {playlists.map((p) => (
               <button
                 key={p.id}
-                onClick={() => setActivePlaylist(p)}
+                onClick={() => handlePlaylistSwitch(p)}
                 className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all ${
                   activePlaylist?.id === p.id
                     ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-surface-hover"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 }`}
               >
                 {p.label}
@@ -306,7 +294,6 @@ const LivePage = () => {
         )}
       </div>
 
-      {/* Chat sidebar */}
       <div className="h-[50vh] border-t border-border lg:h-auto lg:w-80 lg:border-l lg:border-t-0 xl:w-96">
         <LiveChat
           username={username}

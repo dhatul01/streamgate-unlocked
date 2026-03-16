@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 
 interface VideoPlayerProps {
   playlist: {
@@ -6,9 +6,15 @@ interface VideoPlayerProps {
     url: string;
     label: string;
   };
+  autoPlay?: boolean;
 }
 
-const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
+export interface VideoPlayerHandle {
+  play: () => void;
+  pause: () => void;
+}
+
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
@@ -17,6 +23,25 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
+        ytPlayerRef.current.playVideo();
+      } else if (videoRef.current) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    },
+    pause: () => {
+      if (playlist.type === "youtube" && ytPlayerRef.current?.pauseVideo) {
+        ytPlayerRef.current.pauseVideo();
+      } else if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    },
+  }));
 
   // Hide controls after 3s
   useEffect(() => {
@@ -55,6 +80,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
       const Hls = (await import("hls.js")).default;
       if (!Hls.isSupported()) {
         videoRef.current!.src = playlist.url;
+        if (autoPlay) videoRef.current!.play().catch(() => {});
         return;
       }
 
@@ -69,16 +95,19 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
           index: i,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        // Start at highest quality, then user can switch to auto
         if (data.levels.length > 0) {
           hls.currentLevel = data.levels.length - 1;
           setCurrentQuality(data.levels.length - 1);
+        }
+        if (autoPlay) {
+          videoRef.current!.play().catch(() => {});
+          setIsPlaying(true);
         }
       });
     };
 
     initHls();
-  }, [playlist]);
+  }, [playlist, autoPlay]);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -104,7 +133,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
         height: "100%",
         videoId: extractYTId(playlist.url),
         playerVars: {
-          autoplay: 0,
+          autoplay: autoPlay ? 1 : 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
@@ -116,10 +145,12 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
         },
         events: {
           onReady: (e: any) => {
-            // Set highest available quality
             const qualities = e.target.getAvailableQualityLevels();
             if (qualities && qualities.length > 0) {
               e.target.setPlaybackQuality(qualities[0]);
+            }
+            if (autoPlay) {
+              e.target.playVideo();
             }
           },
           onStateChange: (e: any) => {
@@ -137,7 +168,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
         ytPlayerRef.current = null;
       }
     };
-  }, [playlist]);
+  }, [playlist, autoPlay]);
 
   const extractYTId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
@@ -192,12 +223,12 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
   };
 
   return (
-    <div ref={containerRef} className="relative aspect-video w-full bg-card overflow-hidden">
+    <div ref={containerRef} className="relative w-full bg-card overflow-hidden" style={{ paddingBottom: "56.25%", height: 0 }}>
       {playlist.type === "youtube" && (
         <>
           <div
             id="yt-player"
-            className="absolute inset-0 [&>iframe]:!w-full [&>iframe]:!h-full"
+            className="absolute inset-0 w-full h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>iframe]:!absolute [&>iframe]:!inset-0"
           />
           {/* Overlay to block YouTube clicks */}
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
@@ -207,7 +238,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
       {playlist.type === "m3u8" && (
         <video
           ref={videoRef}
-          className="h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-contain"
           playsInline
         />
       )}
@@ -216,7 +247,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
         <>
           <iframe
             src={`https://customer-${playlist.url}.cloudflarestream.com/iframe`}
-            className="h-full w-full"
+            className="absolute inset-0 h-full w-full"
             allow="autoplay; fullscreen"
             allowFullScreen
           />
@@ -274,6 +305,8 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
       </div>
     </div>
   );
-};
+});
+
+VideoPlayer.displayName = "VideoPlayer";
 
 export default VideoPlayer;
