@@ -272,18 +272,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   };
 
   const togglePlay = () => {
-    if (playlist.type === "youtube" && ytPlayerRef.current) {
-      if (isPlaying) {
-        ytPlayerRef.current.pauseVideo();
+    if (playlist.type === "youtube") {
+      const player = ytPlayerRef.current;
+      if (!player || typeof player.getPlayerState !== "function") return;
+      const state = player.getPlayerState();
+      // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+      if (state === 1 || state === 3) {
+        player.pauseVideo();
+        setIsPlaying(false);
       } else {
         // Seek to live edge on unpause for YouTube live
         try {
-          const duration = ytPlayerRef.current.getDuration?.();
+          const duration = player.getDuration?.();
           if (duration && duration > 0) {
-            ytPlayerRef.current.seekTo(duration, true);
+            player.seekTo(duration, true);
           }
         } catch {}
-        ytPlayerRef.current.playVideo();
+        player.playVideo();
+        setIsPlaying(true);
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
