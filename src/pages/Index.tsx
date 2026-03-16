@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -45,6 +46,7 @@ interface SiteSettings {
 }
 
 const Index = () => {
+  const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
@@ -102,16 +104,38 @@ const Index = () => {
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedShow) return;
+
+    // Client-side pre-validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Format file tidak didukung", description: "Hanya JPEG, PNG, dan WebP yang diizinkan.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File terlalu besar", description: "Maksimal 5 MB.", variant: "destructive" });
+      return;
+    }
+
     setUploadingProof(true);
-    const ext = file.name.split(".").pop();
-    const fileName = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("payment-proofs").upload(fileName, file);
-    if (!error) {
-      const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName);
-      setProofUrl(urlData.publicUrl);
-      if (selectedShow.is_subscription) {
-        setPurchaseStep("info");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const { data, error } = await supabase.functions.invoke("upload-payment-proof", {
+        body: formData,
+      });
+
+      if (error) throw error;
+      if (data?.path) {
+        // Store the file path (not public URL) as proof reference
+        const storagePath = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`;
+        setProofUrl(storagePath);
+        if (selectedShow.is_subscription) {
+          setPurchaseStep("info");
+        }
       }
+    } catch {
+      toast({ title: "Upload gagal", description: "Silakan coba lagi.", variant: "destructive" });
     }
     setUploadingProof(false);
   };
