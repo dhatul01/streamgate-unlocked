@@ -119,12 +119,16 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     if (!newMessage.trim() || !username) return;
     setSending(true);
 
-    await supabase.from("chat_messages").insert({
+    const insertData: any = {
       username,
       message: newMessage.trim(),
       token_id: tokenId || null,
-      is_admin: isAdmin,
-    });
+    };
+    // Only authenticated admins can set is_admin=true (enforced by RLS)
+    if (isAdmin) {
+      insertData.is_admin = true;
+    }
+    await supabase.from("chat_messages").insert(insertData);
 
     setNewMessage("");
     setSending(false);
