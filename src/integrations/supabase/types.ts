@@ -14,16 +14,233 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blocked_users: {
+        Row: {
+          blocked_at: string
+          id: string
+          reason: string | null
+          token_id: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          id?: string
+          reason?: string | null
+          token_id?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          id?: string
+          reason?: string | null
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_users_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin: boolean
+          is_pinned: boolean
+          message: string
+          token_id: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          is_pinned?: boolean
+          message: string
+          token_id?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          is_pinned?: boolean
+          message?: string
+          token_id?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          stream_id: string | null
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+          stream_id?: string | null
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          stream_id?: string | null
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlists_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      streams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_live: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_live?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_live?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      token_sessions: {
+        Row: {
+          connected_at: string
+          fingerprint: string
+          id: string
+          token_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          connected_at?: string
+          fingerprint: string
+          id?: string
+          token_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          connected_at?: string
+          fingerprint?: string
+          id?: string
+          token_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_sessions_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tokens: {
+        Row: {
+          code: string
+          created_at: string
+          duration_type: string
+          expires_at: string
+          id: string
+          max_devices: number
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          duration_type: string
+          expires_at: string
+          id?: string
+          max_devices?: number
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          duration_type?: string
+          expires_at?: string
+          id?: string
+          max_devices?: number
+          status?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +367,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
