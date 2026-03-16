@@ -230,6 +230,34 @@ const TokenFactory = () => {
         </p>
       )}
 
+      {/* Status filter tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: "all", label: "Semua", icon: null },
+          { key: "active", label: "Aktif", icon: "🟢" },
+          { key: "blocked", label: "Diblokir", icon: "🔴" },
+          { key: "expired", label: "Expired", icon: "🟡" },
+        ] as const).map(({ key, label, icon }) => (
+          <button
+            key={key}
+            onClick={() => { setStatusFilter(key); setSelected(new Set()); }}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              statusFilter === key
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {icon && <span>{icon}</span>}
+            {label}
+            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              statusFilter === key ? "bg-primary-foreground/20" : "bg-muted"
+            }`}>
+              {countByStatus[key]}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Search & bulk actions */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1">
