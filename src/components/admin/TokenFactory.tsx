@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList } from "lucide-react";
+import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList, CheckCircle } from "lucide-react";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
@@ -17,6 +17,7 @@ const TokenFactory = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked" | "expired">("all");
   const [generating, setGenerating] = useState(false);
   const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
     try {
@@ -99,9 +100,11 @@ const TokenFactory = () => {
   };
 
   const blockToken = async (id: string) => {
-    await supabase.from("tokens").update({ status: "blocked" }).eq("id", id);
+    const token = tokens.find(t => t.id === id);
+    const newStatus = token?.status === "blocked" ? "active" : "blocked";
+    await supabase.from("tokens").update({ status: newStatus }).eq("id", id);
     await fetchTokens();
-    toast({ title: "Token diblokir" });
+    toast({ title: newStatus === "blocked" ? "Token diblokir" : "Token diaktifkan kembali" });
   };
 
   const resetSessions = async (id: string) => {
@@ -143,9 +146,22 @@ const TokenFactory = () => {
     else setSelected(new Set(filteredTokens.map((t) => t.id)));
   };
 
-  const filteredTokens = tokens.filter((t) =>
-    t.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTokens = tokens.filter((t) => {
+    const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+    if (statusFilter === "all") return true;
+    if (statusFilter === "blocked") return t.status === "blocked";
+    if (statusFilter === "expired") return t.status !== "blocked" && isExpired(t);
+    if (statusFilter === "active") return t.status !== "blocked" && !isExpired(t);
+    return true;
+  });
+
+  const countByStatus = {
+    all: tokens.length,
+    active: tokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
+    blocked: tokens.filter(t => t.status === "blocked").length,
+    expired: tokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+  };
 
   const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
@@ -213,6 +229,34 @@ const TokenFactory = () => {
           ℹ️ Token publik dapat digunakan oleh banyak user tanpa batas perangkat.
         </p>
       )}
+
+      {/* Status filter tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: "all", label: "Semua", icon: null },
+          { key: "active", label: "Aktif", icon: "🟢" },
+          { key: "blocked", label: "Diblokir", icon: "🔴" },
+          { key: "expired", label: "Expired", icon: "🟡" },
+        ] as const).map(({ key, label, icon }) => (
+          <button
+            key={key}
+            onClick={() => { setStatusFilter(key); setSelected(new Set()); }}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              statusFilter === key
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {icon && <span>{icon}</span>}
+            {label}
+            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              statusFilter === key ? "bg-primary-foreground/20" : "bg-muted"
+            }`}>
+              {countByStatus[key]}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Search & bulk actions */}
       <div className="flex flex-wrap items-center gap-3">
@@ -296,8 +340,8 @@ const TokenFactory = () => {
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title="Blokir">
-                <Ban className="h-3 w-3 text-destructive" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title={t.status === "blocked" ? "Aktifkan" : "Blokir"}>
+                {t.status === "blocked" ? <CheckCircle className="h-3 w-3 text-success" /> : <Ban className="h-3 w-3 text-destructive" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={deleting} onClick={() => deleteTokens([t.id])} title="Hapus">
                 <Trash2 className="h-3 w-3 text-destructive" />
