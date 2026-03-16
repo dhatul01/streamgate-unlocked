@@ -457,7 +457,7 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="h-[50vh] border-t border-border lg:h-auto lg:w-80 lg:border-l lg:border-t-0 xl:w-96">
+      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96">
         <LiveChat
           username={username}
           tokenId={tokenData?.id}

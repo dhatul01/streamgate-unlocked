@@ -153,15 +153,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     const createYTPlayer = () => {
       const container = ytContainerRef.current;
       if (!container) return;
-      // Create a fresh div for YT to replace, so React doesn't manage it
       container.innerHTML = "";
       const playerDiv = document.createElement("div");
+      // Use a random ID to avoid easy DOM identification
+      playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
       container.appendChild(playerDiv);
+
+      // Decode video ID at runtime only
+      const encodedId = obfuscate(extractYTId(playlist.url));
+      const videoId = deobfuscate(encodedId);
 
       ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
         width: "100%",
         height: "100%",
-        videoId: extractYTId(playlist.url),
+        videoId,
         playerVars: {
           autoplay: autoPlay ? 1 : 0,
           controls: 0,
@@ -172,22 +177,51 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           showinfo: 0,
           iv_load_policy: 3,
           playsinline: 1,
+          vq: "hd1080",
         },
         events: {
           onReady: (e: any) => {
+            // Force highest available quality (HD/1080p preferred)
             const qualities = e.target.getAvailableQualityLevels();
             if (qualities && qualities.length > 0) {
-              e.target.setPlaybackQuality(qualities[0]);
+              const preferred = ["hd2160", "hd1440", "hd1080", "hd720", "large"];
+              const best = preferred.find((q) => qualities.includes(q)) || qualities[0];
+              e.target.setPlaybackQuality(best);
             }
             setIsLoading(false);
             if (autoPlay) {
               e.target.playVideo();
             }
+
+            // Remove src attributes from iframe to hide URL in DOM
+            setTimeout(() => {
+              const iframes = container.querySelectorAll("iframe");
+              iframes.forEach((iframe: HTMLIFrameElement) => {
+                iframe.removeAttribute("title");
+                // Override toString to not leak URL
+                try {
+                  Object.defineProperty(iframe, "src", {
+                    get: () => "",
+                    set: (v) => iframe.setAttribute("src", v),
+                    configurable: true,
+                  });
+                } catch {}
+              });
+            }, 100);
           },
           onStateChange: (e: any) => {
             setIsPlaying(e.data === 1);
-            if (e.data === 3) setIsLoading(true); // buffering
-            if (e.data === 1) setIsLoading(false); // playing
+            if (e.data === 3) setIsLoading(true);
+            if (e.data === 1) {
+              setIsLoading(false);
+              // Re-enforce quality on each play
+              const qualities = e.target.getAvailableQualityLevels();
+              if (qualities && qualities.length > 0) {
+                const preferred = ["hd2160", "hd1440", "hd1080", "hd720"];
+                const best = preferred.find((q) => qualities.includes(q)) || qualities[0];
+                e.target.setPlaybackQuality(best);
+              }
+            }
           },
         },
       });
