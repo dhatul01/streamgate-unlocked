@@ -295,6 +295,7 @@ const Index = () => {
               {subscriptionShows.map((show, i) => {
                 const confirmed = subscriberCounts[show.id] || 0;
                 const spotsLeft = show.max_subscribers > 0 ? show.max_subscribers - confirmed : null;
+                const isFull = spotsLeft !== null && spotsLeft <= 0;
                 return (
                   <motion.div
                     key={show.id}
@@ -302,10 +303,16 @@ const Index = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.15 }}
-                    className="group relative overflow-hidden rounded-2xl border-2 border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card transition-all hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
+                    className={`group relative overflow-hidden rounded-2xl border-2 transition-all ${
+                      isFull
+                        ? "border-muted bg-muted/30 opacity-75"
+                        : "border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
+                    }`}
                   >
-                    <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-yellow-500 px-3 py-1 text-xs font-black text-background">
-                      <Sparkles className="h-3 w-3" /> LANGGANAN
+                    <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
+                      isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
+                    }`}>
+                      <Sparkles className="h-3 w-3" /> {isFull ? "LANGGANAN PENUH" : "LANGGANAN"}
                     </div>
 
                     <div className="relative h-48 overflow-hidden">
