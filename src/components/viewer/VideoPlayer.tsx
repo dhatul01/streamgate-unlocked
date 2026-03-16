@@ -160,101 +160,89 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useEffect(() => {
     if (playlist.type !== "youtube") return;
 
+    let destroyed = false;
+
     const loadYTApi = () => {
       if ((window as any).YT && (window as any).YT.Player) {
         createYTPlayer();
         return;
       }
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
-      (window as any).onYouTubeIframeAPIReady = createYTPlayer;
+      // Avoid duplicate script tags
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      (window as any).onYouTubeIframeAPIReady = () => {
+        if (!destroyed) createYTPlayer();
+      };
     };
 
     const createYTPlayer = () => {
+      if (destroyed) return;
       const container = ytContainerRef.current;
       if (!container) return;
       container.innerHTML = "";
       const playerDiv = document.createElement("div");
-      // Use a random ID to avoid easy DOM identification
       playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
       container.appendChild(playerDiv);
 
-      // Decode video ID at runtime only
-      const encodedId = obfuscate(extractYTId(playlist.url));
-      const videoId = deobfuscate(encodedId);
+      const videoId = extractYTId(playlist.url);
 
-      ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
-        width: "100%",
-        height: "100%",
-        videoId,
-        playerVars: {
-          autoplay: autoPlay ? 1 : 0,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          vq: "hd1080",
-        },
-        events: {
-          onReady: (e: any) => {
-            // Force highest available quality (HD/1080p preferred)
-            const qualities = e.target.getAvailableQualityLevels();
-            if (qualities && qualities.length > 0) {
-              const preferred = ["hd2160", "hd1440", "hd1080", "hd720", "large"];
-              const best = preferred.find((q) => qualities.includes(q)) || qualities[0];
-              e.target.setPlaybackQuality(best);
-            }
-            setIsLoading(false);
-            if (autoPlay) {
-              e.target.playVideo();
-            }
-
-            // Remove src attributes from iframe to hide URL in DOM
-            setTimeout(() => {
-              const iframes = container.querySelectorAll("iframe");
-              iframes.forEach((iframe: HTMLIFrameElement) => {
-                iframe.removeAttribute("title");
-                // Override toString to not leak URL
-                try {
-                  Object.defineProperty(iframe, "src", {
-                    get: () => "",
-                    set: (v) => iframe.setAttribute("src", v),
-                    configurable: true,
-                  });
-                } catch {}
-              });
-            }, 100);
+      try {
+        ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
+          width: "100%",
+          height: "100%",
+          videoId,
+          playerVars: {
+            autoplay: autoPlay ? 1 : 0,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            iv_load_policy: 3,
+            playsinline: 1,
+            origin: window.location.origin,
           },
-          onStateChange: (e: any) => {
-            setIsPlaying(e.data === 1);
-            if (e.data === 3) setIsLoading(true);
-            if (e.data === 1) {
+          events: {
+            onReady: (e: any) => {
+              if (destroyed) return;
               setIsLoading(false);
-              // Re-enforce quality on each play
-              const qualities = e.target.getAvailableQualityLevels();
-              if (qualities && qualities.length > 0) {
-                const preferred = ["hd2160", "hd1440", "hd1080", "hd720"];
-                const best = preferred.find((q) => qualities.includes(q)) || qualities[0];
-                e.target.setPlaybackQuality(best);
+              if (autoPlay) {
+                e.target.playVideo();
               }
-            }
+            },
+            onStateChange: (e: any) => {
+              if (destroyed) return;
+              // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
+              setIsPlaying(e.data === 1);
+              setIsLoading(e.data === 3);
+            },
+            onError: (e: any) => {
+              if (destroyed) return;
+              console.warn("YT Player error code:", e.data);
+              setIsLoading(false);
+            },
           },
-        },
-      });
+        });
+      } catch (err) {
+        console.warn("Failed to create YT player:", err);
+        setIsLoading(false);
+      }
     };
 
     loadYTApi();
 
     return () => {
-      if (ytPlayerRef.current?.destroy) {
-        ytPlayerRef.current.destroy();
-        ytPlayerRef.current = null;
-      }
+      destroyed = true;
+      try {
+        if (ytPlayerRef.current?.destroy) {
+          ytPlayerRef.current.destroy();
+        }
+      } catch {}
+      ytPlayerRef.current = null;
     };
   }, [playlist, autoPlay]);
 
