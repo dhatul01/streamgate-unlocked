@@ -185,12 +185,42 @@ const LivePage = () => {
   }
 
   if (error) {
+    if (error === "no_token") {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 animate-float" />
+            <h2 className="mb-2 text-xl font-bold text-foreground">Akses Streaming</h2>
+            <p className="mb-6 text-muted-foreground">
+              {purchaseMessage || "Untuk mengakses streaming, silakan beli token terlebih dahulu."}
+            </p>
+            {whatsappNumber && (
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Halo, saya ingin membeli token streaming")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-primary-foreground transition hover:bg-success/90"
+              >
+                💬 Hubungi WhatsApp
+              </a>
+            )}
+            <div className="mt-4">
+              <a href="/" className="text-sm text-primary hover:underline">← Kembali ke halaman utama</a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="rounded-xl border border-destructive/30 bg-card p-8 text-center">
           <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-12 w-12" />
           <h2 className="mb-2 text-xl font-bold text-destructive">Akses Ditolak</h2>
           <p className="text-muted-foreground">{error}</p>
+          <div className="mt-4">
+            <a href="/" className="text-sm text-primary hover:underline">← Kembali ke halaman utama</a>
+          </div>
         </div>
       </div>
     );
