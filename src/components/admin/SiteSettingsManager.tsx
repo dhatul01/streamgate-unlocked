@@ -11,6 +11,7 @@ const settingsKeys = [
   { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input", hint: "Link saluran WhatsApp untuk info publik" },
   { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" },
   { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" },
+  { key: "watermark_image_url", label: "Watermark Player (URL gambar)", placeholder: "https://...", type: "input", hint: "Gambar kecil di pojok kanan bawah player. Kosongkan untuk menonaktifkan." },
 ];
 
 const SiteSettingsManager = () => {

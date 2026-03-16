@@ -17,10 +17,11 @@ const LivePage = () => {
   const [stream, setStream] = useState<any>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
-  const [username, setUsername] = useState("");
-  const [showUsernameModal, setShowUsernameModal] = useState(true);
+  const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
+  const [showUsernameModal, setShowUsernameModal] = useState(!localStorage.getItem("rt48_username"));
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [watermarkUrl, setWatermarkUrl] = useState("");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   const getFingerprint = useCallback(() => {
@@ -97,20 +98,23 @@ const LivePage = () => {
           status: result.status,
         });
 
-        const { data: streamData } = await supabase
-          .from("streams")
-          .select("*")
-          .limit(1)
-          .single();
-        setStream(streamData);
+        // Fetch stream, playlists, and settings in parallel
+        const [streamRes, playlistRes, settingsRes] = await Promise.all([
+          supabase.from("streams").select("*").limit(1).single(),
+          supabase.from("playlists").select("*").order("sort_order"),
+          supabase.from("site_settings").select("*"),
+        ]);
 
-        const { data: playlistData } = await supabase
-          .from("playlists")
-          .select("*")
-          .order("sort_order");
-        setPlaylists(playlistData || []);
-        if (playlistData && playlistData.length > 0) {
-          setActivePlaylist(playlistData[0]);
+        setStream(streamRes.data);
+        setPlaylists(playlistRes.data || []);
+        if (playlistRes.data && playlistRes.data.length > 0) {
+          setActivePlaylist(playlistRes.data[0]);
+        }
+
+        if (settingsRes.data) {
+          settingsRes.data.forEach((s: any) => {
+            if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
+          });
         }
 
         setLoading(false);
@@ -154,7 +158,6 @@ const LivePage = () => {
   }, []);
 
   const handlePlaylistSwitch = (p: any) => {
-    // Pause current player before switching
     if (playerRef.current) {
       playerRef.current.pause();
     }
@@ -163,6 +166,7 @@ const LivePage = () => {
 
   const handleUsernameSet = (name: string) => {
     setUsername(name);
+    localStorage.setItem("rt48_username", name);
     setShowUsernameModal(false);
   };
 
@@ -266,7 +270,7 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {activePlaylist ? (
-            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay />
+            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} />
           ) : (
             <div className="flex aspect-video w-full items-center justify-center bg-card">
               <p className="text-muted-foreground">Tidak ada sumber video tersedia.</p>
@@ -292,6 +296,14 @@ const LivePage = () => {
             ))}
           </div>
         )}
+
+        {/* Stream info below player on mobile */}
+        <div className="border-t border-border px-4 py-3 lg:hidden">
+          <h2 className="text-sm font-bold text-foreground">{stream?.title || "RealTime48"}</h2>
+          {stream?.description && (
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{stream.description}</p>
+          )}
+        </div>
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-auto lg:w-80 lg:border-l lg:border-t-0 xl:w-96">
