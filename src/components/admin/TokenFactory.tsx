@@ -340,8 +340,8 @@ const TokenFactory = () => {
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title="Blokir">
-                <Ban className="h-3 w-3 text-destructive" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title={t.status === "blocked" ? "Aktifkan" : "Blokir"}>
+                {t.status === "blocked" ? <CheckCircle className="h-3 w-3 text-success" /> : <Ban className="h-3 w-3 text-destructive" />}
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={deleting} onClick={() => deleteTokens([t.id])} title="Hapus">
                 <Trash2 className="h-3 w-3 text-destructive" />
