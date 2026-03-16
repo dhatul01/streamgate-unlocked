@@ -210,6 +210,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             onReady: (e: any) => {
               if (destroyed) return;
               setIsLoading(false);
+              // Hide iframe src from DOM inspection
+              try {
+                const iframe = ytContainerRef.current?.querySelector('iframe');
+                if (iframe) {
+                  Object.defineProperty(iframe, 'src', {
+                    get: () => '',
+                    set: (v) => iframe.setAttribute('src', v),
+                    configurable: true,
+                  });
+                  // Remove src attribute visibility
+                  const origGetAttr = iframe.getAttribute.bind(iframe);
+                  iframe.getAttribute = (name: string) => {
+                    if (name === 'src') return '';
+                    return origGetAttr(name);
+                  };
+                }
+              } catch {}
               if (autoPlay) {
                 e.target.playVideo();
               }
