@@ -1,0 +1,1 @@
+DROP POLICY "Anyone can read orders" ON public.subscription_orders;

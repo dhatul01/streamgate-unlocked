@@ -75,12 +75,8 @@ const Index = () => {
         if (subShows.length > 0) {
           const counts: Record<string, number> = {};
           for (const s of subShows) {
-            const { count } = await supabase
-              .from("subscription_orders")
-              .select("*", { count: "exact", head: true })
-              .eq("show_id", s.id)
-              .eq("status", "confirmed");
-            counts[s.id] = count || 0;
+            const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
+            counts[s.id] = (count as number) || 0;
           }
           setSubscriberCounts(counts);
         }
