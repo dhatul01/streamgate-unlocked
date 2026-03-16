@@ -136,7 +136,19 @@ const SubscriptionOrderManager = () => {
               <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-1">
                   <button
-                    onClick={() => setPreviewImage(order.payment_proof_url)}
+                    onClick={async () => {
+                      // Extract file path from the stored URL
+                      const url = order.payment_proof_url;
+                      const pathMatch = url.match(/payment-proofs\/(.+)$/);
+                      if (pathMatch) {
+                        const { data } = await supabase.storage
+                          .from("payment-proofs")
+                          .createSignedUrl(pathMatch[1], 300); // 5 min
+                        if (data?.signedUrl) setPreviewImage(data.signedUrl);
+                      } else {
+                        setPreviewImage(url); // fallback for old URLs
+                      }
+                    }}
                     className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
                   >
                     <Image className="h-3 w-3" /> Lihat Bukti
