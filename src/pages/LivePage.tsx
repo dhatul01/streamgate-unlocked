@@ -236,7 +236,7 @@ const LivePage = () => {
       const now = Date.now();
       const diff = target - now;
       if (diff <= 0) {
-        setCountdown("Segera dimulai...");
+        setCountdown("");
         return;
       }
       const h = Math.floor(diff / 3600000);
@@ -430,7 +430,10 @@ const LivePage = () => {
                   )}
                 </div>
               ) : (
-                <p className="text-muted-foreground">Live stream sedang offline</p>
+                <div className="text-center">
+                  <p className="font-mono text-2xl font-bold text-destructive lg:text-3xl tracking-widest">STREAMING OFFLINE</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Tidak ada jadwal streaming saat ini</p>
+                </div>
               )}
             </div>
           )}
