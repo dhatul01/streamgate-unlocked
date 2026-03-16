@@ -32,6 +32,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useImperativeHandle(ref, () => ({
     play: () => {
       if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
+        try {
+          const duration = ytPlayerRef.current.getDuration?.();
+          if (duration && duration > 0) ytPlayerRef.current.seekTo(duration, true);
+        } catch {}
         ytPlayerRef.current.playVideo();
       } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
         // Seek to live edge before playing
@@ -213,6 +217,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       if (isPlaying) {
         ytPlayerRef.current.pauseVideo();
       } else {
+        // Seek to live edge on unpause for YouTube live
+        try {
+          const duration = ytPlayerRef.current.getDuration?.();
+          if (duration && duration > 0) {
+            ytPlayerRef.current.seekTo(duration, true);
+          }
+        } catch {}
         ytPlayerRef.current.playVideo();
       }
     } else if (videoRef.current) {
