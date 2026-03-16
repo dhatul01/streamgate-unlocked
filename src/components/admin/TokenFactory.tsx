@@ -227,6 +227,11 @@ const TokenFactory = () => {
                     <Globe className="h-2.5 w-2.5" /> PUBLIK
                   </span>
                 )}
+                {copiedTokens.has(t.code) && (
+                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    ✓ tersalin
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 mt-1">
                 <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
