@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anyone can read blocked users" ON public.blocked_users;
