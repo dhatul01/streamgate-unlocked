@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe } from "lucide-react";
+import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe, FileText, ClipboardList } from "lucide-react";
 
 interface AdminSidebarProps {
   activeSection: string;
@@ -12,6 +12,8 @@ const sections = [
   { id: "playlist", label: "Playlist", icon: List },
   { id: "tokens", label: "Token Factory", icon: Key },
   { id: "shows", label: "Show Manager", icon: Theater },
+  { id: "orders", label: "Order Langganan", icon: ClipboardList },
+  { id: "descriptions", label: "Deskripsi LP", icon: FileText },
   { id: "monitor", label: "Monitor", icon: Monitor },
   { id: "site", label: "Website", icon: Globe },
   { id: "settings", label: "Settings", icon: Settings },
@@ -22,12 +24,10 @@ const AdminSidebar = ({ activeSection, onSectionChange, onLogout }: AdminSidebar
     <aside className="hidden w-56 flex-col border-r border-border bg-card md:flex lg:w-64">
       <div className="flex items-center gap-3 border-b border-border px-4 py-4">
         <img src={logo} alt="RealTime48" className="h-8 w-8" />
-        <span className="text-sm font-bold text-foreground">
-          Real<span className="text-primary">Time48</span>
-        </span>
+        <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {sections.map((s) => {
           const Icon = s.icon;
           return (

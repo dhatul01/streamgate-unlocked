@@ -81,6 +81,36 @@ export type Database = {
           },
         ]
       }
+      landing_descriptions: {
+        Row: {
+          content: string
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       playlists: {
         Row: {
           created_at: string
@@ -123,40 +153,52 @@ export type Database = {
         Row: {
           background_image_url: string | null
           created_at: string
+          group_link: string
           id: string
           is_active: boolean
+          is_subscription: boolean
           lineup: string
+          max_subscribers: number
           price: string
           qris_image_url: string | null
           schedule_date: string
           schedule_time: string
           sort_order: number
+          subscription_benefits: string
           title: string
         }
         Insert: {
           background_image_url?: string | null
           created_at?: string
+          group_link?: string
           id?: string
           is_active?: boolean
+          is_subscription?: boolean
           lineup?: string
+          max_subscribers?: number
           price?: string
           qris_image_url?: string | null
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
+          subscription_benefits?: string
           title: string
         }
         Update: {
           background_image_url?: string | null
           created_at?: string
+          group_link?: string
           id?: string
           is_active?: boolean
+          is_subscription?: boolean
           lineup?: string
+          max_subscribers?: number
           price?: string
           qris_image_url?: string | null
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
+          subscription_benefits?: string
           title?: string
         }
         Relationships: []
@@ -205,6 +247,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      subscription_orders: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          payment_proof_url: string
+          phone: string
+          show_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id?: string
+          payment_proof_url?: string
+          phone?: string
+          show_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          payment_proof_url?: string
+          phone?: string
+          show_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_orders_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       token_sessions: {
         Row: {

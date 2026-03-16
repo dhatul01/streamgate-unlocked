@@ -10,6 +10,8 @@ import ShowManager from "@/components/admin/ShowManager";
 import MonitorView from "@/components/admin/MonitorView";
 import AdminSettings from "@/components/admin/AdminSettings";
 import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
+import LandingDescriptionManager from "@/components/admin/LandingDescriptionManager";
+import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -54,6 +56,8 @@ const AdminDashboard = () => {
       case "playlist": return <PlaylistManager />;
       case "tokens": return <TokenFactory />;
       case "shows": return <ShowManager />;
+      case "orders": return <SubscriptionOrderManager />;
+      case "descriptions": return <LandingDescriptionManager />;
       case "monitor": return <MonitorView />;
       case "site": return <SiteSettingsManager />;
       case "settings": return <AdminSettings />;

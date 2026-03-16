@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image, Crown } from "lucide-react";
 
 interface Show {
   id: string;
@@ -17,6 +18,10 @@ interface Show {
   qris_image_url: string | null;
   sort_order: number;
   is_active: boolean;
+  is_subscription: boolean;
+  max_subscribers: number;
+  subscription_benefits: string;
+  group_link: string;
 }
 
 const ShowManager = () => {
@@ -29,10 +34,7 @@ const ShowManager = () => {
   const { toast } = useToast();
 
   const fetchShows = async () => {
-    const { data } = await supabase
-      .from("shows")
-      .select("*")
-      .order("sort_order");
+    const { data } = await supabase.from("shows").select("*").order("sort_order");
     setShows((data as Show[]) || []);
   };
 
@@ -49,10 +51,7 @@ const ShowManager = () => {
     }
   };
 
-  useEffect(() => {
-    fetchShows();
-    fetchGallery();
-  }, []);
+  useEffect(() => { fetchShows(); fetchGallery(); }, []);
 
   const createShow = async () => {
     await supabase.from("shows").insert({
@@ -80,6 +79,10 @@ const ShowManager = () => {
         qris_image_url: show.qris_image_url,
         is_active: show.is_active,
         sort_order: show.sort_order,
+        is_subscription: show.is_subscription,
+        max_subscribers: show.max_subscribers,
+        subscription_benefits: show.subscription_benefits,
+        group_link: show.group_link,
       })
       .eq("id", show.id);
     await fetchShows();
@@ -97,9 +100,7 @@ const ShowManager = () => {
     setUploading(true);
     const ext = file.name.split(".").pop();
     const fileName = `${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("show-images")
-      .upload(fileName, file);
+    const { error } = await supabase.storage.from("show-images").upload(fileName, file);
     if (error) {
       toast({ title: "Upload gagal", description: error.message, variant: "destructive" });
       setUploading(false);
@@ -143,9 +144,7 @@ const ShowManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">🎭 Show Manager</h2>
-        <Button onClick={createShow} size="sm">
-          <Plus className="mr-1 h-4 w-4" /> Tambah Show
-        </Button>
+        <Button onClick={createShow} size="sm"><Plus className="mr-1 h-4 w-4" /> Tambah Show</Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -156,45 +155,32 @@ const ShowManager = () => {
               key={show.id}
               onClick={() => setEditing(show)}
               className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                editing?.id === show.id
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-card hover:border-primary/50"
+                editing?.id === show.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50"
               }`}
             >
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{show.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground truncate">{show.title}</p>
+                  {show.is_subscription && <Crown className="h-3 w-3 text-yellow-500" />}
+                </div>
                 <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
               </div>
-              {show.is_active ? (
-                <Eye className="h-4 w-4 text-success" />
-              ) : (
-                <EyeOff className="h-4 w-4 text-muted-foreground" />
-              )}
+              {show.is_active ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
             </button>
           ))}
-          {shows.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">Belum ada show</p>
-          )}
+          {shows.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Belum ada show</p>}
         </div>
 
         {/* Edit form */}
         {editing && (
-          <div className="space-y-4 rounded-xl border border-border bg-card p-5">
+          <div className="space-y-4 rounded-xl border border-border bg-card p-5 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-foreground">Edit Show</h3>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => {
-                    const updated = { ...editing, is_active: !editing.is_active };
-                    setEditing(updated);
-                    updateShow(updated);
-                  }}
-                  title={editing.is_active ? "Sembunyikan" : "Tampilkan"}
-                >
+                <Button variant="ghost" size="icon" className="h-8 w-8"
+                  onClick={() => { const u = { ...editing, is_active: !editing.is_active }; setEditing(u); updateShow(u); }}
+                  title={editing.is_active ? "Sembunyikan" : "Tampilkan"}>
                   {editing.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteShow(editing.id)}>
@@ -203,58 +189,58 @@ const ShowManager = () => {
               </div>
             </div>
 
+            {/* Subscription toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-yellow-500" />
+                <span className="text-sm font-medium text-foreground">Kartu Langganan</span>
+              </div>
+              <Switch
+                checked={editing.is_subscription}
+                onCheckedChange={(v) => { const u = { ...editing, is_subscription: v }; setEditing(u); updateShow(u); }}
+              />
+            </div>
+
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>
-              <Input
-                value={editing.title}
-                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                onBlur={() => updateShow(editing)}
-                className="bg-background"
-              />
+              <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Harga</label>
-              <Input
-                value={editing.price}
-                onChange={(e) => setEditing({ ...editing, price: e.target.value })}
-                onBlur={() => updateShow(editing)}
-                className="bg-background"
-                placeholder="Rp 50.000"
-              />
+              <Input value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="Rp 50.000" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Line Up Member</label>
-              <Textarea
-                value={editing.lineup}
-                onChange={(e) => setEditing({ ...editing, lineup: e.target.value })}
-                onBlur={() => updateShow(editing)}
-                className="bg-background"
-                placeholder="Member 1, Member 2, Member 3..."
-                rows={3}
-              />
+              <Textarea value={editing.lineup} onChange={(e) => setEditing({ ...editing, lineup: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="Member 1, Member 2..." rows={3} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Tanggal</label>
-                <Input
-                  value={editing.schedule_date}
-                  onChange={(e) => setEditing({ ...editing, schedule_date: e.target.value })}
-                  onBlur={() => updateShow(editing)}
-                  className="bg-background"
-                  placeholder="20 Maret 2026"
-                />
+                <Input value={editing.schedule_date} onChange={(e) => setEditing({ ...editing, schedule_date: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="20 Maret 2026" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Jam</label>
-                <Input
-                  value={editing.schedule_time}
-                  onChange={(e) => setEditing({ ...editing, schedule_time: e.target.value })}
-                  onBlur={() => updateShow(editing)}
-                  className="bg-background"
-                  placeholder="19:00 WIB"
-                />
+                <Input value={editing.schedule_time} onChange={(e) => setEditing({ ...editing, schedule_time: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="19:00 WIB" />
               </div>
             </div>
+
+            {/* Subscription-specific fields */}
+            {editing.is_subscription && (
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Maks Subscriber</label>
+                  <Input type="number" value={editing.max_subscribers} onChange={(e) => setEditing({ ...editing, max_subscribers: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="100" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Benefit (per baris)</label>
+                  <Textarea value={editing.subscription_benefits} onChange={(e) => setEditing({ ...editing, subscription_benefits: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="Akses semua show&#10;Priority seating&#10;Merchandise exclusive" rows={4} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Link Grup</label>
+                  <Input value={editing.group_link} onChange={(e) => setEditing({ ...editing, group_link: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="https://chat.whatsapp.com/..." />
+                </div>
+              </>
+            )}
 
             {/* Background image */}
             <div>
@@ -264,17 +250,11 @@ const ShowManager = () => {
                   <Upload className="h-3 w-3" /> Upload
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "bg")} />
                 </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setGalleryTarget("bg"); setShowGallery(true); }}
-                >
+                <Button variant="outline" size="sm" onClick={() => { setGalleryTarget("bg"); setShowGallery(true); }}>
                   <Image className="mr-1 h-3 w-3" /> Galeri
                 </Button>
               </div>
-              {editing.background_image_url && (
-                <img src={editing.background_image_url} alt="bg" className="mt-2 h-24 w-full rounded-lg object-cover" />
-              )}
+              {editing.background_image_url && <img src={editing.background_image_url} alt="bg" className="mt-2 h-24 w-full rounded-lg object-cover" />}
             </div>
 
             {/* QRIS image */}
@@ -285,17 +265,11 @@ const ShowManager = () => {
                   <Upload className="h-3 w-3" /> Upload
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "qris")} />
                 </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setGalleryTarget("qris"); setShowGallery(true); }}
-                >
+                <Button variant="outline" size="sm" onClick={() => { setGalleryTarget("qris"); setShowGallery(true); }}>
                   <Image className="mr-1 h-3 w-3" /> Galeri
                 </Button>
               </div>
-              {editing.qris_image_url && (
-                <img src={editing.qris_image_url} alt="qris" className="mt-2 h-32 rounded-lg object-contain" />
-              )}
+              {editing.qris_image_url && <img src={editing.qris_image_url} alt="qris" className="mt-2 h-32 rounded-lg object-contain" />}
             </div>
 
             {uploading && <p className="text-xs text-primary">Mengupload...</p>}
@@ -314,24 +288,14 @@ const ShowManager = () => {
             <div className="grid grid-cols-3 gap-3">
               {galleryImages.map((url) => (
                 <div key={url} className="group relative">
-                  <img
-                    src={url}
-                    alt=""
-                    className="h-28 w-full cursor-pointer rounded-lg object-cover transition hover:ring-2 hover:ring-primary"
-                    onClick={() => selectFromGallery(url)}
-                  />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteGalleryImage(url); }}
-                    className="absolute right-1 top-1 hidden rounded-full bg-destructive p-1 text-destructive-foreground group-hover:block"
-                  >
+                  <img src={url} alt="" className="h-28 w-full cursor-pointer rounded-lg object-cover transition hover:ring-2 hover:ring-primary" onClick={() => selectFromGallery(url)} />
+                  <button onClick={(e) => { e.stopPropagation(); deleteGalleryImage(url); }} className="absolute right-1 top-1 hidden rounded-full bg-destructive p-1 text-destructive-foreground group-hover:block">
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
               ))}
             </div>
-            {galleryImages.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">Belum ada foto di galeri</p>
-            )}
+            {galleryImages.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Belum ada foto di galeri</p>}
           </div>
         </div>
       )}

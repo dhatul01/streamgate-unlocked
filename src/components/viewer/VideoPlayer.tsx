@@ -54,7 +54,6 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
       if (!Hls.isSupported()) {
-        // Try native HLS (Safari)
         videoRef.current!.src = playlist.url;
         return;
       }
@@ -70,7 +69,11 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
           index: i,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        setCurrentQuality(-1);
+        // Start at highest quality, then user can switch to auto
+        if (data.levels.length > 0) {
+          hls.currentLevel = data.levels.length - 1;
+          setCurrentQuality(data.levels.length - 1);
+        }
       });
     };
 
@@ -82,7 +85,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
     if (playlist.type !== "youtube") return;
 
     const loadYTApi = () => {
-      if ((window as any).YT) {
+      if ((window as any).YT && (window as any).YT.Player) {
         createYTPlayer();
         return;
       }
@@ -97,6 +100,8 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
       if (!ytContainer) return;
 
       ytPlayerRef.current = new (window as any).YT.Player("yt-player", {
+        width: "100%",
+        height: "100%",
         videoId: extractYTId(playlist.url),
         playerVars: {
           autoplay: 0,
@@ -107,8 +112,16 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
           rel: 0,
           showinfo: 0,
           iv_load_policy: 3,
+          playsinline: 1,
         },
         events: {
+          onReady: (e: any) => {
+            // Set highest available quality
+            const qualities = e.target.getAvailableQualityLevels();
+            if (qualities && qualities.length > 0) {
+              e.target.setPlaybackQuality(qualities[0]);
+            }
+          },
           onStateChange: (e: any) => {
             setIsPlaying(e.data === 1);
           },
@@ -127,7 +140,6 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
   }, [playlist]);
 
   const extractYTId = (url: string) => {
-    // Handle full URLs or just IDs
     const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : url;
   };
@@ -180,10 +192,13 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
   };
 
   return (
-    <div ref={containerRef} className="relative aspect-video w-full bg-card">
+    <div ref={containerRef} className="relative aspect-video w-full bg-card overflow-hidden">
       {playlist.type === "youtube" && (
         <>
-          <div id="yt-player" className="h-full w-full" />
+          <div
+            id="yt-player"
+            className="absolute inset-0 [&>iframe]:!w-full [&>iframe]:!h-full"
+          />
           {/* Overlay to block YouTube clicks */}
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
         </>
@@ -192,7 +207,7 @@ const VideoPlayer = ({ playlist }: VideoPlayerProps) => {
       {playlist.type === "m3u8" && (
         <video
           ref={videoRef}
-          className="h-full w-full"
+          className="h-full w-full object-contain"
           playsInline
         />
       )}

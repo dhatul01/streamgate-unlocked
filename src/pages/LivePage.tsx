@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
@@ -9,6 +9,7 @@ import logo from "@/assets/logo.png";
 
 const LivePage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tokenCode = searchParams.get("t") || "";
   const [tokenData, setTokenData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -33,7 +34,6 @@ const LivePage = () => {
   // Validate token via secure RPC
   useEffect(() => {
     if (!tokenCode) {
-      // Fetch site settings for purchase info
       const fetchSettings = async () => {
         const { data } = await supabase.from("site_settings").select("*");
         if (data) {
@@ -51,7 +51,6 @@ const LivePage = () => {
 
     const validateToken = async () => {
       try {
-        // Step 1: Validate token via SECURITY DEFINER function
         const { data: validation, error: valErr } = await supabase.rpc("validate_token", {
           _code: tokenCode,
         });
@@ -69,7 +68,6 @@ const LivePage = () => {
           return;
         }
 
-        // Step 2: Create/reuse session via SECURITY DEFINER function
         const fingerprint = getFingerprint();
         const { data: sessionResult, error: sessErr } = await supabase.rpc("create_token_session", {
           _token_code: tokenCode,
@@ -85,7 +83,8 @@ const LivePage = () => {
 
         const sessData = sessionResult as any;
         if (!sessData.success) {
-          setError(sessData.error || "Gagal membuat session.");
+          // Device limit reached - redirect to landing
+          setError("device_limit");
           setLoading(false);
           return;
         }
@@ -132,9 +131,13 @@ const LivePage = () => {
     const fingerprint = getFingerprint();
 
     const handleBeforeUnload = () => {
-      // Use sendBeacon with fetch as fallback - call RPC to release session
       const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/release_token_session`;
       const body = JSON.stringify({ _token_code: tokenCode, _fingerprint: fingerprint });
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      };
       const sent = navigator.sendBeacon(
         url,
         new Blob([body], { type: "application/json" })
@@ -142,10 +145,7 @@ const LivePage = () => {
       if (!sent) {
         fetch(url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
+          headers,
           body,
           keepalive: true,
         });
@@ -185,6 +185,27 @@ const LivePage = () => {
   }
 
   if (error) {
+    // Device limit reached
+    if (error === "device_limit") {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="w-full max-w-md rounded-2xl border border-destructive/30 bg-card p-8 text-center">
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14" />
+            <h2 className="mb-2 text-xl font-bold text-destructive">Batas Perangkat Tercapai</h2>
+            <p className="mb-6 text-muted-foreground">
+              Token ini telah digunakan pada perangkat lain. Silahkan lakukan pembelian show untuk mendapatkan token baru.
+            </p>
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              🏠 Ke Halaman Utama
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (error === "no_token") {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -254,7 +275,7 @@ const LivePage = () => {
         </header>
 
         {/* Player area */}
-        <div className="player-area relative flex-1">
+        <div className="player-area relative">
           {activePlaylist ? (
             <VideoPlayer playlist={activePlaylist} />
           ) : (
