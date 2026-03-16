@@ -378,6 +378,7 @@ export type Database = {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
       }
+      get_confirmed_order_count: { Args: { _show_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
