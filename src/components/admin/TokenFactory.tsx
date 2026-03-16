@@ -171,8 +171,19 @@ const TokenFactory = () => {
             </Select>
           </div>
         )}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Jumlah</label>
+          <Input
+            type="number"
+            min="1"
+            max="100"
+            value={bulkCount}
+            onChange={(e) => setBulkCount(e.target.value)}
+            className="w-20 bg-background"
+          />
+        </div>
         <Button onClick={generateToken} disabled={generating}>
-          <Plus className="mr-1 h-4 w-4" /> Generate Token
+          <Plus className="mr-1 h-4 w-4" /> Generate {parseInt(bulkCount) > 1 ? `${bulkCount} Token` : "Token"}
         </Button>
       </div>
 
