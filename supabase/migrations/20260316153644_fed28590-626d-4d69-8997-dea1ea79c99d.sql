@@ -1,0 +1,1 @@
+DROP POLICY "Anyone can read token status" ON public.tokens;
