@@ -17,6 +17,7 @@ const TokenFactory = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked" | "expired">("all");
   const [generating, setGenerating] = useState(false);
   const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
     try {
