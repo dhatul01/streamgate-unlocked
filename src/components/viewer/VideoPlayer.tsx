@@ -89,6 +89,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist]);
 
+  // Obfuscate helper: encode/decode video source at runtime
+  const obfuscate = (str: string) => btoa(unescape(encodeURIComponent(str)));
+  const deobfuscate = (str: string) => decodeURIComponent(escape(atob(str)));
+
   // Init HLS for m3u8
   useEffect(() => {
     if (playlist.type !== "m3u8" || !videoRef.current) return;
