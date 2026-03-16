@@ -56,10 +56,34 @@ const TokenFactory = () => {
     setGenerating(false);
   };
 
+  const markAsCopied = (code: string) => {
+    setCopiedTokens((prev) => {
+      const next = new Set(prev);
+      next.add(code);
+      localStorage.setItem("rt48_copied_tokens", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const copyLink = (code: string) => {
     const link = `${window.location.origin}/live?t=${code}`;
     navigator.clipboard.writeText(link);
+    markAsCopied(code);
     toast({ title: "Link disalin!" });
+  };
+
+  const bulkCopyUncopiedDaily = () => {
+    const dailyUncopied = tokens.filter(
+      (t) => t.duration_type === "daily" && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
+    );
+    if (dailyUncopied.length === 0) {
+      toast({ title: "Tidak ada token harian baru untuk disalin" });
+      return;
+    }
+    const links = dailyUncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
+    navigator.clipboard.writeText(links);
+    dailyUncopied.forEach((t) => markAsCopied(t.code));
+    toast({ title: `${dailyUncopied.length} link token harian disalin!` });
   };
 
   const blockToken = async (id: string) => {
