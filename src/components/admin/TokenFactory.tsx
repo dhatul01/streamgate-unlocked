@@ -4,13 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Trash2, Ban, RefreshCw, Plus, Search } from "lucide-react";
+import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock } from "lucide-react";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [duration, setDuration] = useState("daily");
   const [maxDevices, setMaxDevices] = useState("1");
+  const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
@@ -37,13 +39,14 @@ const TokenFactory = () => {
 
     await supabase.from("tokens").insert({
       code,
-      max_devices: parseInt(maxDevices),
+      max_devices: isPublic ? 9999 : parseInt(maxDevices),
       duration_type: duration,
       expires_at: expiresAt.toISOString(),
+      is_public: isPublic,
     });
 
     await fetchTokens();
-    toast({ title: "Token dibuat!", description: code });
+    toast({ title: `Token ${isPublic ? "publik" : "private"} dibuat!`, description: code });
     setGenerating(false);
   };
 
@@ -100,6 +103,19 @@ const TokenFactory = () => {
       {/* Generate */}
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-6">
         <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipe</label>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+            <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+            <span className="text-xs font-medium text-foreground">
+              {isPublic ? (
+                <span className="flex items-center gap-1"><Globe className="h-3 w-3 text-success" /> Publik</span>
+              ) : (
+                <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> Private</span>
+              )}
+            </span>
+          </div>
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Durasi</label>
           <Select value={duration} onValueChange={setDuration}>
             <SelectTrigger className="w-32 bg-background"><SelectValue /></SelectTrigger>
@@ -110,21 +126,29 @@ const TokenFactory = () => {
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Max Device</label>
-          <Select value={maxDevices} onValueChange={setMaxDevices}>
-            <SelectTrigger className="w-24 bg-background"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isPublic && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Max Device</label>
+            <Select value={maxDevices} onValueChange={setMaxDevices}>
+              <SelectTrigger className="w-24 bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <Button onClick={generateToken} disabled={generating}>
           <Plus className="mr-1 h-4 w-4" /> Generate Token
         </Button>
       </div>
+
+      {isPublic && (
+        <p className="text-xs text-muted-foreground">
+          ℹ️ Token publik dapat digunakan oleh banyak user tanpa batas perangkat.
+        </p>
+      )}
 
       {/* Search & bulk actions */}
       <div className="flex flex-wrap items-center gap-3">
@@ -163,7 +187,14 @@ const TokenFactory = () => {
               onCheckedChange={() => toggleSelect(t.id)}
             />
             <div className="flex-1 min-w-0">
-              <p className="font-mono text-sm font-semibold text-foreground truncate">{t.code}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-sm font-semibold text-foreground truncate">{t.code}</p>
+                {t.is_public && (
+                  <span className="flex items-center gap-0.5 rounded-sm bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    <Globe className="h-2.5 w-2.5" /> PUBLIK
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 mt-1">
                 <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                   t.status === "blocked"
@@ -174,16 +205,20 @@ const TokenFactory = () => {
                 }`}>
                   {t.status === "blocked" ? "BLOCKED" : isExpired(t) ? "EXPIRED" : "ACTIVE"}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{t.duration_type} · {t.max_devices} device</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {t.duration_type} {!t.is_public && `· ${t.max_devices} device`}
+                </span>
               </div>
             </div>
             <div className="flex gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(t.code)} title="Copy link">
                 <Copy className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => resetSessions(t.id)} title="Reset session">
-                <RefreshCw className="h-3 w-3" />
-              </Button>
+              {!t.is_public && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => resetSessions(t.id)} title="Reset session">
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title="Blokir">
                 <Ban className="h-3 w-3 text-destructive" />
               </Button>
