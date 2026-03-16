@@ -100,9 +100,11 @@ const TokenFactory = () => {
   };
 
   const blockToken = async (id: string) => {
-    await supabase.from("tokens").update({ status: "blocked" }).eq("id", id);
+    const token = tokens.find(t => t.id === id);
+    const newStatus = token?.status === "blocked" ? "active" : "blocked";
+    await supabase.from("tokens").update({ status: newStatus }).eq("id", id);
     await fetchTokens();
-    toast({ title: "Token diblokir" });
+    toast({ title: newStatus === "blocked" ? "Token diblokir" : "Token diaktifkan kembali" });
   };
 
   const resetSessions = async (id: string) => {
