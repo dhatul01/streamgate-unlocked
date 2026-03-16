@@ -236,7 +236,7 @@ const LivePage = () => {
       const now = Date.now();
       const diff = target - now;
       if (diff <= 0) {
-        setCountdown("Segera dimulai...");
+        setCountdown("");
         return;
       }
       const h = Math.floor(diff / 3600000);
