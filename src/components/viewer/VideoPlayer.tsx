@@ -26,6 +26,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
@@ -142,10 +143,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
 
     const createYTPlayer = () => {
-      const ytContainer = document.getElementById("yt-player");
-      if (!ytContainer) return;
+      const container = ytContainerRef.current;
+      if (!container) return;
+      // Create a fresh div for YT to replace, so React doesn't manage it
+      container.innerHTML = "";
+      const playerDiv = document.createElement("div");
+      container.appendChild(playerDiv);
 
-      ytPlayerRef.current = new (window as any).YT.Player("yt-player", {
+      ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
         width: "100%",
         height: "100%",
         videoId: extractYTId(playlist.url),
@@ -269,8 +274,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {playlist.type === "youtube" && (
         <>
           <div
-            id="yt-player"
-            className="absolute inset-0 w-full h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>iframe]:!absolute [&>iframe]:!inset-0"
+            ref={ytContainerRef}
+            className="absolute inset-0 w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!w-full [&_iframe]:!h-full"
           />
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
         </>
