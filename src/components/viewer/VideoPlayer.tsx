@@ -270,8 +270,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     }
   };
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   return (
-    <div ref={containerRef} className="relative w-full bg-card overflow-hidden" style={{ paddingBottom: "56.25%", height: 0 }}>
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : ""}`}
+      style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
+    >
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
