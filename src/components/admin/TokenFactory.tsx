@@ -196,6 +196,9 @@ const TokenFactory = () => {
             <Trash2 className="mr-1 h-3 w-3" /> Hapus ({selected.size})
           </Button>
         )}
+        <Button variant="outline" size="sm" onClick={bulkCopyUncopiedDaily} title="Salin semua token harian yang belum pernah disalin">
+          <ClipboardList className="mr-1 h-3 w-3" /> Salin Token Harian Baru
+        </Button>
       </div>
 
       {/* Token list */}
