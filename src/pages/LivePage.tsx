@@ -296,11 +296,11 @@ const LivePage = () => {
           </div>
         )}
 
-        {/* Stream info below player on mobile */}
-        <div className="border-t border-border px-4 py-3 lg:hidden">
-          <h2 className="text-sm font-bold text-foreground">{stream?.title || "RealTime48"}</h2>
+        {/* Stream info below player */}
+        <div className="border-t border-border px-4 py-3">
+          <h2 className="text-sm font-bold text-foreground lg:text-base">{stream?.title || "RealTime48"}</h2>
           {stream?.description && (
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{stream.description}</p>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed lg:text-sm">{stream.description}</p>
           )}
         </div>
       </div>
