@@ -24,6 +24,48 @@ interface ChatMessage {
   created_at: string;
 }
 
+const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTime }: {
+  msg: ChatMessage;
+  isAdmin: boolean;
+  onPin: (id: string) => void;
+  onDelete: (id: string) => void;
+  onBlock?: (tokenId: string) => void;
+  formatTime: (d: string) => string;
+}) => (
+  <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-secondary/30">
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <span className={`text-xs font-bold ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
+          {msg.username}
+        </span>
+        {msg.is_admin && (
+          <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] font-black tracking-wider text-primary">
+            STAFF
+          </span>
+        )}
+        <span className="text-[10px] text-muted-foreground/60">{formatTime(msg.created_at)}</span>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed break-words">{msg.message}</p>
+    </div>
+    {isAdmin && (
+      <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+        <button onClick={() => onPin(msg.id)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+          <Pin className="h-3 w-3" />
+        </button>
+        <button onClick={() => onDelete(msg.id)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+          <Trash2 className="h-3 w-3" />
+        </button>
+        {msg.token_id && onBlock && (
+          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+            <ShieldBan className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+));
+ChatMessageItem.displayName = "ChatMessageItem";
+
 const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessage[]>([]);
@@ -32,6 +74,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [onlineCount, setOnlineCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [, startTransition] = useTransition();
 
   // Presence for online count
   useEffect(() => {
@@ -44,7 +88,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-        setOnlineCount(Object.keys(state).length);
+        startTransition(() => setOnlineCount(Object.keys(state).length));
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -68,8 +112,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         .order("created_at", { ascending: true })
         .limit(200);
       if (data) {
-        setMessages(data);
-        setPinnedMessages(data.filter((m) => m.is_pinned));
+        startTransition(() => {
+          setMessages(data);
+          setPinnedMessages(data.filter((m) => m.is_pinned));
+        });
       }
     };
 
@@ -81,25 +127,27 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newMsg = payload.new as ChatMessage;
-            setMessages((prev) => [...prev, newMsg]);
-            if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
-          } else if (payload.eventType === "DELETE") {
-            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
-            setPinnedMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
-          } else if (payload.eventType === "UPDATE") {
-            const updated = payload.new as ChatMessage;
-            setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-            if (updated.is_pinned) {
-              setPinnedMessages((prev) => {
-                const exists = prev.find((m) => m.id === updated.id);
-                return exists ? prev.map((m) => (m.id === updated.id ? updated : m)) : [...prev, updated];
-              });
-            } else {
-              setPinnedMessages((prev) => prev.filter((m) => m.id !== updated.id));
+          startTransition(() => {
+            if (payload.eventType === "INSERT") {
+              const newMsg = payload.new as ChatMessage;
+              setMessages((prev) => [...prev, newMsg]);
+              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
+            } else if (payload.eventType === "DELETE") {
+              setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+              setPinnedMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+            } else if (payload.eventType === "UPDATE") {
+              const updated = payload.new as ChatMessage;
+              setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+              if (updated.is_pinned) {
+                setPinnedMessages((prev) => {
+                  const exists = prev.find((m) => m.id === updated.id);
+                  return exists ? prev.map((m) => (m.id === updated.id ? updated : m)) : [...prev, updated];
+                });
+              } else {
+                setPinnedMessages((prev) => prev.filter((m) => m.id !== updated.id));
+              }
             }
-          }
+          });
         }
       )
       .subscribe();
@@ -114,7 +162,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     }
   }, [messages]);
 
-  const sendMessage = async (e: React.FormEvent) => {
+  const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !username) return;
     setSending(true);
@@ -124,7 +172,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       message: newMessage.trim(),
       token_id: tokenId || null,
     };
-    // Only authenticated admins can set is_admin=true (enforced by RLS)
     if (isAdmin) {
       insertData.is_admin = true;
     }
@@ -132,9 +179,11 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
     setNewMessage("");
     setSending(false);
-  };
+    // Refocus input after send
+    inputRef.current?.focus();
+  }, [newMessage, username, tokenId, isAdmin]);
 
-  const handlePin = async (id: string) => {
+  const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
     else {
       const msg = messages.find((m) => m.id === id);
@@ -142,14 +191,14 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         await supabase.from("chat_messages").update({ is_pinned: !msg.is_pinned }).eq("id", id);
       }
     }
-  };
+  }, [messages, onPinMessage]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (onDeleteMessage) onDeleteMessage(id);
     else {
       await supabase.from("chat_messages").delete().eq("id", id);
     }
-  };
+  }, [onDeleteMessage]);
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
