@@ -143,10 +143,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
 
     const createYTPlayer = () => {
-      const ytContainer = document.getElementById("yt-player");
-      if (!ytContainer) return;
+      const container = ytContainerRef.current;
+      if (!container) return;
+      // Create a fresh div for YT to replace, so React doesn't manage it
+      container.innerHTML = "";
+      const playerDiv = document.createElement("div");
+      container.appendChild(playerDiv);
 
-      ytPlayerRef.current = new (window as any).YT.Player("yt-player", {
+      ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
         width: "100%",
         height: "100%",
         videoId: extractYTId(playlist.url),
