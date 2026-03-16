@@ -245,6 +245,7 @@ export type Database = {
           duration_type: string
           expires_at: string
           id: string
+          is_public: boolean
           max_devices: number
           status: string
         }
@@ -254,6 +255,7 @@ export type Database = {
           duration_type: string
           expires_at: string
           id?: string
+          is_public?: boolean
           max_devices?: number
           status?: string
         }
@@ -263,6 +265,7 @@ export type Database = {
           duration_type?: string
           expires_at?: string
           id?: string
+          is_public?: boolean
           max_devices?: number
           status?: string
         }
