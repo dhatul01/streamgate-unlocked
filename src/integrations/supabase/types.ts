@@ -119,6 +119,66 @@ export type Database = {
           },
         ]
       }
+      shows: {
+        Row: {
+          background_image_url: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          lineup: string
+          price: string
+          qris_image_url: string | null
+          schedule_date: string
+          schedule_time: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          background_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lineup?: string
+          price?: string
+          qris_image_url?: string | null
+          schedule_date?: string
+          schedule_time?: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          background_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lineup?: string
+          price?: string
+          qris_image_url?: string | null
+          schedule_date?: string
+          schedule_time?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       streams: {
         Row: {
           created_at: string

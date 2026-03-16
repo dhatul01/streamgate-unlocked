@@ -6,8 +6,10 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import LiveControl from "@/components/admin/LiveControl";
 import PlaylistManager from "@/components/admin/PlaylistManager";
 import TokenFactory from "@/components/admin/TokenFactory";
+import ShowManager from "@/components/admin/ShowManager";
 import MonitorView from "@/components/admin/MonitorView";
 import AdminSettings from "@/components/admin/AdminSettings";
+import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -17,26 +19,19 @@ const AdminDashboard = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/admin");
-        return;
-      }
-
+      if (!user) { navigate("/admin"); return; }
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
         .eq("role", "admin");
-
       if (!roles || roles.length === 0) {
         await supabase.auth.signOut();
         navigate("/admin");
         return;
       }
-
       setLoading(false);
     };
-
     checkAuth();
   }, [navigate]);
 
@@ -58,7 +53,9 @@ const AdminDashboard = () => {
       case "live": return <LiveControl />;
       case "playlist": return <PlaylistManager />;
       case "tokens": return <TokenFactory />;
+      case "shows": return <ShowManager />;
       case "monitor": return <MonitorView />;
+      case "site": return <SiteSettingsManager />;
       case "settings": return <AdminSettings />;
       default: return <LiveControl />;
     }
