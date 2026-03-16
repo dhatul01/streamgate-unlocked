@@ -206,6 +206,24 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Realtime: token block detection
+  useEffect(() => {
+    if (!tokenData?.id) return;
+    const channel = supabase
+      .channel("token-block-realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
+        (payload: any) => {
+          if (payload.new.status === "blocked") {
+            setBlocked(true);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [tokenData?.id]);
+
   // Countdown timer
   useEffect(() => {
     if (!nextShowTime || stream?.is_live) {
