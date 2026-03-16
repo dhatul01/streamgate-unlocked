@@ -22,6 +22,8 @@ const LivePage = () => {
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
+  const [nextShowTime, setNextShowTime] = useState("");
+  const [countdown, setCountdown] = useState("");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   const getFingerprint = useCallback(() => {
@@ -114,6 +116,7 @@ const LivePage = () => {
         if (settingsRes.data) {
           settingsRes.data.forEach((s: any) => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
+            if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
           });
         }
 
@@ -145,21 +148,90 @@ const LivePage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [tokenCode, getFingerprint]);
 
-  // Realtime watermark updates
+  // Realtime: streams (live status, title, description)
   useEffect(() => {
     const channel = supabase
-      .channel("watermark-settings")
+      .channel("stream-realtime")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "site_settings", filter: "key=eq.watermark_image_url" },
+        { event: "UPDATE", schema: "public", table: "streams" },
         (payload: any) => {
-          const newVal = payload.new?.value || "";
-          setWatermarkUrl(newVal);
+          setStream(payload.new);
+          // Auto-play when going live
+          if (payload.new.is_live && !payload.old?.is_live) {
+            setTimeout(() => {
+              playerRef.current?.play();
+            }, 500);
+          }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Realtime: playlists
+  useEffect(() => {
+    const channel = supabase
+      .channel("playlist-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "playlists" },
+        async () => {
+          const { data } = await supabase.from("playlists").select("*").order("sort_order");
+          setPlaylists(data || []);
+          if (data && data.length > 0 && !activePlaylist) {
+            setActivePlaylist(data[0]);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activePlaylist]);
+
+  // Realtime: site_settings (watermark + next_show_time)
+  useEffect(() => {
+    const channel = supabase
+      .channel("settings-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings" },
+        (payload: any) => {
+          const row = payload.new;
+          if (row?.key === "watermark_image_url") setWatermarkUrl(row.value || "");
+          if (row?.key === "next_show_time") setNextShowTime(row.value || "");
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!nextShowTime || stream?.is_live) {
+      setCountdown("");
+      return;
+    }
+
+    const target = new Date(nextShowTime).getTime();
+    const update = () => {
+      const now = Date.now();
+      const diff = target - now;
+      if (diff <= 0) {
+        setCountdown("Segera dimulai...");
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(
+        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [nextShowTime, stream?.is_live]);
 
   // Disable right-click on player
   useEffect(() => {
@@ -259,6 +331,8 @@ const LivePage = () => {
     );
   }
 
+  const isLive = stream?.is_live || false;
+
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
@@ -272,7 +346,7 @@ const LivePage = () => {
             </h1>
             <p className="text-xs text-muted-foreground">{stream?.description}</p>
           </div>
-          {stream?.is_live ? (
+          {isLive ? (
             <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 text-xs font-semibold text-destructive">
               <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
               LIVE
@@ -285,16 +359,29 @@ const LivePage = () => {
         </header>
 
         <div className="player-area relative">
-          {activePlaylist ? (
+          {isLive && activePlaylist ? (
             <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
-            <div className="flex aspect-video w-full items-center justify-center bg-card">
-              <p className="text-muted-foreground">Tidak ada sumber video tersedia.</p>
+            <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
+              <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 opacity-30" />
+              {countdown ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-muted-foreground">Show dimulai dalam</p>
+                  <p className="mt-2 font-mono text-4xl font-bold text-primary lg:text-5xl">{countdown}</p>
+                  {nextShowTime && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {new Date(nextShowTime).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Live stream sedang offline</p>
+              )}
             </div>
           )}
         </div>
 
-        {playlists.length > 1 && (
+        {isLive && playlists.length > 1 && (
           <div className="flex gap-2 overflow-x-auto border-t border-border px-4 py-2">
             {playlists.map((p) => (
               <button
@@ -325,7 +412,7 @@ const LivePage = () => {
         <LiveChat
           username={username}
           tokenId={tokenData?.id}
-          isLive={stream?.is_live || false}
+          isLive={isLive}
           isAdmin={false}
         />
       </div>
