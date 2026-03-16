@@ -16,6 +16,12 @@ const TokenFactory = () => {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
+  const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("rt48_copied_tokens");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
   const { toast } = useToast();
 
   const fetchTokens = async () => {
