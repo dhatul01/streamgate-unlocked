@@ -134,7 +134,7 @@ const Index = () => {
   const handleConfirmRegular = () => {
     if (!selectedShow || !settings.whatsapp_number) return;
     const msg = encodeURIComponent(
-      `Halo, saya telah melakukan pembayaran untuk ${selectedShow.title} (${selectedShow.price}). Berikut bukti pembayaran saya: ${proofUrl}`
+      `✅ *KONFIRMASI PEMBAYARAN*\n\n🎭 Show: *${selectedShow.title}*\n💰 Harga: ${selectedShow.price}${selectedShow.schedule_date ? `\n📅 Jadwal: ${selectedShow.schedule_date} ${selectedShow.schedule_time}` : ""}\n\n📸 Bukti Pembayaran:\n${proofUrl}\n\nMohon dikonfirmasi, terima kasih! 🙏`
     );
     window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
     setSelectedShow(null);
