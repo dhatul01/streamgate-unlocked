@@ -12,6 +12,7 @@ const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [duration, setDuration] = useState("daily");
   const [maxDevices, setMaxDevices] = useState("1");
+  const [bulkCount, setBulkCount] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
