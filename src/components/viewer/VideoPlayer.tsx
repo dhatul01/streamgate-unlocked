@@ -7,6 +7,7 @@ interface VideoPlayerProps {
     label: string;
   };
   autoPlay?: boolean;
+  watermarkUrl?: string;
 }
 
 export interface VideoPlayerHandle {
@@ -14,8 +15,9 @@ export interface VideoPlayerHandle {
   pause: () => void;
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [showControls, setShowControls] = useState(true);
@@ -28,6 +30,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     play: () => {
       if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
         ytPlayerRef.current.playVideo();
+      } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
+        // Seek to live edge before playing
+        if (hlsRef.current.liveSyncPosition) {
+          videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
+        }
+        videoRef.current.play();
+        setIsPlaying(true);
       } else if (videoRef.current) {
         videoRef.current.play();
         setIsPlaying(true);
@@ -64,6 +73,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   // Cleanup HLS on unmount or playlist change
   useEffect(() => {
+    setIsLoading(true);
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -84,7 +94,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         return;
       }
 
-      const hls = new Hls();
+      const hls = new Hls({ liveSyncDurationCount: 3 });
       hlsRef.current = hls;
       hls.loadSource(playlist.url);
       hls.attachMedia(videoRef.current!);
@@ -99,10 +109,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           hls.currentLevel = data.levels.length - 1;
           setCurrentQuality(data.levels.length - 1);
         }
+        setIsLoading(false);
         if (autoPlay) {
           videoRef.current!.play().catch(() => {});
           setIsPlaying(true);
         }
+      });
+
+      hls.on(Hls.Events.ERROR, () => {
+        setIsLoading(false);
       });
     };
 
@@ -149,12 +164,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             if (qualities && qualities.length > 0) {
               e.target.setPlaybackQuality(qualities[0]);
             }
+            setIsLoading(false);
             if (autoPlay) {
               e.target.playVideo();
             }
           },
           onStateChange: (e: any) => {
             setIsPlaying(e.data === 1);
+            if (e.data === 3) setIsLoading(true); // buffering
+            if (e.data === 1) setIsLoading(false); // playing
           },
         },
       });
@@ -170,6 +188,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist, autoPlay]);
 
+  // Cloudflare loading
+  useEffect(() => {
+    if (playlist.type === "cloudflare") {
+      const timer = setTimeout(() => setIsLoading(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [playlist]);
+
   const extractYTId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : url;
@@ -184,6 +210,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
+        // Seek to live edge on unpause for m3u8
+        if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
+          videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
+        }
         videoRef.current.play();
         setIsPlaying(true);
       } else {
@@ -224,13 +254,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   return (
     <div ref={containerRef} className="relative w-full bg-card overflow-hidden" style={{ paddingBottom: "56.25%", height: 0 }}>
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-xs text-muted-foreground animate-pulse">Menghubungkan ke streaming...</p>
+          </div>
+        </div>
+      )}
+
       {playlist.type === "youtube" && (
         <>
           <div
             id="yt-player"
             className="absolute inset-0 w-full h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>iframe]:!absolute [&>iframe]:!inset-0"
           />
-          {/* Overlay to block YouTube clicks */}
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
         </>
       )}
@@ -255,6 +294,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         </>
       )}
 
+      {/* Admin watermark image */}
+      {watermarkUrl && (
+        <div className="pointer-events-none absolute bottom-12 right-3 z-20">
+          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10" />
+        </div>
+      )}
+
       {/* Custom controls overlay */}
       <div
         className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-background/80 to-transparent p-3 transition-opacity ${
@@ -274,7 +320,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <div className="flex-1" />
 
-        {/* Quality selector for m3u8 */}
         {playlist.type === "m3u8" && qualities.length > 0 && (
           <select
             value={currentQuality}

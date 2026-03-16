@@ -368,11 +368,15 @@ const Index = () => {
 
                       <button
                         onClick={() => handleBuy(show)}
-                        disabled={spotsLeft !== null && spotsLeft <= 0}
-                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 py-3 font-bold text-background transition-all hover:shadow-lg hover:shadow-yellow-500/25 disabled:opacity-50"
+                        disabled={isFull}
+                        className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 font-bold transition-all ${
+                          isFull
+                            ? "bg-muted text-muted-foreground cursor-not-allowed"
+                            : "bg-gradient-to-r from-yellow-500 to-yellow-600 text-background hover:shadow-lg hover:shadow-yellow-500/25"
+                        }`}
                       >
                         <Star className="h-4 w-4" />
-                        {spotsLeft !== null && spotsLeft <= 0 ? "Kuota Penuh" : "Berlangganan"}
+                        {isFull ? "🔒 Langganan Penuh" : "Berlangganan"}
                       </button>
                     </div>
                   </motion.div>
