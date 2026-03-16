@@ -11,7 +11,6 @@ const LivePage = () => {
   const [searchParams] = useSearchParams();
   const tokenCode = searchParams.get("t") || "";
   const [tokenData, setTokenData] = useState<any>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<any>(null);
@@ -29,7 +28,7 @@ const LivePage = () => {
     return fp;
   }, []);
 
-  // Validate token
+  // Validate token via secure RPC
   useEffect(() => {
     if (!tokenCode) {
       setError("Token tidak ditemukan. Silakan gunakan link yang valid.");
@@ -39,62 +38,52 @@ const LivePage = () => {
 
     const validateToken = async () => {
       try {
-        const { data: token, error: tokenErr } = await supabase
-          .from("tokens")
-          .select("*")
-          .eq("code", tokenCode)
-          .single();
+        // Step 1: Validate token via SECURITY DEFINER function
+        const { data: validation, error: valErr } = await supabase.rpc("validate_token", {
+          _code: tokenCode,
+        });
 
-        if (tokenErr || !token) {
-          setError("Token tidak valid.");
+        if (valErr) {
+          setError("Terjadi kesalahan validasi.");
           setLoading(false);
           return;
         }
 
-        if (token.status === "blocked") {
-          setError("Token telah diblokir.");
+        const result = validation as any;
+        if (!result.valid) {
+          setError(result.error || "Token tidak valid.");
           setLoading(false);
           return;
         }
 
-        if (new Date(token.expires_at) < new Date()) {
-          setError("Token telah expired.");
-          setLoading(false);
-          return;
-        }
-
-        // Check device limit
+        // Step 2: Create/reuse session via SECURITY DEFINER function
         const fingerprint = getFingerprint();
-        const { data: sessions } = await supabase
-          .from("token_sessions")
-          .select("*")
-          .eq("token_id", token.id);
+        const { data: sessionResult, error: sessErr } = await supabase.rpc("create_token_session", {
+          _token_code: tokenCode,
+          _fingerprint: fingerprint,
+          _user_agent: navigator.userAgent,
+        });
 
-        const existingSession = sessions?.find((s) => s.fingerprint === fingerprint);
-
-        if (!existingSession && (sessions?.length || 0) >= token.max_devices) {
-          setError(`Batas perangkat tercapai (${token.max_devices} device).`);
+        if (sessErr) {
+          setError("Gagal membuat session.");
           setLoading(false);
           return;
         }
 
-        // Create or reuse session
-        if (!existingSession) {
-          const { data: newSession } = await supabase
-            .from("token_sessions")
-            .insert({
-              token_id: token.id,
-              fingerprint,
-              user_agent: navigator.userAgent,
-            })
-            .select()
-            .single();
-          setSessionId(newSession?.id || null);
-        } else {
-          setSessionId(existingSession.id);
+        const sessData = sessionResult as any;
+        if (!sessData.success) {
+          setError(sessData.error || "Gagal membuat session.");
+          setLoading(false);
+          return;
         }
 
-        setTokenData(token);
+        setTokenData({
+          id: result.id,
+          code: result.code,
+          max_devices: result.max_devices,
+          expires_at: result.expires_at,
+          status: result.status,
+        });
 
         // Fetch stream data
         const { data: streamData } = await supabase
@@ -124,24 +113,35 @@ const LivePage = () => {
     validateToken();
   }, [tokenCode, getFingerprint]);
 
-  // Release session on tab close
+  // Release session on tab close via secure RPC
   useEffect(() => {
-    if (!sessionId) return;
-    const releaseSession = () => {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/token_sessions?id=eq.${sessionId}`;
-      navigator.sendBeacon(
-        url,
-        // sendBeacon doesn't support DELETE, so we'll handle cleanup differently
-      );
-    };
+    if (!tokenCode) return;
+    const fingerprint = getFingerprint();
 
-    const handleBeforeUnload = async () => {
-      await supabase.from("token_sessions").delete().eq("id", sessionId);
+    const handleBeforeUnload = () => {
+      // Use sendBeacon with fetch as fallback - call RPC to release session
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/release_token_session`;
+      const body = JSON.stringify({ _token_code: tokenCode, _fingerprint: fingerprint });
+      const sent = navigator.sendBeacon(
+        url,
+        new Blob([body], { type: "application/json" })
+      );
+      if (!sent) {
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body,
+          keepalive: true,
+        });
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [sessionId]);
+  }, [tokenCode, getFingerprint]);
 
   // Disable right-click on player
   useEffect(() => {

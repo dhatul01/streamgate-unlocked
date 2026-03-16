@@ -231,6 +231,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_token_session: {
+        Args: { _fingerprint: string; _token_code: string; _user_agent: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -238,6 +242,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_token_session: {
+        Args: { _fingerprint: string; _token_code: string }
+        Returns: undefined
+      }
+      validate_token: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
