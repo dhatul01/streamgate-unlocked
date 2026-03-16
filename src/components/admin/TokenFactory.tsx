@@ -32,6 +32,15 @@ const TokenFactory = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setTokens(data || []);
+    // Fetch session counts
+    const { data: sessData } = await supabase.from("token_sessions").select("token_id");
+    if (sessData) {
+      const counts: Record<string, number> = {};
+      sessData.forEach((s: any) => {
+        counts[s.token_id] = (counts[s.token_id] || 0) + 1;
+      });
+      setSessions(counts);
+    }
   };
 
   useEffect(() => { fetchTokens(); }, []);
