@@ -270,8 +270,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     }
   };
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   return (
-    <div ref={containerRef} className="relative w-full bg-card overflow-hidden" style={{ paddingBottom: "56.25%", height: 0 }}>
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : ""}`}
+      style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
+    >
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
@@ -284,9 +296,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       {playlist.type === "youtube" && (
         <>
-          <div
+      <div
             ref={ytContainerRef}
-            className="absolute inset-0 w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!absolute [&_iframe]:!inset-0 [&_iframe]:!w-full [&_iframe]:!h-full"
+            className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
           <div className="absolute inset-0 z-10" style={{ pointerEvents: "auto" }} />
         </>
@@ -295,7 +307,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {playlist.type === "m3u8" && (
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-contain"
+          className={`h-full w-full object-contain ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
           playsInline
         />
       )}
@@ -304,7 +316,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         <>
           <iframe
             src={`https://customer-${playlist.url}.cloudflarestream.com/iframe`}
-            className="absolute inset-0 h-full w-full"
+            className={`h-full w-full ${isFullscreen ? "max-h-screen aspect-video" : "absolute inset-0"}`}
             allow="autoplay; fullscreen"
             allowFullScreen
           />
