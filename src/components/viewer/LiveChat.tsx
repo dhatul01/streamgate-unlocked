@@ -244,59 +244,15 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-0.5">
         {messages.map((msg) => (
-          <div
+          <ChatMessageItem
             key={msg.id}
-            className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-secondary/30"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`text-xs font-bold ${
-                    msg.is_admin
-                      ? "text-primary"
-                      : "text-foreground/90"
-                  }`}
-                >
-                  {msg.username}
-                </span>
-                {msg.is_admin && (
-                  <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] font-black tracking-wider text-primary">
-                    STAFF
-                  </span>
-                )}
-                <span className="text-[10px] text-muted-foreground/60">{formatTime(msg.created_at)}</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed break-words">{msg.message}</p>
-            </div>
-
-            {isAdmin && (
-              <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-                <button
-                  onClick={() => handlePin(msg.id)}
-                  className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                  title="Pin"
-                >
-                  <Pin className="h-3 w-3" />
-                </button>
-                <button
-                  onClick={() => handleDelete(msg.id)}
-                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  title="Hapus"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-                {msg.token_id && onBlockUser && (
-                  <button
-                    onClick={() => onBlockUser(msg.token_id!)}
-                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    title="Blokir"
-                  >
-                    <ShieldBan className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+            msg={msg}
+            isAdmin={isAdmin}
+            onPin={handlePin}
+            onDelete={handleDelete}
+            onBlock={onBlockUser}
+            formatTime={formatTime}
+          />
         ))}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -309,6 +265,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       {/* Input */}
       <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3">
         <Input
+          ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder={username ? "Ketik pesan..." : "Masukkan username dulu"}
