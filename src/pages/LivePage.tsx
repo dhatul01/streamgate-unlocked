@@ -33,7 +33,18 @@ const LivePage = () => {
   // Validate token via secure RPC
   useEffect(() => {
     if (!tokenCode) {
-      setError("Token tidak ditemukan. Silakan gunakan link yang valid.");
+      // Fetch site settings for purchase info
+      const fetchSettings = async () => {
+        const { data } = await supabase.from("site_settings").select("*");
+        if (data) {
+          data.forEach((s: any) => {
+            if (s.key === "purchase_message") setPurchaseMessage(s.value);
+            if (s.key === "whatsapp_number") setWhatsappNumber(s.value);
+          });
+        }
+      };
+      fetchSettings();
+      setError("no_token");
       setLoading(false);
       return;
     }
