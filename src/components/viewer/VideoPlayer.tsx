@@ -114,6 +114,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       });
       hlsRef.current = hls;
       hls.loadSource(decodedUrl);
+      hls.attachMedia(videoRef.current!);
 
       // Override video src property to hide URL from DOM inspection
       try {
@@ -129,7 +130,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           configurable: true,
         });
       } catch {}
-      hls.attachMedia(videoRef.current!);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         const levels = data.levels.map((l: any, i: number) => ({
