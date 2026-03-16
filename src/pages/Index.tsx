@@ -500,12 +500,23 @@ const Index = () => {
                   <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
                 </label>
                 {proofUrl && !selectedShow.is_subscription && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-success">
-                      <CheckCircle className="h-4 w-4" /> Bukti berhasil diupload
+                  <div className="space-y-4 rounded-xl border border-success/30 bg-success/5 p-4">
+                    <div className="flex items-center gap-2 text-success">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-semibold">Bukti Berhasil Diupload! 🎉</span>
                     </div>
-                    <Button onClick={handleConfirmRegular} className="w-full">
-                      <MessageCircle className="mr-2 h-4 w-4" /> Konfirmasi via WhatsApp
+                    <p className="text-sm text-muted-foreground">
+                      Terima kasih telah melakukan pembayaran untuk <strong className="text-foreground">{selectedShow.title}</strong>. 
+                      Silakan kirim bukti pembayaran ke admin untuk konfirmasi dan mendapatkan token akses streaming Anda.
+                    </p>
+                    <div className="rounded-lg bg-card p-3 text-xs text-muted-foreground">
+                      <p className="mb-1 font-medium text-foreground">📋 Detail Pesanan:</p>
+                      <p>🎭 Show: {selectedShow.title}</p>
+                      <p>💰 Harga: {selectedShow.price}</p>
+                      {selectedShow.schedule_date && <p>📅 Jadwal: {selectedShow.schedule_date} {selectedShow.schedule_time}</p>}
+                    </div>
+                    <Button onClick={handleConfirmRegular} className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground">
+                      <MessageCircle className="h-4 w-4" /> Kirim Bukti ke Admin via WhatsApp
                     </Button>
                   </div>
                 )}
