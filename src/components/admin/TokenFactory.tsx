@@ -36,24 +36,25 @@ const TokenFactory = () => {
   useEffect(() => { fetchTokens(); }, []);
 
   const generateToken = async () => {
+    const count = Math.max(1, Math.min(100, parseInt(bulkCount) || 1));
     setGenerating(true);
-    const code = `rt48_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
     const now = new Date();
     let expiresAt: Date;
     if (duration === "daily") expiresAt = new Date(now.getTime() + 86400000);
     else if (duration === "weekly") expiresAt = new Date(now.getTime() + 604800000);
     else expiresAt = new Date(now.getTime() + 2592000000);
 
-    await supabase.from("tokens").insert({
-      code,
+    const rows = Array.from({ length: count }, () => ({
+      code: `rt48_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
       max_devices: isPublic ? 9999 : parseInt(maxDevices),
       duration_type: duration,
       expires_at: expiresAt.toISOString(),
       is_public: isPublic,
-    });
+    }));
 
+    await supabase.from("tokens").insert(rows);
     await fetchTokens();
-    toast({ title: `Token ${isPublic ? "publik" : "private"} dibuat!`, description: code });
+    toast({ title: `${count} token berhasil dibuat!` });
     setGenerating(false);
   };
 
