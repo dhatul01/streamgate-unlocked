@@ -18,6 +18,8 @@ const LivePage = () => {
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [username, setUsername] = useState("");
   const [showUsernameModal, setShowUsernameModal] = useState(true);
+  const [purchaseMessage, setPurchaseMessage] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
   const getFingerprint = useCallback(() => {
     let fp = localStorage.getItem("rt48_fp");
