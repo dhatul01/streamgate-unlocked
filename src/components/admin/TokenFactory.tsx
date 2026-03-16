@@ -146,9 +146,22 @@ const TokenFactory = () => {
     else setSelected(new Set(filteredTokens.map((t) => t.id)));
   };
 
-  const filteredTokens = tokens.filter((t) =>
-    t.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTokens = tokens.filter((t) => {
+    const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+    if (statusFilter === "all") return true;
+    if (statusFilter === "blocked") return t.status === "blocked";
+    if (statusFilter === "expired") return t.status !== "blocked" && isExpired(t);
+    if (statusFilter === "active") return t.status !== "blocked" && !isExpired(t);
+    return true;
+  });
+
+  const countByStatus = {
+    all: tokens.length,
+    active: tokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
+    blocked: tokens.filter(t => t.status === "blocked").length,
+    expired: tokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+  };
 
   const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
