@@ -307,7 +307,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {playlist.type === "m3u8" && (
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-contain"
+          className={`h-full w-full object-contain ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
           playsInline
         />
       )}
