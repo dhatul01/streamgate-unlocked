@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList } from "lucide-react";
+import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList, CheckCircle } from "lucide-react";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
