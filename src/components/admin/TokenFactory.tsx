@@ -109,14 +109,25 @@ const TokenFactory = () => {
     toast({ title: "Session direset" });
   };
 
+  const [deleting, setDeleting] = useState(false);
+
   const deleteTokens = async (ids: string[]) => {
-    for (const id of ids) {
-      await supabase.from("token_sessions").delete().eq("token_id", id);
-      await supabase.from("tokens").delete().eq("id", id);
+    if (deleting || ids.length === 0) return;
+    setDeleting(true);
+    try {
+      // Delete related records first (FK constraints), then tokens - batch by using .in()
+      await supabase.from("blocked_users").delete().in("token_id", ids);
+      await supabase.from("chat_messages").delete().in("token_id", ids);
+      await supabase.from("token_sessions").delete().in("token_id", ids);
+      await supabase.from("tokens").delete().in("id", ids);
+      setSelected(new Set());
+      await fetchTokens();
+      toast({ title: `${ids.length} token dihapus` });
+    } catch (err) {
+      toast({ title: "Gagal menghapus token", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
-    setSelected(new Set());
-    await fetchTokens();
-    toast({ title: `${ids.length} token dihapus` });
   };
 
   const toggleSelect = (id: string) => {
