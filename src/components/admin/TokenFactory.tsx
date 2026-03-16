@@ -12,6 +12,7 @@ const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [duration, setDuration] = useState("daily");
   const [maxDevices, setMaxDevices] = useState("1");
+  const [bulkCount, setBulkCount] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -35,24 +36,25 @@ const TokenFactory = () => {
   useEffect(() => { fetchTokens(); }, []);
 
   const generateToken = async () => {
+    const count = Math.max(1, Math.min(100, parseInt(bulkCount) || 1));
     setGenerating(true);
-    const code = `rt48_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
     const now = new Date();
     let expiresAt: Date;
     if (duration === "daily") expiresAt = new Date(now.getTime() + 86400000);
     else if (duration === "weekly") expiresAt = new Date(now.getTime() + 604800000);
     else expiresAt = new Date(now.getTime() + 2592000000);
 
-    await supabase.from("tokens").insert({
-      code,
+    const rows = Array.from({ length: count }, () => ({
+      code: `rt48_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
       max_devices: isPublic ? 9999 : parseInt(maxDevices),
       duration_type: duration,
       expires_at: expiresAt.toISOString(),
       is_public: isPublic,
-    });
+    }));
 
+    await supabase.from("tokens").insert(rows);
     await fetchTokens();
-    toast({ title: `Token ${isPublic ? "publik" : "private"} dibuat!`, description: code });
+    toast({ title: `${count} token berhasil dibuat!` });
     setGenerating(false);
   };
 
@@ -169,8 +171,19 @@ const TokenFactory = () => {
             </Select>
           </div>
         )}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Jumlah</label>
+          <Input
+            type="number"
+            min="1"
+            max="100"
+            value={bulkCount}
+            onChange={(e) => setBulkCount(e.target.value)}
+            className="w-20 bg-background"
+          />
+        </div>
         <Button onClick={generateToken} disabled={generating}>
-          <Plus className="mr-1 h-4 w-4" /> Generate Token
+          <Plus className="mr-1 h-4 w-4" /> Generate {parseInt(bulkCount) > 1 ? `${bulkCount} Token` : "Token"}
         </Button>
       </div>
 
