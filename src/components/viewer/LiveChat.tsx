@@ -123,7 +123,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       username,
       message: newMessage.trim(),
       token_id: tokenId || null,
-      is_admin: isAdmin,
+      // is_admin defaults to false via DB; only admins can set it true via RLS
     });
 
     setNewMessage("");
