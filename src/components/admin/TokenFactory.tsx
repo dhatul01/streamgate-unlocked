@@ -226,7 +226,7 @@ const TokenFactory = () => {
           />
         </div>
         {selected.size > 0 && (
-          <Button variant="destructive" size="sm" onClick={() => deleteTokens(Array.from(selected))}>
+          <Button variant="destructive" size="sm" disabled={deleting} onClick={() => deleteTokens(Array.from(selected))}>
             <Trash2 className="mr-1 h-3 w-3" /> Hapus ({selected.size})
           </Button>
         )}
