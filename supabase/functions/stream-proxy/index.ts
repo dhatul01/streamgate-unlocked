@@ -342,7 +342,10 @@ Deno.serve(async (req) => {
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
-      if (!encoded || !exp || !sig) {
+      // Rate limit: 60 sub-playlist requests per 60 seconds per encoded URL
+      if (encoded && !edgeRateLimit(`sub:${encoded.slice(0, 20)}`, 60, 60000)) {
+        return getRateLimitResponse();
+      }
         return new Response("Missing parameters", { status: 400, headers: corsHeaders });
       }
 
