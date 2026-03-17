@@ -26,19 +26,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
+  const ytReadyRef = useRef(false);
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Helper: check if YT player API is usable
+  const isYTReady = () => {
+    const p = ytPlayerRef.current;
+    return p && ytReadyRef.current && typeof p.getPlayerState === "function" && typeof p.playVideo === "function";
+  };
+
   useImperativeHandle(ref, () => ({
     play: () => {
-      if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
+      if (playlist.type === "youtube" && isYTReady()) {
+        const player = ytPlayerRef.current;
         try {
-          const duration = ytPlayerRef.current.getDuration?.();
-          if (duration && duration > 0) ytPlayerRef.current.seekTo(duration, true);
+          const duration = player.getDuration?.();
+          if (duration && duration > 0) player.seekTo(duration, true);
         } catch {}
-        ytPlayerRef.current.playVideo();
+        player.playVideo();
       } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
-        // Seek to live edge before playing
         if (hlsRef.current.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
@@ -50,7 +57,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
     },
     pause: () => {
-      if (playlist.type === "youtube" && ytPlayerRef.current?.pauseVideo) {
+      if (playlist.type === "youtube" && isYTReady()) {
         ytPlayerRef.current.pauseVideo();
       } else if (videoRef.current) {
         videoRef.current.pause();
@@ -209,6 +216,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           events: {
             onReady: (e: any) => {
               if (destroyed) return;
+              ytReadyRef.current = true;
               setIsLoading(false);
               // Hide iframe src from DOM inspection
               try {
@@ -219,7 +227,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                     set: (v) => iframe.setAttribute('src', v),
                     configurable: true,
                   });
-                  // Remove src attribute visibility
                   const origGetAttr = iframe.getAttribute.bind(iframe);
                   iframe.getAttribute = (name: string) => {
                     if (name === 'src') return '';
@@ -254,6 +261,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     return () => {
       destroyed = true;
+      ytReadyRef.current = false;
       try {
         if (ytPlayerRef.current?.destroy) {
           ytPlayerRef.current.destroy();
@@ -279,18 +287,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (playlist.type === "youtube") {
+      if (!isYTReady()) return;
       const player = ytPlayerRef.current;
-      if (!player) return;
-      // Ensure player API is ready
-      if (typeof player.getPlayerState !== "function" || typeof player.playVideo !== "function") return;
       try {
         const state = player.getPlayerState();
         // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
-        if (state === 1 || state === 3) {
+        if (state === 1) {
+          // Currently playing → pause
           player.pauseVideo();
-          setIsPlaying(false);
         } else {
-          // Seek to live edge on unpause for YouTube live
+          // Any other state → play (seek to live edge first for live streams)
           try {
             const duration = player.getDuration?.();
             if (duration && duration > 0) {
@@ -298,14 +304,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             }
           } catch {}
           player.playVideo();
-          setIsPlaying(true);
         }
+        // Don't manually setIsPlaying here — onStateChange is the single source of truth for YT
       } catch (err) {
         console.warn("togglePlay YT error:", err);
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
-        // Seek to live edge on unpause for m3u8
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
