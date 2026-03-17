@@ -490,7 +490,7 @@ const LivePage = () => {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="w-full max-w-md tv:max-w-xl rounded-2xl border border-destructive/30 bg-card p-8 tv:p-12 text-center">
-            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14 tv:h-20 tv:w-20" />
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14 tv:h-20 tv:w-20 rounded-full border border-primary/40 shadow-[0_0_12px_hsl(var(--primary)/0.3)]" />
             <h2 className="mb-2 text-xl font-bold text-destructive tv:text-3xl">Batas Perangkat Tercapai</h2>
             <p className="mb-4 text-muted-foreground tv:text-lg">
               Token ini sedang digunakan di perangkat lain.
