@@ -24,13 +24,15 @@ interface Show {
   group_link: string;
   is_order_closed: boolean;
   category: string;
+  category_member: string;
 }
 
 const CATEGORY_OPTIONS = [
-  { value: "regular", label: "🎭 Reguler", color: "bg-primary/10 text-primary" },
-  { value: "birthday", label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/10 text-pink-500" },
-  { value: "special", label: "⭐ Spesial", color: "bg-yellow-500/10 text-yellow-500" },
-  { value: "anniversary", label: "🎉 Anniversary", color: "bg-purple-500/10 text-purple-500" },
+  { value: "regular", label: "🎭 Reguler", color: "bg-primary/10 text-primary", hasMember: false },
+  { value: "birthday", label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/10 text-pink-500", hasMember: true },
+  { value: "special", label: "⭐ Spesial", color: "bg-yellow-500/10 text-yellow-500", hasMember: false },
+  { value: "anniversary", label: "🎉 Anniversary", color: "bg-purple-500/10 text-purple-500", hasMember: false },
+  { value: "last_show", label: "👋 Last Show", color: "bg-red-500/10 text-red-500", hasMember: true },
 ];
 
 const ShowManager = () => {
@@ -94,6 +96,7 @@ const ShowManager = () => {
         group_link: show.group_link,
         is_order_closed: show.is_order_closed,
         category: show.category,
+        category_member: show.category_member,
       })
       .eq("id", show.id);
     await fetchShows();
@@ -251,6 +254,25 @@ const ShowManager = () => {
                 ))}
               </div>
             </div>
+
+            {/* Member name input for birthday/last_show */}
+            {(() => {
+              const selectedCat = CATEGORY_OPTIONS.find(c => c.value === (editing.category || "regular"));
+              return selectedCat?.hasMember ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    {editing.category === "birthday" ? "Nama Member Ulang Tahun" : "Nama Member Last Show"}
+                  </label>
+                  <Input
+                    value={editing.category_member || ""}
+                    onChange={(e) => setEditing({ ...editing, category_member: e.target.value })}
+                    onBlur={() => updateShow(editing)}
+                    className="bg-background"
+                    placeholder={editing.category === "birthday" ? "Contoh: Shani, Gracia" : "Contoh: Melody, Haruka"}
+                  />
+                </div>
+              ) : null;
+            })()}
 
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>

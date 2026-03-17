@@ -31,6 +31,7 @@ interface Show {
   group_link?: string;
   is_order_closed: boolean;
   category?: string;
+  category_member?: string;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -38,6 +39,7 @@ const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
   birthday: { label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/20 text-pink-400" },
   special: { label: "⭐ Spesial", color: "bg-yellow-500/20 text-yellow-400" },
   anniversary: { label: "🎉 Anniversary", color: "bg-purple-500/20 text-purple-400" },
+  last_show: { label: "👋 Last Show", color: "bg-red-500/20 text-red-400" },
 };
 
 interface LandingDescription {
@@ -540,9 +542,11 @@ const Index = () => {
                     {/* Category badge */}
                     {show.category && show.category !== "regular" && (() => {
                       const cat = SHOW_CATEGORIES[show.category] || SHOW_CATEGORIES.regular;
+                      const memberText = show.category_member && (show.category === "birthday" || show.category === "last_show")
+                        ? ` — ${show.category_member}` : "";
                       return (
                         <span className={`absolute top-3 left-3 tv:top-4 tv:left-4 rounded-full px-3 py-1 text-[10px] tv:text-xs font-bold backdrop-blur-sm ${cat.color}`}>
-                          {cat.label}
+                          {cat.label}{memberText}
                         </span>
                       );
                     })()}
