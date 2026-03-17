@@ -125,7 +125,7 @@ const SubscriptionOrderManager = () => {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground">{shows[order.show_id] || "Unknown"}</p>
+                  <p className="font-semibold text-foreground">{shows[order.show_id]?.title || "Unknown"}</p>
                   <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                     order.status === "pending" ? "bg-warning/20 text-warning"
                     : order.status === "confirmed" ? "bg-success/20 text-success"
