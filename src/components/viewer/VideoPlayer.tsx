@@ -390,6 +390,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             events: {
               onReady: (e: any) => {
                 if (destroyed) return;
+                ytReadyRef.current = true;
                 setPlayerLoading(false);
 
                 try {
