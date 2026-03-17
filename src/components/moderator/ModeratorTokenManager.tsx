@@ -38,7 +38,7 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [durationType, setDurationType] = useState("harian");
+  const [durationType, setDurationType] = useState("daily");
   const [maxDevices, setMaxDevices] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
