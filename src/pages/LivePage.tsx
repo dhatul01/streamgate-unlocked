@@ -223,22 +223,24 @@ const LivePage = () => {
 
   // Realtime: playlists
   useEffect(() => {
+    const fetchLatestPlaylists = async () => {
+      const { data } = await supabase.from("playlists").select("*").order("sort_order");
+      syncPlaylistsState(data || []);
+    };
+
     const channel = supabase
       .channel("playlist-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "playlists" },
         async () => {
-          const { data } = await supabase.from("playlists").select("*").order("sort_order");
-          setPlaylists(data || []);
-          if (data && data.length > 0 && !activePlaylist) {
-            setActivePlaylist(data[0]);
-          }
+          await fetchLatestPlaylists();
         }
       )
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
-  }, [activePlaylist]);
+  }, [syncPlaylistsState]);
 
   // Realtime: site_settings
   useEffect(() => {
