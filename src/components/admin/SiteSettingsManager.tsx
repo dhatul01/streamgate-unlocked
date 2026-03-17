@@ -13,6 +13,9 @@ const settingsKeys = [
   { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input" as const, hint: "Link saluran WhatsApp untuk info publik" },
   { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" as const },
   { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" as const },
+  { key: "landing_desc_subtitle", label: "Subjudul Section Deskripsi", placeholder: "KEUNGGULAN KAMI", type: "input" as const, hint: "Teks kecil di atas judul section (opsional)" },
+  { key: "landing_desc_title", label: "Judul Section Deskripsi", placeholder: "THIS IS REALTIME48 STREAM", type: "input" as const, hint: "Judul besar section deskripsi (opsional)" },
+  { key: "landing_desc_quote", label: "Kutipan/Deskripsi Section", placeholder: "Membawa kemeriahan langsung di rumah Anda...", type: "textarea" as const, hint: "Teks kutipan di bawah judul section (opsional)" },
 ];
 
 const WIDTH_OPTIONS = [
@@ -112,6 +115,33 @@ const SiteSettingsManager = () => {
           {s.hint && <p className="mt-1 text-[10px] text-muted-foreground">{s.hint}</p>}
         </div>
       ))}
+
+      {/* Description layout mode */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Layout Deskripsi Landing Page</label>
+        <p className="mb-2 text-[10px] text-muted-foreground">Pilih tampilan section deskripsi: daftar vertikal atau kartu grid.</p>
+        <div className="flex gap-2">
+          {[
+            { value: "list", label: "📋 Daftar" },
+            { value: "cards", label: "🃏 Kartu Grid" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, landing_desc_layout: opt.value }));
+                saveSetting("landing_desc_layout", opt.value);
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                (values.landing_desc_layout || "list") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Landing description width */}
       <div>
