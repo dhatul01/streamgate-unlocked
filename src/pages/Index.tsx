@@ -65,33 +65,44 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const [showsRes, settingsRes, descRes] = await Promise.all([
-        supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("site_settings").select("*"),
-        supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
-      ]);
-      if (showsRes.data) {
-        setShows(showsRes.data as Show[]);
-        const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
-        if (subShows.length > 0) {
-          const counts: Record<string, number> = {};
-          for (const s of subShows) {
-            const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
-            counts[s.id] = (count as number) || 0;
-          }
-          setSubscriberCounts(counts);
+  const fetchData = async () => {
+    const [showsRes, settingsRes, descRes] = await Promise.all([
+      supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("site_settings").select("*"),
+      supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+    ]);
+    if (showsRes.data) {
+      setShows(showsRes.data as Show[]);
+      const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
+      if (subShows.length > 0) {
+        const counts: Record<string, number> = {};
+        for (const s of subShows) {
+          const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
+          counts[s.id] = (count as number) || 0;
         }
+        setSubscriberCounts(counts);
       }
-      if (settingsRes.data) {
-        const s: any = {};
-        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-        setSettings((prev) => ({ ...prev, ...s }));
-      }
-      if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
-    };
+    }
+    if (settingsRes.data) {
+      const s: any = {};
+      settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
+      setSettings((prev) => ({ ...prev, ...s }));
+    }
+    if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
+  };
+
+  useEffect(() => {
     fetchData();
+
+    // Realtime for shows and orders
+    const showCh = supabase.channel("idx-shows")
+      .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
+      .subscribe();
+    const orderCh = supabase.channel("idx-orders")
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
+      .subscribe();
+
+    return () => { supabase.removeChannel(showCh); supabase.removeChannel(orderCh); };
   }, []);
 
   const handleBuy = (show: Show) => {
