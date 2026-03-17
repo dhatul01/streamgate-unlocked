@@ -129,7 +129,7 @@ const LivePage = () => {
 
         const [streamRes, playlistRes, settingsRes] = await Promise.all([
           supabase.from("streams").select("*").limit(1).single(),
-          supabase.from("playlists").select("*").order("sort_order"),
+          supabase.rpc("get_playlists_for_token", { _token_code: tokenCode }),
           supabase.from("site_settings").select("*"),
         ]);
 
@@ -221,8 +221,10 @@ const LivePage = () => {
 
   // Realtime: playlists
   useEffect(() => {
+    if (!tokenCode) return;
+
     const fetchLatestPlaylists = async () => {
-      const { data } = await supabase.from("playlists").select("*").order("sort_order");
+      const { data } = await supabase.rpc("get_playlists_for_token", { _token_code: tokenCode });
       syncPlaylistsState(data || []);
     };
 
@@ -237,8 +239,9 @@ const LivePage = () => {
       )
       .subscribe();
 
+    fetchLatestPlaylists();
     return () => { supabase.removeChannel(channel); };
-  }, [syncPlaylistsState]);
+  }, [tokenCode, syncPlaylistsState]);
 
   // Realtime: site_settings
   useEffect(() => {
@@ -477,7 +480,22 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist ? (
-            <VideoPlayer key={playerKey} ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
+            <VideoPlayer
+              key={playerKey}
+              ref={playerRef}
+              playlist={activePlaylist}
+              autoPlay
+              watermarkUrl={watermarkUrl}
+              tokenCode={tokenData?.code}
+            />
+          ) : isLive && !activePlaylist ? (
+            <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
+              <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
+              <div className="text-center">
+                <p className="font-mono text-2xl font-bold text-primary lg:text-3xl tv:text-5xl tracking-widest">MENYIAPKAN STREAM</p>
+                <p className="mt-2 text-sm text-muted-foreground tv:text-xl">Playlist live sedang disinkronkan...</p>
+              </div>
+            </div>
           ) : (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
