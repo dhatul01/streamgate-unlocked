@@ -396,6 +396,46 @@ const LivePage = () => {
     );
   }
 
+  if (deleted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md tv:max-w-xl animate-in fade-in zoom-in-95 duration-500 rounded-2xl border-2 border-destructive/50 bg-card p-8 tv:p-12 text-center shadow-2xl">
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24" />
+          <div className="mx-auto mb-4 flex h-20 w-20 tv:h-28 tv:w-28 items-center justify-center rounded-full bg-destructive/10">
+            <span className="text-4xl tv:text-6xl">❌</span>
+          </div>
+          <h2 className="mb-2 text-2xl font-black text-destructive uppercase tracking-widest tv:text-4xl">
+            TOKEN INVALID
+          </h2>
+          <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-4 tv:p-6">
+            <p className="text-sm font-semibold text-foreground leading-relaxed tv:text-base">
+              Token ini tidak lagi berlaku.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground tv:text-sm">
+              Silakan hubungi admin RealTime48 untuk membeli token baru.
+            </p>
+          </div>
+          {whatsappNumber ? (
+            <a
+              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Halo admin, saya ingin membeli token baru")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
+            >
+              💬 Hubungi Admin
+            </a>
+          ) : (
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
+            >
+              🏠 Ke Halaman Utama
+            </button>
+          )}
+        </div>
+      </div>
+    );
+
   if (error) {
     if (error === "device_limit") {
       return (
