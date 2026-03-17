@@ -520,7 +520,53 @@ const Index = () => {
             <h3 className="mb-1 text-lg font-bold text-foreground tv:text-2xl">{selectedShow.title}</h3>
             <p className="mb-4 text-sm text-muted-foreground tv:text-base">{selectedShow.price}</p>
 
-            {purchaseStep === "qris" && (
+            {/* Regular show: collect email then send WhatsApp */}
+            {!selectedShow.is_subscription && purchaseStep === "info" && (
+              <div className="space-y-4 tv:space-y-6">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 tv:p-6">
+                  <p className="text-sm text-muted-foreground tv:text-base">
+                    Silakan scan QRIS di bawah, lalu kirim bukti transfer secara manual ke admin via WhatsApp.
+                  </p>
+                </div>
+                {selectedShow.qris_image_url ? (
+                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto w-full max-w-sm rounded-lg object-contain" />
+                ) : (
+                  <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground tv:text-base tv:p-12">
+                    QRIS belum tersedia
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground tv:text-sm">
+                      <Mail className="h-3.5 w-3.5" /> Email Anda
+                    </label>
+                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background tv:h-12 tv:text-base" />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 tv:p-5">
+                  <p className="mb-2 text-xs font-semibold text-foreground tv:text-sm">📋 Ringkasan Pesanan</p>
+                  <div className="space-y-1 text-xs text-muted-foreground tv:text-sm">
+                    <p>🎭 {selectedShow.title}</p>
+                    <p>💰 {selectedShow.price}</p>
+                    {selectedShow.schedule_date && <p>📅 {selectedShow.schedule_date} {selectedShow.schedule_time}</p>}
+                    {selectedShow.lineup && <p>👥 {selectedShow.lineup}</p>}
+                  </div>
+                </div>
+                <Button
+                  onClick={handleConfirmRegular}
+                  disabled={!email.trim()}
+                  className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg"
+                >
+                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan via WhatsApp
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground tv:text-xs">
+                  * Anda akan diarahkan ke WhatsApp untuk mengirim data pesanan dan bukti transfer secara manual ke admin
+                </p>
+              </div>
+            )}
+
+            {/* Subscription show: QRIS + upload */}
+            {selectedShow.is_subscription && purchaseStep === "qris" && (
               <div className="space-y-4 tv:space-y-6">
                 <p className="text-sm text-muted-foreground tv:text-base">
                   Silakan scan QRIS di bawah untuk melakukan pembayaran:
@@ -540,27 +586,6 @@ const Index = () => {
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
                   <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
                 </label>
-                {proofUrl && !selectedShow.is_subscription && (
-                  <div className="space-y-4 rounded-xl border border-success/30 bg-success/5 p-4 tv:p-6">
-                    <div className="flex items-center gap-2 text-success">
-                      <CheckCircle className="h-5 w-5 tv:h-7 tv:w-7" />
-                      <span className="font-semibold tv:text-lg">Bukti Berhasil Diupload! 🎉</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground tv:text-base">
-                      Terima kasih telah melakukan pembayaran untuk <strong className="text-foreground">{selectedShow.title}</strong>. 
-                      Silakan kirim bukti pembayaran ke admin untuk konfirmasi dan mendapatkan token akses streaming Anda.
-                    </p>
-                    <div className="rounded-lg bg-card p-3 text-xs text-muted-foreground tv:text-sm tv:p-4">
-                      <p className="mb-1 font-medium text-foreground">📋 Detail Pesanan:</p>
-                      <p>🎭 Show: {selectedShow.title}</p>
-                      <p>💰 Harga: {selectedShow.price}</p>
-                      {selectedShow.schedule_date && <p>📅 Jadwal: {selectedShow.schedule_date} {selectedShow.schedule_time}</p>}
-                    </div>
-                    <Button onClick={handleConfirmRegular} className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg">
-                      <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Bukti ke Admin via WhatsApp
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
 
@@ -595,6 +620,16 @@ const Index = () => {
                 </p>
               </div>
             )}
+
+            <button
+              onClick={() => setSelectedShow(null)}
+              className="mt-4 w-full rounded-xl bg-secondary py-3 tv:py-4 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80 tv:text-base"
+            >
+              Tutup
+            </button>
+          </motion.div>
+        </div>
+      )}
 
             <button
               onClick={() => setSelectedShow(null)}
