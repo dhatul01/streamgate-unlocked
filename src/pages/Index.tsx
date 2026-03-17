@@ -36,6 +36,8 @@ interface LandingDescription {
   title: string;
   content: string;
   icon: string;
+  image_url: string;
+  text_align: string;
 }
 
 interface SiteSettings {
