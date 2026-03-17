@@ -42,7 +42,7 @@ const UsernameModal = ({ onSubmit }: UsernameModalProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md px-4">
       <div className="w-full max-w-sm tv:max-w-lg rounded-2xl border border-border bg-card p-8 tv:p-12 text-center shadow-2xl shadow-primary/5">
-        <img src={logo} alt="RealTime48" className="mx-auto mb-5 h-14 w-14 tv:h-20 tv:w-20 animate-float" />
+        <img src={logo} alt="RealTime48" className="mx-auto mb-5 h-14 w-14 tv:h-20 tv:w-20 animate-float rounded-full border-2 border-primary/50 shadow-[0_0_16px_hsl(var(--primary)/0.4)]" />
         <h2 className="mb-1 text-xl font-bold text-foreground tv:text-3xl">Masukkan Username</h2>
         <p className="mb-5 text-xs text-muted-foreground tv:text-base">Username unik untuk berinteraksi di live chat</p>
         <form onSubmit={handleSubmit} className="space-y-3 tv:space-y-5">
