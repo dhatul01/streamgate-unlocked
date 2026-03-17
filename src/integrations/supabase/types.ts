@@ -263,6 +263,7 @@ export type Database = {
           group_link: string
           id: string
           is_active: boolean
+          is_order_closed: boolean
           is_subscription: boolean
           lineup: string
           max_subscribers: number
@@ -280,6 +281,7 @@ export type Database = {
           group_link?: string
           id?: string
           is_active?: boolean
+          is_order_closed?: boolean
           is_subscription?: boolean
           lineup?: string
           max_subscribers?: number
@@ -297,6 +299,7 @@ export type Database = {
           group_link?: string
           id?: string
           is_active?: boolean
+          is_order_closed?: boolean
           is_subscription?: boolean
           lineup?: string
           max_subscribers?: number
