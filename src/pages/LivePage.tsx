@@ -391,7 +391,8 @@ const LivePage = () => {
   const isLive = stream?.is_live || false;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+    <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
+      <PlayerAnimations type={playerAnimation} />
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
 
       <div className="flex flex-1 flex-col">
