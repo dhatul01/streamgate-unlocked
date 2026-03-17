@@ -20,6 +20,7 @@ const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<"admin" | "moderator">("moderator");
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
