@@ -266,7 +266,9 @@ Deno.serve(async (req) => {
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
-      if (pid && !edgeRateLimit(`play:${pid}`, 30, 60000)) {
+      // Rate limit per IP+playlist (not per playlist alone!)
+      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      if (pid && !edgeRateLimit(`play:${clientIp}:${pid}`, 30, 60000)) {
         return getRateLimitResponse();
       }
 
@@ -313,7 +315,9 @@ Deno.serve(async (req) => {
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
-      if (encoded && !edgeRateLimit(`sub:${encoded.slice(0, 20)}`, 60, 60000)) {
+      // Rate limit per IP+resource (not per resource alone!)
+      const clientIpSub = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      if (encoded && !edgeRateLimit(`sub:${clientIpSub}:${encoded.slice(0, 20)}`, 60, 60000)) {
         return getRateLimitResponse();
       }
 
