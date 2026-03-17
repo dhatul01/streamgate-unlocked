@@ -246,7 +246,7 @@ const Index = () => {
       <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl tv:max-w-[1600px] items-center justify-between px-4 py-3 tv:py-5 tv:px-8">
           <div className="flex items-center gap-2 tv:gap-3">
-            <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12" />
+            <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
           <Sheet>
