@@ -23,7 +23,15 @@ interface Show {
   subscription_benefits: string;
   group_link: string;
   is_order_closed: boolean;
+  category: string;
 }
+
+const CATEGORY_OPTIONS = [
+  { value: "regular", label: "🎭 Reguler", color: "bg-primary/10 text-primary" },
+  { value: "birthday", label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/10 text-pink-500" },
+  { value: "special", label: "⭐ Spesial", color: "bg-yellow-500/10 text-yellow-500" },
+  { value: "anniversary", label: "🎉 Anniversary", color: "bg-purple-500/10 text-purple-500" },
+];
 
 const ShowManager = () => {
   const [shows, setShows] = useState<Show[]>([]);
@@ -85,6 +93,7 @@ const ShowManager = () => {
         subscription_benefits: show.subscription_benefits,
         group_link: show.group_link,
         is_order_closed: show.is_order_closed,
+        category: show.category,
       })
       .eq("id", show.id);
     await fetchShows();
@@ -166,7 +175,13 @@ const ShowManager = () => {
                   <p className="font-semibold text-foreground truncate">{show.title}</p>
                   {show.is_subscription && <Crown className="h-3 w-3 text-yellow-500" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
+                  {(() => {
+                    const cat = CATEGORY_OPTIONS.find(c => c.value === show.category) || CATEGORY_OPTIONS[0];
+                    return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cat.color}`}>{cat.label}</span>;
+                  })()}
+                </div>
               </div>
               {show.is_active ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -216,6 +231,26 @@ const ShowManager = () => {
                 />
               </div>
             )}
+
+            {/* Category selector */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Kategori Show</label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORY_OPTIONS.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => { const u = { ...editing, category: cat.value }; setEditing(u); updateShow(u); }}
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                      (editing.category || "regular") === cat.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>

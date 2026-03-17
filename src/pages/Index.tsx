@@ -30,7 +30,15 @@ interface Show {
   subscription_benefits: string;
   group_link?: string;
   is_order_closed: boolean;
+  category?: string;
 }
+
+const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
+  regular: { label: "🎭 Reguler", color: "bg-primary/20 text-primary" },
+  birthday: { label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/20 text-pink-400" },
+  special: { label: "⭐ Spesial", color: "bg-yellow-500/20 text-yellow-400" },
+  anniversary: { label: "🎉 Anniversary", color: "bg-purple-500/20 text-purple-400" },
+};
 
 interface LandingDescription {
   id: string;
@@ -529,6 +537,15 @@ const Index = () => {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                    {/* Category badge */}
+                    {show.category && show.category !== "regular" && (() => {
+                      const cat = SHOW_CATEGORIES[show.category] || SHOW_CATEGORIES.regular;
+                      return (
+                        <span className={`absolute top-3 left-3 tv:top-4 tv:left-4 rounded-full px-3 py-1 text-[10px] tv:text-xs font-bold backdrop-blur-sm ${cat.color}`}>
+                          {cat.label}
+                        </span>
+                      );
+                    })()}
                     <div className="absolute bottom-3 left-4 right-4 tv:bottom-5 tv:left-6">
                       <h3 className="text-xl font-bold text-foreground tv:text-3xl">{show.title}</h3>
                     </div>

@@ -286,6 +286,7 @@ export type Database = {
       shows: {
         Row: {
           background_image_url: string | null
+          category: string
           created_at: string
           group_link: string
           id: string
@@ -304,6 +305,7 @@ export type Database = {
         }
         Insert: {
           background_image_url?: string | null
+          category?: string
           created_at?: string
           group_link?: string
           id?: string
@@ -322,6 +324,7 @@ export type Database = {
         }
         Update: {
           background_image_url?: string | null
+          category?: string
           created_at?: string
           group_link?: string
           id?: string
