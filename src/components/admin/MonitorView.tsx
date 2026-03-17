@@ -68,6 +68,28 @@ const MonitorView = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">📺 Monitor</h2>
 
+      {/* Reset Chat Button */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="sm" disabled={resetting} className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            {resetting ? "Mereset..." : "Reset Live Chat"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Live Chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua pesan chat (termasuk yang di-pin) akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetChat}>Ya, Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Player */}
         <div className="space-y-2">
