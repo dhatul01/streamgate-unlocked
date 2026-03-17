@@ -281,6 +281,9 @@ const LivePage = () => {
         } else {
           setDeleted(true);
         }
+      } else {
+        // Token is valid again (e.g. unblocked by admin)
+        setBlocked(false);
       }
     }, 10000);
 
@@ -292,6 +295,8 @@ const LivePage = () => {
         (payload: any) => {
           if (payload.new.status === "blocked") {
             setBlocked(true);
+          } else if (payload.new.status === "active") {
+            setBlocked(false);
           }
         }
       )
