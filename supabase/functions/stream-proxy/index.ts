@@ -8,13 +8,11 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-// Use service role key as HMAC signing secret
 const SIGNING_SECRET = SERVICE_ROLE_KEY;
 
-// Token validity durations (seconds)
-const PLAYLIST_TOKEN_TTL = 300; // 5 minutes for main playlist
-const SEGMENT_TOKEN_TTL = 600; // 10 minutes for segments
+// Token validity (seconds)
+const PLAYLIST_TOKEN_TTL = 300; // 5 minutes
+const SUB_PLAYLIST_TOKEN_TTL = 600; // 10 minutes for sub-playlists
 
 // --- Crypto helpers ---
 async function hmacSign(message: string): Promise<string> {
@@ -46,13 +44,37 @@ function base64UrlEncode(str: string): string {
 }
 
 function base64UrlDecode(str: string): string {
-  str = str.replace(/-/g, "+").replace(/_/g, "/");
-  while (str.length % 4) str += "=";
-  return decodeURIComponent(escape(atob(str)));
+  let s = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  return decodeURIComponent(escape(atob(s)));
 }
 
-// --- Generate signed URL for a playlist ---
-async function generateSignedUrl(
+// --- URL helpers ---
+function resolveUrl(url: string, base: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  try {
+    return new URL(url, base).href;
+  } catch {
+    const basePath = base.substring(0, base.lastIndexOf("/") + 1);
+    return basePath + url;
+  }
+}
+
+function getBaseUrl(url: string): string {
+  return url.substring(0, url.lastIndexOf("/") + 1);
+}
+
+function isM3u8Url(url: string, contentType?: string): boolean {
+  return (
+    url.endsWith(".m3u8") ||
+    url.includes(".m3u8?") ||
+    (contentType || "").includes("mpegurl") ||
+    (contentType || "").includes("x-mpegURL")
+  );
+}
+
+// --- Signed URL generators ---
+async function generatePlaylistSignedUrl(
   playlistId: string,
   functionUrl: string,
   ttl: number = PLAYLIST_TOKEN_TTL
@@ -63,21 +85,23 @@ async function generateSignedUrl(
   return `${functionUrl}/stream-proxy?mode=play&pid=${playlistId}&exp=${exp}&sig=${sig}`;
 }
 
-// --- Generate signed URL for a segment/sub-playlist ---
-async function generateSegmentUrl(
+async function generateSubPlaylistSignedUrl(
   rawUrl: string,
   functionUrl: string,
-  ttl: number = SEGMENT_TOKEN_TTL
+  ttl: number = SUB_PLAYLIST_TOKEN_TTL
 ): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + ttl;
   const encoded = base64UrlEncode(rawUrl);
-  const message = `segment:${encoded}:${exp}`;
+  const message = `sub:${encoded}:${exp}`;
   const sig = await hmacSign(message);
-  return `${functionUrl}/stream-proxy?mode=seg&u=${encoded}&exp=${exp}&sig=${sig}`;
+  return `${functionUrl}/stream-proxy?mode=sub&u=${encoded}&exp=${exp}&sig=${sig}`;
 }
 
-// --- Rewrite URLs inside m3u8 content ---
-async function rewriteM3u8(
+// --- HYBRID m3u8 rewriter ---
+// Only rewrites lines that point to OTHER .m3u8 files (sub-playlists).
+// Segment URLs (.ts, .mp4, .aac, etc.) are resolved to absolute CDN URLs
+// and left UNTOUCHED so the player fetches them directly from CDN.
+async function rewriteM3u8Hybrid(
   content: string,
   baseUrl: string,
   functionUrl: string
@@ -87,9 +111,15 @@ async function rewriteM3u8(
 
   for (const line of lines) {
     const trimmed = line.trim();
-    // Skip empty lines or comment/tag lines (but not URI= in tags)
-    if (!trimmed || trimmed.startsWith("#")) {
-      // Check for URI= in EXT-X-MAP or EXT-X-KEY
+
+    // Empty lines pass through
+    if (!trimmed) {
+      result.push(line);
+      continue;
+    }
+
+    // Tag lines: check for URI= references (e.g., EXT-X-MAP, EXT-X-KEY)
+    if (trimmed.startsWith("#")) {
       if (trimmed.includes('URI="')) {
         const rewritten = await rewriteUriInTag(trimmed, baseUrl, functionUrl);
         result.push(rewritten);
@@ -99,10 +129,17 @@ async function rewriteM3u8(
       continue;
     }
 
-    // This is a URL line (segment or sub-playlist)
+    // URL line — determine if it's a sub-playlist (.m3u8) or a segment (.ts etc.)
     const absoluteUrl = resolveUrl(trimmed, baseUrl);
-    const signedUrl = await generateSegmentUrl(absoluteUrl, functionUrl);
-    result.push(signedUrl);
+
+    if (isM3u8Url(absoluteUrl)) {
+      // Sub-playlist → proxy through our function (small file, ~1-5KB)
+      const signedUrl = await generateSubPlaylistSignedUrl(absoluteUrl, functionUrl);
+      result.push(signedUrl);
+    } else {
+      // Segment (.ts, .mp4, .aac, etc.) → direct CDN URL (NO proxy)
+      result.push(absoluteUrl);
+    }
   }
 
   return result.join("\n");
@@ -115,24 +152,17 @@ async function rewriteUriInTag(
 ): Promise<string> {
   const match = line.match(/URI="([^"]+)"/);
   if (!match) return line;
+
   const absoluteUrl = resolveUrl(match[1], baseUrl);
-  const signedUrl = await generateSegmentUrl(absoluteUrl, functionUrl);
-  return line.replace(`URI="${match[1]}"`, `URI="${signedUrl}"`);
-}
 
-function resolveUrl(url: string, base: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  try {
-    return new URL(url, base).href;
-  } catch {
-    // Fallback: join paths
-    const basePath = base.substring(0, base.lastIndexOf("/") + 1);
-    return basePath + url;
+  if (isM3u8Url(absoluteUrl)) {
+    // Sub-playlist or key file that's m3u8 → proxy
+    const signedUrl = await generateSubPlaylistSignedUrl(absoluteUrl, functionUrl);
+    return line.replace(`URI="${match[1]}"`, `URI="${signedUrl}"`);
   }
-}
 
-function getBaseUrl(url: string): string {
-  return url.substring(0, url.lastIndexOf("/") + 1);
+  // Non-m3u8 URI (e.g., encryption key .key file) → resolve to absolute but don't proxy
+  return line.replace(`URI="${match[1]}"`, `URI="${absoluteUrl}"`);
 }
 
 // --- Main handler ---
@@ -171,7 +201,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Verify playlist exists
+      // Verify playlist exists and is m3u8
       const { data: playlist, error: plErr } = await supabase
         .from("playlists")
         .select("id, type, url")
@@ -185,7 +215,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Only generate signed URLs for m3u8 type
       if (playlist.type !== "m3u8") {
         return new Response(
           JSON.stringify({ error: "Tokenized URL hanya untuk m3u8" }),
@@ -194,85 +223,60 @@ Deno.serve(async (req) => {
       }
 
       const functionUrl = `${SUPABASE_URL}/functions/v1`;
-      const signedUrl = await generateSignedUrl(playlist_id, functionUrl);
+      const signedUrl = await generatePlaylistSignedUrl(playlist_id, functionUrl);
 
       return new Response(
-        JSON.stringify({
-          signed_url: signedUrl,
-          expires_in: PLAYLIST_TOKEN_TTL,
-        }),
+        JSON.stringify({ signed_url: signedUrl, expires_in: PLAYLIST_TOKEN_TTL }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // === MODE: play === (GET)
-    // Serve proxied m3u8 content with rewritten segment URLs
+    // Proxy the MASTER m3u8 playlist only. Segments go direct to CDN.
     if (req.method === "GET" && mode === "play") {
       const pid = url.searchParams.get("pid");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
       if (!pid || !exp || !sig) {
-        return new Response("Missing parameters", {
-          status: 400,
-          headers: corsHeaders,
-        });
+        return new Response("Missing parameters", { status: 400, headers: corsHeaders });
       }
 
-      // Verify expiration
-      const expTime = parseInt(exp, 10);
-      if (Date.now() / 1000 > expTime) {
-        return new Response("Token expired", {
-          status: 403,
-          headers: corsHeaders,
-        });
+      if (Date.now() / 1000 > parseInt(exp, 10)) {
+        return new Response("Token expired", { status: 403, headers: corsHeaders });
       }
 
-      // Verify HMAC
-      const message = `playlist:${pid}:${exp}`;
-      const valid = await hmacVerify(message, sig);
+      const valid = await hmacVerify(`playlist:${pid}:${exp}`, sig);
       if (!valid) {
-        return new Response("Invalid signature", {
-          status: 403,
-          headers: corsHeaders,
-        });
+        return new Response("Invalid signature", { status: 403, headers: corsHeaders });
       }
 
-      // Fetch actual playlist URL from DB
       const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-      const { data: playlist, error: plErr } = await supabase
+      const { data: playlist } = await supabase
         .from("playlists")
         .select("url")
         .eq("id", pid)
         .single();
 
-      if (plErr || !playlist) {
-        return new Response("Playlist not found", {
-          status: 404,
-          headers: corsHeaders,
-        });
+      if (!playlist) {
+        return new Response("Playlist not found", { status: 404, headers: corsHeaders });
       }
 
-      // Fetch the actual m3u8 content
+      // Fetch the actual m3u8 (small file, ~1-5KB)
       const m3u8Response = await fetch(playlist.url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)" },
       });
 
       if (!m3u8Response.ok) {
-        return new Response("Failed to fetch stream", {
-          status: 502,
-          headers: corsHeaders,
-        });
+        return new Response("Failed to fetch stream", { status: 502, headers: corsHeaders });
       }
 
       const m3u8Content = await m3u8Response.text();
       const functionUrl = `${SUPABASE_URL}/functions/v1`;
       const baseUrl = getBaseUrl(playlist.url);
 
-      // Rewrite all URLs in the m3u8 to go through our proxy
-      const rewritten = await rewriteM3u8(m3u8Content, baseUrl, functionUrl);
+      // HYBRID rewrite: only sub-playlists (.m3u8) get proxied, segments stay CDN-direct
+      const rewritten = await rewriteM3u8Hybrid(m3u8Content, baseUrl, functionUrl);
 
       return new Response(rewritten, {
         status: 200,
@@ -285,91 +289,53 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === MODE: seg === (GET)
-    // Proxy individual segments or sub-playlists
-    if (req.method === "GET" && mode === "seg") {
+    // === MODE: sub === (GET)
+    // Proxy SUB-PLAYLISTS only (variant/quality m3u8 files, ~1-5KB each).
+    // These contain the actual segment (.ts) URLs which we resolve to absolute
+    // CDN URLs so the player fetches segments DIRECTLY from CDN.
+    if (req.method === "GET" && mode === "sub") {
       const encoded = url.searchParams.get("u");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
       if (!encoded || !exp || !sig) {
-        return new Response("Missing parameters", {
-          status: 400,
-          headers: corsHeaders,
-        });
+        return new Response("Missing parameters", { status: 400, headers: corsHeaders });
       }
 
-      // Verify expiration
-      const expTime = parseInt(exp, 10);
-      if (Date.now() / 1000 > expTime) {
-        return new Response("Token expired", {
-          status: 403,
-          headers: corsHeaders,
-        });
+      if (Date.now() / 1000 > parseInt(exp, 10)) {
+        return new Response("Token expired", { status: 403, headers: corsHeaders });
       }
 
-      // Verify HMAC
-      const message = `segment:${encoded}:${exp}`;
-      const valid = await hmacVerify(message, sig);
+      const valid = await hmacVerify(`sub:${encoded}:${exp}`, sig);
       if (!valid) {
-        return new Response("Invalid signature", {
-          status: 403,
-          headers: corsHeaders,
-        });
+        return new Response("Invalid signature", { status: 403, headers: corsHeaders });
       }
 
       const actualUrl = base64UrlDecode(encoded);
 
-      // Fetch the actual segment/sub-playlist
-      const segResponse = await fetch(actualUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)",
-        },
+      // Fetch the sub-playlist (small file)
+      const subResponse = await fetch(actualUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)" },
       });
 
-      if (!segResponse.ok) {
-        return new Response("Failed to fetch segment", {
-          status: 502,
-          headers: corsHeaders,
-        });
+      if (!subResponse.ok) {
+        return new Response("Failed to fetch sub-playlist", { status: 502, headers: corsHeaders });
       }
 
-      // If it's another m3u8 (sub-playlist), rewrite its URLs too
-      const contentType = segResponse.headers.get("content-type") || "";
-      if (
-        actualUrl.endsWith(".m3u8") ||
-        actualUrl.includes(".m3u8?") ||
-        contentType.includes("mpegurl") ||
-        contentType.includes("x-mpegURL")
-      ) {
-        const subContent = await segResponse.text();
-        const functionUrl = `${SUPABASE_URL}/functions/v1`;
-        const baseUrl = getBaseUrl(actualUrl);
-        const rewritten = await rewriteM3u8(subContent, baseUrl, functionUrl);
+      const subContent = await subResponse.text();
+      const functionUrl = `${SUPABASE_URL}/functions/v1`;
+      const baseUrl = getBaseUrl(actualUrl);
 
-        return new Response(rewritten, {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/vnd.apple.mpegurl",
-            "Cache-Control": "no-cache, no-store",
-          },
-        });
-      }
+      // Rewrite: sub-m3u8 references get proxied, segments stay CDN-direct
+      const rewritten = await rewriteM3u8Hybrid(subContent, baseUrl, functionUrl);
 
-      // Binary segment (.ts, .mp4, etc.) — stream directly
-      const headers: Record<string, string> = {
-        ...corsHeaders,
-        "Cache-Control": "public, max-age=30",
-      };
-      const ct = segResponse.headers.get("content-type");
-      if (ct) headers["Content-Type"] = ct;
-      const cl = segResponse.headers.get("content-length");
-      if (cl) headers["Content-Length"] = cl;
-
-      return new Response(segResponse.body, {
+      return new Response(rewritten, {
         status: 200,
-        headers,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/vnd.apple.mpegurl",
+          "Cache-Control": "no-cache, no-store",
+        },
       });
     }
 
