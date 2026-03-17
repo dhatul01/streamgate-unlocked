@@ -303,7 +303,7 @@ const Index = () => {
 
         <div className="relative z-10 text-center px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 tv:h-40 tv:w-40 animate-float" />
+            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 tv:h-40 tv:w-40 animate-float rounded-full border-2 border-primary/50 shadow-[0_0_20px_hsl(var(--primary)/0.4)]" />
           </motion.div>
           <motion.h1
             className="mb-3 text-4xl font-extrabold tracking-tight text-foreground md:text-6xl tv:text-8xl"
