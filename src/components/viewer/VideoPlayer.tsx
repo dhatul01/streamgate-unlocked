@@ -411,8 +411,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       {/* Admin watermark image */}
       {watermarkUrl && (
-        <div className="pointer-events-none absolute bottom-12 right-3 z-20">
-          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10" />
+        <div className="pointer-events-none absolute bottom-12 right-3 z-20 tv:bottom-20 tv:right-6">
+          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" />
         </div>
       )}
 
