@@ -72,22 +72,22 @@ const ChatMessageItem = ({ msg, canModerate, onPin, onDelete, onBlock, formatTim
   </div>
 );
 
-const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
+const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   const [, startTransition] = useTransition();
+  const canManageMessages = canModerate ?? isAdmin;
 
-  // Presence for online count
   useEffect(() => {
     if (!username) return;
 
-    const channel = supabase.channel("online-users", {
+    const channel = supabase.channel(`online-users:${username}`, {
       config: { presence: { key: username } },
     });
 
@@ -102,14 +102,11 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         }
       });
 
-    presenceChannelRef.current = channel;
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [username]);
 
-  // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -129,7 +126,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     fetchMessages();
 
     const channel = supabase
-      .channel("chat-realtime")
+      .channel(`chat-realtime:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
@@ -137,8 +134,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           startTransition(() => {
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
-              setMessages((prev) => [...prev, newMsg]);
-              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
+              setMessages((prev) => [...prev.slice(-49), newMsg]);
+              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev.filter((m) => m.id !== newMsg.id), newMsg]);
             } else if (payload.eventType === "DELETE") {
               setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
               setPinnedMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
@@ -162,7 +159,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -177,17 +173,22 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     const insertData: any = {
       username,
       message: newMessage.trim(),
-      token_id: tokenId || null,
+      token_id: tokenId ?? null,
+      is_admin: isAdmin,
     };
-    if (isAdmin) {
-      insertData.is_admin = true;
+
+    const { error } = await supabase.from("chat_messages").insert(insertData);
+
+    if (error) {
+      toast({ title: error.message || "Gagal mengirim pesan", variant: "destructive" });
+      setSending(false);
+      return;
     }
-    await supabase.from("chat_messages").insert(insertData);
 
     setNewMessage("");
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin]);
+  }, [newMessage, username, tokenId, isAdmin, toast]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
