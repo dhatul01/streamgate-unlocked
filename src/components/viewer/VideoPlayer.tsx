@@ -424,11 +424,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {/* Custom controls overlay */}
       <div
         className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 tv:gap-4 bg-gradient-to-t from-background/80 to-transparent p-3 tv:p-6 transition-opacity ${
-          showControls ? "opacity-100" : "opacity-0"
+          showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <button
-          onClick={togglePlay}
+          onClick={(e) => togglePlay(e)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
         >
           {isPlaying ? (
