@@ -412,7 +412,7 @@ const Index = () => {
                         }`}
                       >
                         <Star className="h-4 w-4 tv:h-6 tv:w-6" />
-                        {isFull ? "🔒 Langganan Penuh" : "Berlangganan"}
+                        {show.is_order_closed ? "🔒 Pendaftaran Ditutup" : isFull ? "🔒 Membership Penuh !!!" : "Berlangganan"}
                       </button>
                     </div>
                   </motion.div>
