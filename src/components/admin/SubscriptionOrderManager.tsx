@@ -25,7 +25,7 @@ interface Order {
 
 const SubscriptionOrderManager = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [shows, setShows] = useState<Record<string, string>>({});
+  const [shows, setShows] = useState<Record<string, { title: string; group_link: string }>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "rejected">("pending");
   const [waMessages, setWaMessages] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -38,10 +38,10 @@ const SubscriptionOrderManager = () => {
       .from("subscription_orders")
       .select("*")
       .order("created_at", { ascending: false });
-    const { data: showsData } = await supabase.from("shows").select("id, title");
+    const { data: showsData } = await supabase.from("shows").select("id, title, group_link");
 
-    const showMap: Record<string, string> = {};
-    showsData?.forEach((s: any) => { showMap[s.id] = s.title; });
+    const showMap: Record<string, { title: string; group_link: string }> = {};
+    showsData?.forEach((s: any) => { showMap[s.id] = { title: s.title, group_link: s.group_link || "" }; });
     setShows(showMap);
     setOrders((ordersData as Order[]) || []);
   };
@@ -49,9 +49,19 @@ const SubscriptionOrderManager = () => {
   useEffect(() => { fetchOrders(); }, []);
 
   const updateStatus = async (id: string, status: string) => {
+    const order = orders.find((o) => o.id === id);
     await supabase.from("subscription_orders").update({ status }).eq("id", id);
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
+
+    // Auto-send group link via WhatsApp when confirmed
+    if (status === "confirmed" && order) {
+      const show = shows[order.show_id];
+      if (show?.group_link) {
+        const msg = `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
+        sendWhatsApp(order.phone, msg);
+      }
+    }
   };
 
   const deleteOrder = async (id: string) => {
@@ -115,7 +125,7 @@ const SubscriptionOrderManager = () => {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground">{shows[order.show_id] || "Unknown"}</p>
+                  <p className="font-semibold text-foreground">{shows[order.show_id]?.title || "Unknown"}</p>
                   <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                     order.status === "pending" ? "bg-warning/20 text-warning"
                     : order.status === "confirmed" ? "bg-success/20 text-success"
