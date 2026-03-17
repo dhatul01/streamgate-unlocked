@@ -145,10 +145,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           index: i,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        if (data.levels.length > 0) {
-          hls.currentLevel = data.levels.length - 1;
-          setCurrentQuality(data.levels.length - 1);
-        }
+        // Default to Auto (-1) for adaptive bitrate
+        hls.currentLevel = -1;
+        setCurrentQuality(-1);
         setIsLoading(false);
         if (autoPlay) {
           videoRef.current!.play().catch(() => {});
@@ -156,8 +155,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         }
       });
 
+      // Show loading when level is switching
+      hls.on(Hls.Events.LEVEL_SWITCHING, () => {
+        setIsSwitchingQuality(true);
+      });
+      hls.on(Hls.Events.LEVEL_SWITCHED, () => {
+        setIsSwitchingQuality(false);
+      });
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        setIsSwitchingQuality(false);
+      });
+
       hls.on(Hls.Events.ERROR, () => {
         setIsLoading(false);
+        setIsSwitchingQuality(false);
       });
     };
 
