@@ -61,15 +61,21 @@ const ChannelPage = () => {
         setTokenValid(true);
       }
 
-      // Fetch stream, playlists, and site settings
-      const [streamRes, playlistRes, settingsRes] = await Promise.all([
+      // Fetch stream, moderator playlists, and site settings
+      const [streamRes, modPlaylistRes, settingsRes] = await Promise.all([
         supabase.from("streams").select("*").limit(1).single(),
-        supabase.rpc("get_playlists_for_channel", { _moderator_username: username! }),
+        supabase.rpc("get_moderator_playlists", { _moderator_username: username! }),
         supabase.from("site_settings").select("*"),
       ]);
 
       setStream(streamRes.data);
-      const list = (playlistRes.data || []) as any[];
+
+      // Use moderator's own playlists; fall back to main playlists if none
+      let list = (modPlaylistRes.data || []) as any[];
+      if (list.length === 0) {
+        const { data: mainPlaylists } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username! });
+        list = (mainPlaylists || []) as any[];
+      }
       setPlaylists(list);
       if (list.length > 0) setActivePlaylist(list[0]);
 
@@ -113,17 +119,21 @@ const ChannelPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: playlists
+  // Realtime: moderator playlists
   useEffect(() => {
     const channel = supabase
       .channel("channel-playlist-realtime")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "playlists" },
+        { event: "*", schema: "public", table: "moderator_playlists" },
         async () => {
           if (!username) return;
-          const { data } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username });
-          const list = (data || []) as any[];
+          const { data: modData } = await supabase.rpc("get_moderator_playlists", { _moderator_username: username });
+          let list = (modData || []) as any[];
+          if (list.length === 0) {
+            const { data: mainData } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username });
+            list = (mainData || []) as any[];
+          }
           setPlaylists(list);
           if (list.length > 0 && !activePlaylist) {
             setActivePlaylist(list[0]);

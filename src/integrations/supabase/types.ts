@@ -111,6 +111,44 @@ export type Database = {
         }
         Relationships: []
       }
+      moderator_playlists: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          moderator_id: string
+          sort_order: number
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          moderator_id: string
+          sort_order?: number
+          type?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          moderator_id?: string
+          sort_order?: number
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderator_playlists_moderator_id_fkey"
+            columns: ["moderator_id"]
+            isOneToOne: false
+            referencedRelation: "moderators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moderator_token_logs: {
         Row: {
           created_at: string
@@ -448,6 +486,24 @@ export type Database = {
         Returns: Json
       }
       get_confirmed_order_count: { Args: { _show_id: string }; Returns: number }
+      get_moderator_playlists: {
+        Args: { _moderator_username: string }
+        Returns: {
+          created_at: string
+          id: string
+          label: string
+          moderator_id: string
+          sort_order: number
+          type: string
+          url: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "moderator_playlists"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_playlists_for_channel: {
         Args: { _moderator_username: string }
         Returns: {

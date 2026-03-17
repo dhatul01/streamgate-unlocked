@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Monitor, Palette, LogOut, Key, Menu } from "lucide-react";
+import { Shield, Monitor, Palette, LogOut, Key, Menu, ListVideo } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import ModeratorSiteSettings from "@/components/moderator/ModeratorSiteSettings";
 import ModeratorMonitor from "@/components/moderator/ModeratorMonitor";
 import ModeratorTokenManager from "@/components/moderator/ModeratorTokenManager";
+import ModeratorPlaylistManager from "@/components/moderator/ModeratorPlaylistManager";
 
 const sections = [
   { id: "monitor", label: "Monitor", icon: Monitor },
+  { id: "playlists", label: "Playlist", icon: ListVideo },
   { id: "tokens", label: "Token", icon: Key },
   { id: "site", label: "Pengaturan Site", icon: Palette },
 ];
@@ -76,6 +78,7 @@ const ModeratorDashboard = () => {
   const renderSection = () => {
     switch (activeSection) {
       case "monitor": return <ModeratorMonitor moderator={moderator} />;
+      case "playlists": return <ModeratorPlaylistManager moderator={moderator} />;
       case "tokens": return <ModeratorTokenManager moderator={moderator} />;
       case "site": return <ModeratorSiteSettings moderator={moderator} onUpdate={setModerator} />;
       default: return <ModeratorMonitor moderator={moderator} />;
