@@ -377,17 +377,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             ref={ytContainerRef}
             className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
-          {/* Multiple overlay layers to fully block iframe inspection & right-click */}
+          {/* Overlay to block iframe inspection & handle play/pause click */}
           <div
             className="absolute inset-0 z-10 cursor-pointer"
-            onClick={togglePlay}
+            onClick={(e) => togglePlay(e)}
             onContextMenu={(e) => e.preventDefault()}
-            style={{ pointerEvents: "auto" }}
           />
           <div
-            className="absolute inset-0 z-[9] bg-transparent"
+            className="absolute inset-0 z-[9] bg-transparent pointer-events-none"
             onContextMenu={(e) => e.preventDefault()}
-            style={{ pointerEvents: "none" }}
           />
         </>
       )}
