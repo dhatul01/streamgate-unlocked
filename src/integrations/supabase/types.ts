@@ -262,6 +262,27 @@ export type Database = {
           },
         ]
       }
+      session_resets: {
+        Row: {
+          fingerprint: string
+          id: string
+          reset_at: string
+          token_code: string
+        }
+        Insert: {
+          fingerprint: string
+          id?: string
+          reset_at?: string
+          token_code: string
+        }
+        Update: {
+          fingerprint?: string
+          id?: string
+          reset_at?: string
+          token_code?: string
+        }
+        Relationships: []
+      }
       shows: {
         Row: {
           background_image_url: string | null
@@ -590,6 +611,10 @@ export type Database = {
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: undefined
+      }
+      self_reset_token_session: {
+        Args: { _fingerprint: string; _token_code: string }
+        Returns: Json
       }
       validate_token: { Args: { _code: string }; Returns: Json }
     }
