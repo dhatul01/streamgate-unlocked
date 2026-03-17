@@ -21,7 +21,6 @@ const UsernameModal = ({ onSubmit }: UsernameModalProps) => {
     setChecking(true);
     setError("");
 
-    // Check if username is currently active in recent chat messages (last 2 hours)
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("chat_messages")
@@ -42,23 +41,23 @@ const UsernameModal = ({ onSubmit }: UsernameModalProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-2xl shadow-primary/5">
-        <img src={logo} alt="RealTime48" className="mx-auto mb-5 h-14 w-14 animate-float" />
-        <h2 className="mb-1 text-xl font-bold text-foreground">Masukkan Username</h2>
-        <p className="mb-5 text-xs text-muted-foreground">Username unik untuk berinteraksi di live chat</p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="w-full max-w-sm tv:max-w-lg rounded-2xl border border-border bg-card p-8 tv:p-12 text-center shadow-2xl shadow-primary/5">
+        <img src={logo} alt="RealTime48" className="mx-auto mb-5 h-14 w-14 tv:h-20 tv:w-20 animate-float" />
+        <h2 className="mb-1 text-xl font-bold text-foreground tv:text-3xl">Masukkan Username</h2>
+        <p className="mb-5 text-xs text-muted-foreground tv:text-base">Username unik untuk berinteraksi di live chat</p>
+        <form onSubmit={handleSubmit} className="space-y-3 tv:space-y-5">
           <Input
             value={name}
             onChange={(e) => { setName(e.target.value); setError(""); }}
             placeholder="Username kamu..."
             maxLength={20}
-            className="bg-background text-center"
+            className="bg-background text-center tv:h-14 tv:text-lg"
             autoFocus
           />
           {error && (
-            <p className="text-xs font-medium text-destructive">{error}</p>
+            <p className="text-xs font-medium text-destructive tv:text-sm">{error}</p>
           )}
-          <Button type="submit" disabled={!name.trim() || checking} className="w-full">
+          <Button type="submit" disabled={!name.trim() || checking} className="w-full tv:py-6 tv:text-lg">
             {checking ? "Memeriksa..." : "Masuk Chat"}
           </Button>
         </form>

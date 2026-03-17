@@ -9,7 +9,6 @@ const Watermark = ({ tokenCode }: WatermarkProps) => {
   const code = `RE-${tokenCode.slice(-4)}`;
 
   useEffect(() => {
-    // Randomize on mount
     setPosition({
       top: Math.random() * 60 + 10,
       left: Math.random() * 60 + 10,
@@ -26,7 +25,7 @@ const Watermark = ({ tokenCode }: WatermarkProps) => {
 
   return (
     <div
-      className="pointer-events-none absolute z-[9999] select-none font-mono text-xs font-bold text-foreground/30 transition-all duration-[2000ms] tv:text-sm"
+      className="pointer-events-none absolute z-[9999] select-none font-mono text-xs font-bold text-foreground/30 transition-all duration-[2000ms] md:text-sm tv:text-lg"
       style={{
         top: `${position.top}%`,
         left: `${position.left}%`,

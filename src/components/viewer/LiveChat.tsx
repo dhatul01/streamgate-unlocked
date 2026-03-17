@@ -32,32 +32,32 @@ const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTi
   onBlock?: (tokenId: string) => void;
   formatTime: (d: string) => string;
 }) => (
-  <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-secondary/30">
+  <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5">
-        <span className={`text-xs font-bold ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
+        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
           {msg.username}
         </span>
         {msg.is_admin && (
-          <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] font-black tracking-wider text-primary">
+          <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-primary">
             STAFF
           </span>
         )}
-        <span className="text-[10px] text-muted-foreground/60">{formatTime(msg.created_at)}</span>
+        <span className="text-[10px] tv:text-xs text-muted-foreground/60">{formatTime(msg.created_at)}</span>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed break-words">{msg.message}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
     </div>
     {isAdmin && (
       <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-        <button onClick={() => onPin(msg.id)} className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
-          <Pin className="h-3 w-3" />
+        <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+          <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
-        <button onClick={() => onDelete(msg.id)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
-          <Trash2 className="h-3 w-3" />
+        <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+          <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
         {msg.token_id && onBlock && (
-          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
-            <ShieldBan className="h-3 w-3" />
+          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+            <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
           </button>
         )}
       </div>
@@ -179,7 +179,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
     setNewMessage("");
     setSending(false);
-    // Refocus input after send
     inputRef.current?.focus();
   }, [newMessage, username, tokenId, isAdmin]);
 
@@ -208,30 +207,30 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   return (
     <div className="flex h-full flex-col bg-card/50">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <span className="text-sm">💬</span>
+      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4">
+        <div className="flex items-center gap-2 tv:gap-3">
+          <div className="flex h-8 w-8 tv:h-12 tv:w-12 items-center justify-center rounded-lg bg-primary/10">
+            <span className="text-sm tv:text-xl">💬</span>
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground">Live Chat</h3>
+            <h3 className="text-sm font-bold text-foreground tv:text-lg">Live Chat</h3>
             {!isLive && (
-              <p className="text-[10px] text-warning">Stream offline · chat tetap aktif</p>
+              <p className="text-[10px] text-warning tv:text-xs">Stream offline · chat tetap aktif</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1">
-          <Users className="h-3 w-3 text-success" />
-          <span className="text-xs font-bold text-success">{onlineCount}</span>
+        <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 tv:px-4 tv:py-1.5">
+          <Users className="h-3 w-3 tv:h-4 tv:w-4 text-success" />
+          <span className="text-xs font-bold text-success tv:text-sm">{onlineCount}</span>
         </div>
       </div>
 
       {/* Pinned messages */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 space-y-1">
+        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2">
           {pinnedMessages.map((m) => (
-            <div key={m.id} className="flex items-start gap-2 text-xs">
-              <Pin className="mt-0.5 h-3 w-3 text-primary shrink-0" />
+            <div key={m.id} className="flex items-start gap-2 text-xs tv:text-sm">
+              <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />
               <div>
                 <span className="font-bold text-primary">{m.username}</span>
                 <span className="ml-1 text-foreground/80">{m.message}</span>
@@ -242,7 +241,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-0.5">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1">
         {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
@@ -256,29 +255,29 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         ))}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-3xl">💬</span>
-            <p className="mt-2 text-xs text-muted-foreground">Belum ada pesan. Mulai percakapan!</p>
+            <span className="text-3xl tv:text-5xl">💬</span>
+            <p className="mt-2 text-xs text-muted-foreground tv:text-base">Belum ada pesan. Mulai percakapan!</p>
           </div>
         )}
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3">
+      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3">
         <Input
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder={username ? "Ketik pesan..." : "Masukkan username dulu"}
           disabled={!username || sending}
-          className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background"
+          className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button
           type="submit"
           size="icon"
           disabled={!username || sending || !newMessage.trim()}
-          className="h-10 w-10 shrink-0 rounded-lg"
+          className="h-10 w-10 tv:h-12 tv:w-12 shrink-0 rounded-lg"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-4 w-4 tv:h-5 tv:w-5" />
         </Button>
       </form>
     </div>
