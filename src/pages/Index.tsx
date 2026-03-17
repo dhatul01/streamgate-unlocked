@@ -293,7 +293,12 @@ const Index = () => {
       {/* Descriptions Section */}
       {descriptions.length > 0 && (
         <section className="px-4 py-16 tv:py-24 tv:px-8">
-          <div className="mx-auto max-w-5xl tv:max-w-[1600px] grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className={`mx-auto grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3 ${
+            settings.landing_description_width === "narrow" ? "max-w-3xl" :
+            settings.landing_description_width === "wide" ? "max-w-7xl tv:max-w-[1800px]" :
+            settings.landing_description_width === "full" ? "max-w-full" :
+            "max-w-5xl tv:max-w-[1600px]"
+          }`}>
             {descriptions.map((desc, i) => (
               <motion.div
                 key={desc.id}
