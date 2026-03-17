@@ -19,7 +19,7 @@ interface Show {
   is_subscription: boolean;
   max_subscribers: number;
   subscription_benefits: string;
-  group_link: string;
+  group_link?: string;
   is_order_closed: boolean;
 }
 
@@ -35,7 +35,8 @@ const MembershipPage = () => {
   const [email, setEmail] = useState("");
 
   const fetchData = async () => {
-    const { data } = await supabase.from("shows").select("*").eq("is_active", true).eq("is_subscription", true).order("sort_order");
+    const { data: allShows } = await supabase.rpc("get_public_shows");
+    const data = (allShows || []).filter((s: any) => s.is_subscription);
     const subShows = (data as Show[]) || [];
     setShows(subShows);
     const counts: Record<string, number> = {};
@@ -310,12 +311,9 @@ const MembershipPage = () => {
                 <CheckCircle className="mx-auto h-12 w-12 text-success" />
                 <h4 className="text-lg font-bold text-foreground">Pendaftaran Berhasil!</h4>
                 <p className="text-sm text-muted-foreground">Admin akan mengkonfirmasi pembayaran Anda.</p>
-                {selectedShow.group_link && (
-                  <a href={selectedShow.group_link} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-primary-foreground transition hover:bg-success/90">
-                    🔗 Masuk ke Grup
-                  </a>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Link grup akan dikirimkan setelah pembayaran dikonfirmasi.
+                </p>
               </div>
             )}
 

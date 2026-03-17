@@ -27,7 +27,7 @@ interface Show {
   is_subscription: boolean;
   max_subscribers: number;
   subscription_benefits: string;
-  group_link: string;
+  group_link?: string;
   is_order_closed: boolean;
 }
 
@@ -70,7 +70,7 @@ const Index = () => {
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
-      supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
+      supabase.rpc("get_public_shows"),
       supabase.from("site_settings").select("*"),
       supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
     ]);
@@ -599,16 +599,9 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground tv:text-base">
                   Data dan bukti pembayaran Anda telah dikirim. Admin akan mengkonfirmasi pembayaran Anda.
                 </p>
-                {selectedShow.group_link && (
-                  <a
-                    href={selectedShow.group_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
-                  >
-                    🔗 Masuk ke Grup
-                  </a>
-                )}
+                <p className="text-xs text-muted-foreground tv:text-sm">
+                  Link grup akan dikirimkan setelah pembayaran dikonfirmasi.
+                </p>
               </div>
             )}
 
