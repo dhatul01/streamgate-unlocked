@@ -101,7 +101,6 @@ const LivePage = () => {
           status: result.status,
         });
 
-        // Fetch stream, playlists, and settings in parallel
         const [streamRes, playlistRes, settingsRes] = await Promise.all([
           supabase.from("streams").select("*").limit(1).single(),
           supabase.from("playlists").select("*").order("sort_order"),
@@ -149,7 +148,7 @@ const LivePage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [tokenCode, getFingerprint]);
 
-  // Realtime: streams (live status, title, description)
+  // Realtime: streams
   useEffect(() => {
     const channel = supabase
       .channel("stream-realtime")
@@ -158,7 +157,6 @@ const LivePage = () => {
         { event: "UPDATE", schema: "public", table: "streams" },
         (payload: any) => {
           setStream(payload.new);
-          // Auto-play when going live
           if (payload.new.is_live && !payload.old?.is_live) {
             setTimeout(() => {
               playerRef.current?.play();
@@ -189,7 +187,7 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [activePlaylist]);
 
-  // Realtime: site_settings (watermark + next_show_time)
+  // Realtime: site_settings
   useEffect(() => {
     const channel = supabase
       .channel("settings-realtime")
@@ -281,8 +279,8 @@ const LivePage = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 animate-float" />
-          <p className="text-muted-foreground">Memvalidasi akses...</p>
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float" />
+          <p className="text-muted-foreground tv:text-xl">Memvalidasi akses...</p>
         </div>
       </div>
     );
@@ -291,31 +289,31 @@ const LivePage = () => {
   if (blocked) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500 rounded-2xl border-2 border-destructive bg-card p-8 text-center shadow-2xl">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16" />
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 animate-pulse">
-            <span className="text-4xl">🚫</span>
+        <div className="w-full max-w-md tv:max-w-xl animate-in fade-in zoom-in-95 duration-500 rounded-2xl border-2 border-destructive bg-card p-8 tv:p-12 text-center shadow-2xl">
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24" />
+          <div className="mx-auto mb-4 flex h-20 w-20 tv:h-28 tv:w-28 items-center justify-center rounded-full bg-destructive/10 animate-pulse">
+            <span className="text-4xl tv:text-6xl">🚫</span>
           </div>
-          <h2 className="mb-1 text-2xl font-black text-destructive uppercase tracking-widest">
+          <h2 className="mb-1 text-2xl font-black text-destructive uppercase tracking-widest tv:text-4xl">
             AUTO BLOCK
           </h2>
-          <p className="mb-3 text-sm font-bold text-destructive/80 uppercase tracking-wide">
+          <p className="mb-3 text-sm font-bold text-destructive/80 uppercase tracking-wide tv:text-lg">
             Terdeteksi Restream
           </p>
-          <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-4">
-            <p className="text-sm font-semibold text-foreground leading-relaxed">
+          <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-4 tv:p-6">
+            <p className="text-sm font-semibold text-foreground leading-relaxed tv:text-base">
               DILARANG RESTREAM DISINI!
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground tv:text-sm">
               Token Anda telah diblokir secara otomatis karena terdeteksi melakukan pelanggaran restream. Konfirmasi pada admin RealTime48 untuk informasi lebih lanjut.
             </p>
           </div>
-          <p className="mb-6 text-[10px] text-muted-foreground font-mono">
+          <p className="mb-6 text-[10px] text-muted-foreground font-mono tv:text-xs">
             Token: {tokenData?.code || "N/A"}
           </p>
           <button
             onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
           >
             🏠 Ke Halaman Utama
           </button>
@@ -328,15 +326,15 @@ const LivePage = () => {
     if (error === "device_limit") {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
-          <div className="w-full max-w-md rounded-2xl border border-destructive/30 bg-card p-8 text-center">
-            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14" />
-            <h2 className="mb-2 text-xl font-bold text-destructive">Batas Perangkat Tercapai</h2>
-            <p className="mb-6 text-muted-foreground">
+          <div className="w-full max-w-md tv:max-w-xl rounded-2xl border border-destructive/30 bg-card p-8 tv:p-12 text-center">
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14 tv:h-20 tv:w-20" />
+            <h2 className="mb-2 text-xl font-bold text-destructive tv:text-3xl">Batas Perangkat Tercapai</h2>
+            <p className="mb-6 text-muted-foreground tv:text-lg">
               Token ini telah digunakan pada perangkat lain. Silahkan lakukan pembelian show untuk mendapatkan token baru.
             </p>
             <button
               onClick={() => navigate("/")}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
             >
               🏠 Ke Halaman Utama
             </button>
@@ -348,10 +346,10 @@ const LivePage = () => {
     if (error === "no_token") {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
-            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 animate-float" />
-            <h2 className="mb-2 text-xl font-bold text-foreground">Akses Streaming</h2>
-            <p className="mb-6 text-muted-foreground">
+          <div className="w-full max-w-md tv:max-w-xl rounded-2xl border border-border bg-card p-8 tv:p-12 text-center">
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float" />
+            <h2 className="mb-2 text-xl font-bold text-foreground tv:text-3xl">Akses Streaming</h2>
+            <p className="mb-6 text-muted-foreground tv:text-lg">
               {purchaseMessage || "Untuk mengakses streaming, silakan beli token terlebih dahulu."}
             </p>
             {whatsappNumber && (
@@ -359,13 +357,13 @@ const LivePage = () => {
                 href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Halo, saya ingin membeli token streaming")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-primary-foreground transition hover:bg-success/90"
+                className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
               >
                 💬 Hubungi WhatsApp
               </a>
             )}
             <div className="mt-4">
-              <a href="/" className="text-sm text-primary hover:underline">← Kembali ke halaman utama</a>
+              <a href="/" className="text-sm text-primary hover:underline tv:text-base">← Kembali ke halaman utama</a>
             </div>
           </div>
         </div>
@@ -374,12 +372,12 @@ const LivePage = () => {
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="rounded-xl border border-destructive/30 bg-card p-8 text-center">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-12 w-12" />
-          <h2 className="mb-2 text-xl font-bold text-destructive">Akses Ditolak</h2>
-          <p className="text-muted-foreground">{error}</p>
+        <div className="rounded-xl border border-destructive/30 bg-card p-8 tv:p-12 text-center">
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-12 w-12 tv:h-20 tv:w-20" />
+          <h2 className="mb-2 text-xl font-bold text-destructive tv:text-3xl">Akses Ditolak</h2>
+          <p className="text-muted-foreground tv:text-lg">{error}</p>
           <div className="mt-4">
-            <a href="/" className="text-sm text-primary hover:underline">← Kembali ke halaman utama</a>
+            <a href="/" className="text-sm text-primary hover:underline tv:text-base">← Kembali ke halaman utama</a>
           </div>
         </div>
       </div>
@@ -393,21 +391,21 @@ const LivePage = () => {
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <img src={logo} alt="RealTime48" className="h-8 w-8" />
+        <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
+          <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-14 tv:w-14" />
           <div className="flex-1">
-            <h1 className="text-sm font-bold text-foreground lg:text-base">
+            <h1 className="text-sm font-bold text-foreground lg:text-base tv:text-2xl">
               {stream?.title || "RealTime48"}
             </h1>
-            <p className="text-xs text-muted-foreground">{stream?.description}</p>
+            <p className="text-xs text-muted-foreground tv:text-base">{stream?.description}</p>
           </div>
           {isLive ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 text-xs font-semibold text-destructive">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
+            <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base">
+              <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
               LIVE
             </span>
           ) : (
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-3 py-1 tv:px-5 tv:py-2 text-xs font-medium text-muted-foreground tv:text-base">
               OFFLINE
             </span>
           )}
@@ -418,21 +416,21 @@ const LivePage = () => {
             <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
-              <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 opacity-30" />
+              <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
               {countdown ? (
                 <div className="text-center">
-                  <p className="text-sm font-medium text-muted-foreground">Show dimulai dalam</p>
-                  <p className="mt-2 font-mono text-4xl font-bold text-primary lg:text-5xl">{countdown}</p>
+                  <p className="text-sm font-medium text-muted-foreground tv:text-xl">Show dimulai dalam</p>
+                  <p className="mt-2 font-mono text-4xl font-bold text-primary lg:text-5xl tv:text-7xl">{countdown}</p>
                   {nextShowTime && (
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-muted-foreground tv:text-base">
                       {new Date(nextShowTime).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="text-center">
-                  <p className="font-mono text-2xl font-bold text-destructive lg:text-3xl tracking-widest">STREAMING OFFLINE</p>
-                  <p className="mt-2 text-sm text-muted-foreground">Tidak ada jadwal streaming saat ini</p>
+                  <p className="font-mono text-2xl font-bold text-destructive lg:text-3xl tv:text-5xl tracking-widest">STREAMING OFFLINE</p>
+                  <p className="mt-2 text-sm text-muted-foreground tv:text-xl">Tidak ada jadwal streaming saat ini</p>
                 </div>
               )}
             </div>
@@ -440,12 +438,12 @@ const LivePage = () => {
         </div>
 
         {isLive && playlists.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto border-t border-border px-4 py-2">
+          <div className="flex gap-2 tv:gap-3 overflow-x-auto border-t border-border px-4 py-2 tv:px-8 tv:py-4">
             {playlists.map((p) => (
               <button
                 key={p.id}
                 onClick={() => handlePlaylistSwitch(p)}
-                className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                className={`whitespace-nowrap rounded-lg tv:rounded-xl px-4 py-2 tv:px-6 tv:py-3 text-xs font-medium transition-all tv:text-base ${
                   activePlaylist?.id === p.id
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
@@ -458,15 +456,15 @@ const LivePage = () => {
         )}
 
         {/* Stream info below player */}
-        <div className="border-t border-border px-4 py-3">
-          <h2 className="text-sm font-bold text-foreground lg:text-base">{stream?.title || "RealTime48"}</h2>
+        <div className="border-t border-border px-4 py-3 tv:px-8 tv:py-5">
+          <h2 className="text-sm font-bold text-foreground lg:text-base tv:text-2xl">{stream?.title || "RealTime48"}</h2>
           {stream?.description && (
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed lg:text-sm">{stream.description}</p>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed lg:text-sm tv:text-base">{stream.description}</p>
           )}
         </div>
       </div>
 
-      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96">
+      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
         <LiveChat
           username={username}
           tokenId={tokenData?.id}

@@ -105,7 +105,6 @@ const Index = () => {
     const file = e.target.files?.[0];
     if (!file || !selectedShow) return;
 
-    // Client-side pre-validation
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       toast({ title: "Format file tidak didukung", description: "Hanya JPEG, PNG, dan WebP yang diizinkan.", variant: "destructive" });
@@ -128,7 +127,6 @@ const Index = () => {
 
       if (error) throw error;
       if (data?.path) {
-        // Store the file path (not public URL) as proof reference
         const storagePath = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`;
         setProofUrl(storagePath);
         if (selectedShow.is_subscription) {
@@ -166,26 +164,26 @@ const Index = () => {
 
   const menuItems = [
     ...(settings.whatsapp_channel ? [{
-      icon: <Radio className="h-5 w-5 text-primary" />,
+      icon: <Radio className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Saluran WhatsApp",
       description: "Ikuti saluran info terbaru",
       action: () => window.open(settings.whatsapp_channel, "_blank"),
     }] : []),
     ...(settings.whatsapp_number ? [{
-      icon: <Phone className="h-5 w-5 text-success" />,
+      icon: <Phone className="h-5 w-5 tv:h-7 tv:w-7 text-success" />,
       label: "Hubungi Admin",
       description: "Chat langsung via WhatsApp",
       action: () => window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo admin")}`, "_blank"),
     }] : []),
     {
-      icon: <CreditCard className="h-5 w-5 text-yellow-500" />,
+      icon: <CreditCard className="h-5 w-5 tv:h-7 tv:w-7 text-yellow-500" />,
       label: "Informasi Langganan",
       description: settings.subscription_info || "Info paket berlangganan",
       action: () => { document.getElementById("subscriptions")?.scrollIntoView({ behavior: "smooth" }); },
       expandable: !!settings.subscription_info,
     },
     {
-      icon: <Ticket className="h-5 w-5 text-primary" />,
+      icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Data Show",
       description: `${shows.length} show tersedia`,
       action: () => { document.getElementById("shows")?.scrollIntoView({ behavior: "smooth" }); },
@@ -196,34 +194,34 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="RealTime48" className="h-8 w-8" />
-            <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+        <div className="mx-auto flex max-w-6xl tv:max-w-[1600px] items-center justify-between px-4 py-3 tv:py-5 tv:px-8">
+          <div className="flex items-center gap-2 tv:gap-3">
+            <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12" />
+            <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
           <Sheet>
             <SheetTrigger asChild>
-              <button className="rounded-lg bg-secondary p-2 text-secondary-foreground transition hover:bg-secondary/80">
-                <Menu className="h-5 w-5" />
+              <button className="rounded-lg bg-secondary p-2 tv:p-3 text-secondary-foreground transition hover:bg-secondary/80">
+                <Menu className="h-5 w-5 tv:h-7 tv:w-7" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 border-border bg-card">
+            <SheetContent side="right" className="w-80 tv:w-[420px] border-border bg-card">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-foreground">
-                  <img src={logo} alt="" className="h-6 w-6" /> RealTime48
+                <SheetTitle className="flex items-center gap-2 text-foreground tv:text-xl">
+                  <img src={logo} alt="" className="h-6 w-6 tv:h-9 tv:w-9" /> RealTime48
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-6 space-y-2">
+              <div className="mt-6 space-y-2 tv:space-y-3">
                 {menuItems.map((item, i) => (
                   <button
                     key={i}
                     onClick={item.action}
-                    className="flex w-full items-start gap-3 rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/30 hover:bg-primary/5"
+                    className="flex w-full items-start gap-3 rounded-xl border border-border bg-background p-4 tv:p-5 text-left transition hover:border-primary/30 hover:bg-primary/5"
                   >
                     <div className="mt-0.5 shrink-0">{item.icon}</div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3">{item.description}</p>
+                      <p className="text-sm font-semibold text-foreground tv:text-base">{item.label}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3 tv:text-sm">{item.description}</p>
                     </div>
                   </button>
                 ))}
@@ -234,7 +232,7 @@ const Index = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden pt-16">
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden pt-16 tv:pt-24">
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="h-full w-full object-cover opacity-40" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background" />
@@ -245,7 +243,7 @@ const Index = () => {
           {Array.from({ length: 20 }).map((_, i) => (
             <motion.div
               key={i}
-              className="absolute h-1 w-1 rounded-full bg-primary/40"
+              className="absolute h-1 w-1 tv:h-2 tv:w-2 rounded-full bg-primary/40"
               style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
               animate={{ y: [0, -30, 0], opacity: [0.2, 0.8, 0.2] }}
               transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, delay: Math.random() * 3 }}
@@ -255,16 +253,16 @@ const Index = () => {
 
         <div className="relative z-10 text-center px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 animate-float" />
+            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 tv:h-40 tv:w-40 animate-float" />
           </motion.div>
           <motion.h1
-            className="mb-3 text-4xl font-extrabold tracking-tight text-foreground md:text-6xl"
+            className="mb-3 text-4xl font-extrabold tracking-tight text-foreground md:text-6xl tv:text-8xl"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
           >
             Real<span className="text-primary">Time48</span>
           </motion.h1>
           <motion.p
-            className="mx-auto mb-8 max-w-md text-muted-foreground md:text-lg"
+            className="mx-auto mb-8 max-w-md text-muted-foreground md:text-lg tv:text-2xl tv:max-w-2xl"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4 }}
           >
             {settings.site_title}
@@ -272,9 +270,9 @@ const Index = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.6 }}>
             <a
               href="#shows"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 tv:px-12 tv:py-5 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-xl"
             >
-              <Ticket className="h-5 w-5" /> Lihat Show
+              <Ticket className="h-5 w-5 tv:h-7 tv:w-7" /> Lihat Show
             </a>
           </motion.div>
         </div>
@@ -282,8 +280,8 @@ const Index = () => {
 
       {/* Descriptions Section */}
       {descriptions.length > 0 && (
-        <section className="px-4 py-16">
-          <div className="mx-auto max-w-5xl grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <section className="px-4 py-16 tv:py-24 tv:px-8">
+          <div className="mx-auto max-w-5xl tv:max-w-[1600px] grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
             {descriptions.map((desc, i) => (
               <motion.div
                 key={desc.id}
@@ -291,11 +289,11 @@ const Index = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="rounded-2xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                className="rounded-2xl border border-border bg-card p-6 tv:p-10 text-center transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
               >
-                <span className="mb-3 inline-block text-3xl">{desc.icon}</span>
-                <h3 className="mb-2 text-lg font-bold text-foreground">{desc.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{desc.content}</p>
+                <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
+                <h3 className="mb-2 text-lg font-bold text-foreground tv:text-2xl">{desc.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed tv:text-lg">{desc.content}</p>
               </motion.div>
             ))}
           </div>
@@ -304,15 +302,15 @@ const Index = () => {
 
       {/* Subscription Card Section */}
       {subscriptionShows.length > 0 && (
-        <section id="subscriptions" className="px-4 py-8">
-          <div className="mx-auto max-w-6xl">
+        <section id="subscriptions" className="px-4 py-8 tv:py-16 tv:px-8">
+          <div className="mx-auto max-w-6xl tv:max-w-[1600px]">
             <motion.h2
-              className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl"
+              className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl tv:text-5xl tv:mb-12"
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             >
-              <Crown className="mr-2 inline h-8 w-8 text-yellow-500" /> Paket Langganan
+              <Crown className="mr-2 inline h-8 w-8 tv:h-12 tv:w-12 text-yellow-500" /> Paket Langganan
             </motion.h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
               {subscriptionShows.map((show, i) => {
                 const confirmed = subscriberCounts[show.id] || 0;
                 const spotsLeft = show.max_subscribers > 0 ? show.max_subscribers - confirmed : null;
@@ -324,50 +322,50 @@ const Index = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.15 }}
-                    className={`group relative overflow-hidden rounded-2xl border-2 transition-all ${
+                    className={`group relative overflow-hidden rounded-2xl tv:rounded-3xl border-2 transition-all ${
                       isFull
                         ? "border-muted bg-muted/30 opacity-75"
                         : "border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
                     }`}
                   >
-                    <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
+                    <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black tv:text-sm tv:px-4 tv:py-1.5 ${
                       isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
                     }`}>
-                      <Sparkles className="h-3 w-3" /> {isFull ? "LANGGANAN PENUH" : "LANGGANAN"}
+                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {isFull ? "LANGGANAN PENUH" : "LANGGANAN"}
                     </div>
 
-                    <div className="relative h-48 overflow-hidden">
+                    <div className="relative h-48 tv:h-72 overflow-hidden">
                       {show.background_image_url ? (
                         <img src={show.background_image_url} alt={show.title}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       ) : (
                         <div className="flex h-full items-center justify-center bg-gradient-to-br from-yellow-500/20 to-primary/10">
-                          <Crown className="h-16 w-16 text-yellow-500/30" />
+                          <Crown className="h-16 w-16 tv:h-24 tv:w-24 text-yellow-500/30" />
                         </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                      <div className="absolute bottom-3 left-4 right-4">
-                        <h3 className="text-xl font-bold text-foreground">{show.title}</h3>
+                      <div className="absolute bottom-3 left-4 right-4 tv:bottom-5 tv:left-6">
+                        <h3 className="text-xl font-bold text-foreground tv:text-3xl">{show.title}</h3>
                       </div>
                     </div>
 
-                    <div className="space-y-3 p-4">
+                    <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="rounded-full bg-yellow-500/15 px-3 py-1 text-sm font-bold text-yellow-500">
+                        <span className="rounded-full bg-yellow-500/15 px-3 py-1 text-sm font-bold text-yellow-500 tv:text-lg tv:px-4 tv:py-1.5">
                           {show.price}
                         </span>
                         {spotsLeft !== null && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground tv:text-sm">
                             {confirmed}/{show.max_subscribers} terdaftar
                           </span>
                         )}
                       </div>
 
                       {show.subscription_benefits && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 tv:space-y-2">
                           {show.subscription_benefits.split("\n").filter(Boolean).map((b, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                              <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-yellow-500" />
+                            <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
+                              <CheckCircle className="mt-0.5 h-3.5 w-3.5 tv:h-5 tv:w-5 shrink-0 text-yellow-500" />
                               <span>{b}</span>
                             </div>
                           ))}
@@ -375,14 +373,14 @@ const Index = () => {
                       )}
 
                       {show.schedule_date && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4 text-yellow-500" />{show.schedule_date}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
+                          <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-yellow-500" />{show.schedule_date}
                         </div>
                       )}
 
                       {show.lineup && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <Users className="mt-0.5 h-4 w-4 text-yellow-500" />
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
+                          <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-yellow-500" />
                           <span className="line-clamp-2">{show.lineup}</span>
                         </div>
                       )}
@@ -390,13 +388,13 @@ const Index = () => {
                       <button
                         onClick={() => handleBuy(show)}
                         disabled={isFull}
-                        className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 font-bold transition-all ${
+                        className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-bold transition-all tv:text-lg tv:rounded-2xl ${
                           isFull
                             ? "bg-muted text-muted-foreground cursor-not-allowed"
                             : "bg-gradient-to-r from-yellow-500 to-yellow-600 text-background hover:shadow-lg hover:shadow-yellow-500/25"
                         }`}
                       >
-                        <Star className="h-4 w-4" />
+                        <Star className="h-4 w-4 tv:h-6 tv:w-6" />
                         {isFull ? "🔒 Langganan Penuh" : "Berlangganan"}
                       </button>
                     </div>
@@ -409,32 +407,32 @@ const Index = () => {
       )}
 
       {/* Regular Shows Section */}
-      <section id="shows" className="px-4 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
+      <section id="shows" className="px-4 py-16 md:py-24 tv:py-32 tv:px-8">
+        <div className="mx-auto max-w-6xl tv:max-w-[1600px]">
           <motion.h2
-            className="mb-12 text-center text-3xl font-bold text-foreground md:text-4xl"
+            className="mb-12 text-center text-3xl font-bold text-foreground md:text-4xl tv:text-5xl tv:mb-16"
             initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           >
             🎭 Jadwal Show
           </motion.h2>
 
           {regularShows.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-12 text-center">
-              <MessageCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium text-foreground">Belum ada show tersedia</p>
-              <p className="mt-2 text-muted-foreground">{settings.purchase_message}</p>
+            <div className="rounded-2xl border border-border bg-card p-12 tv:p-20 text-center">
+              <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />
+              <p className="text-lg font-medium text-foreground tv:text-2xl">Belum ada show tersedia</p>
+              <p className="mt-2 text-muted-foreground tv:text-lg">{settings.purchase_message}</p>
               {settings.whatsapp_number && (
                 <a
                   href={`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo, saya ingin bertanya tentang streaming")}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-primary-foreground transition hover:bg-success/90"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
                 >
-                  <MessageCircle className="h-4 w-4" /> Hubungi WhatsApp
+                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Hubungi WhatsApp
                 </a>
               )}
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
               {regularShows.map((show, i) => (
                 <motion.div
                   key={show.id}
@@ -442,46 +440,46 @@ const Index = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
+                  className="group relative overflow-hidden rounded-2xl tv:rounded-3xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
                 >
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-48 tv:h-72 overflow-hidden">
                     {show.background_image_url ? (
                       <img src={show.background_image_url} alt={show.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-accent/10">
-                        <Ticket className="h-16 w-16 text-primary/30" />
+                        <Ticket className="h-16 w-16 tv:h-24 tv:w-24 text-primary/30" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                    <div className="absolute bottom-3 left-4 right-4">
-                      <h3 className="text-xl font-bold text-foreground">{show.title}</h3>
+                    <div className="absolute bottom-3 left-4 right-4 tv:bottom-5 tv:left-6">
+                      <h3 className="text-xl font-bold text-foreground tv:text-3xl">{show.title}</h3>
                     </div>
                   </div>
 
-                  <div className="space-y-3 p-4">
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">{show.price}</span>
+                  <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
                     {show.schedule_date && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4 text-primary" />{show.schedule_date}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
+                        <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_date}
                       </div>
                     )}
                     {show.schedule_time && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 text-primary" />{show.schedule_time}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
+                        <Clock className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_time}
                       </div>
                     )}
                     {show.lineup && (
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <Users className="mt-0.5 h-4 w-4 text-primary" />
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
+                        <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
                         <span className="line-clamp-2">{show.lineup}</span>
                       </div>
                     )}
                     <button
                       onClick={() => handleBuy(show)}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
                     >
-                      <MessageCircle className="h-4 w-4" /> Beli Tiket
+                      <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
                     </button>
                   </div>
                 </motion.div>
@@ -492,12 +490,12 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border px-4 py-8 text-center">
-        <div className="flex items-center justify-center gap-2">
-          <img src={logo} alt="RealTime48" className="h-6 w-6" />
-          <span className="text-sm font-semibold text-foreground">Real<span className="text-primary">Time48</span></span>
+      <footer className="border-t border-border px-4 py-8 tv:py-12 text-center">
+        <div className="flex items-center justify-center gap-2 tv:gap-3">
+          <img src={logo} alt="RealTime48" className="h-6 w-6 tv:h-10 tv:w-10" />
+          <span className="text-sm font-semibold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Secure Streaming Platform</p>
+        <p className="mt-2 text-xs text-muted-foreground tv:text-base">Secure Streaming Platform</p>
       </footer>
 
       {/* Purchase Modal */}
@@ -506,49 +504,49 @@ const Index = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6"
+            className="w-full max-w-md tv:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 tv:p-10"
           >
-            <h3 className="mb-1 text-lg font-bold text-foreground">{selectedShow.title}</h3>
-            <p className="mb-4 text-sm text-muted-foreground">{selectedShow.price}</p>
+            <h3 className="mb-1 text-lg font-bold text-foreground tv:text-2xl">{selectedShow.title}</h3>
+            <p className="mb-4 text-sm text-muted-foreground tv:text-base">{selectedShow.price}</p>
 
             {purchaseStep === "qris" && (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-4 tv:space-y-6">
+                <p className="text-sm text-muted-foreground tv:text-base">
                   Silakan scan QRIS di bawah untuk melakukan pembayaran:
                 </p>
                 {selectedShow.qris_image_url ? (
-                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto max-h-64 rounded-lg" />
+                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto max-h-64 tv:max-h-96 rounded-lg" />
                 ) : (
-                  <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground tv:text-base tv:p-12">
                     QRIS belum tersedia
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-muted-foreground text-center tv:text-sm">
                   Setelah melakukan pembayaran, upload bukti transfer:
                 </p>
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10">
-                  <Upload className="h-4 w-4" />
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 tv:py-6 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10 tv:text-base">
+                  <Upload className="h-4 w-4 tv:h-6 tv:w-6" />
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
                   <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
                 </label>
                 {proofUrl && !selectedShow.is_subscription && (
-                  <div className="space-y-4 rounded-xl border border-success/30 bg-success/5 p-4">
+                  <div className="space-y-4 rounded-xl border border-success/30 bg-success/5 p-4 tv:p-6">
                     <div className="flex items-center gap-2 text-success">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="font-semibold">Bukti Berhasil Diupload! 🎉</span>
+                      <CheckCircle className="h-5 w-5 tv:h-7 tv:w-7" />
+                      <span className="font-semibold tv:text-lg">Bukti Berhasil Diupload! 🎉</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground tv:text-base">
                       Terima kasih telah melakukan pembayaran untuk <strong className="text-foreground">{selectedShow.title}</strong>. 
                       Silakan kirim bukti pembayaran ke admin untuk konfirmasi dan mendapatkan token akses streaming Anda.
                     </p>
-                    <div className="rounded-lg bg-card p-3 text-xs text-muted-foreground">
+                    <div className="rounded-lg bg-card p-3 text-xs text-muted-foreground tv:text-sm tv:p-4">
                       <p className="mb-1 font-medium text-foreground">📋 Detail Pesanan:</p>
                       <p>🎭 Show: {selectedShow.title}</p>
                       <p>💰 Harga: {selectedShow.price}</p>
                       {selectedShow.schedule_date && <p>📅 Jadwal: {selectedShow.schedule_date} {selectedShow.schedule_time}</p>}
                     </div>
-                    <Button onClick={handleConfirmRegular} className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground">
-                      <MessageCircle className="h-4 w-4" /> Kirim Bukti ke Admin via WhatsApp
+                    <Button onClick={handleConfirmRegular} className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg">
+                      <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Bukti ke Admin via WhatsApp
                     </Button>
                   </div>
                 )}
@@ -556,29 +554,29 @@ const Index = () => {
             )}
 
             {purchaseStep === "info" && selectedShow.is_subscription && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-success">
-                  <CheckCircle className="h-4 w-4" /> Bukti pembayaran berhasil diupload
+              <div className="space-y-4 tv:space-y-6">
+                <div className="flex items-center gap-2 text-sm text-success tv:text-base">
+                  <CheckCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Bukti pembayaran berhasil diupload
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background" />
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground tv:text-sm">Nomor HP</label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background tv:h-12 tv:text-base" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background" />
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground tv:text-sm">Email</label>
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background tv:h-12 tv:text-base" />
                 </div>
-                <Button onClick={handleSubmitSubscription} disabled={!phone || !email} className="w-full">
+                <Button onClick={handleSubmitSubscription} disabled={!phone || !email} className="w-full tv:py-6 tv:text-lg">
                   Kirim Data Langganan
                 </Button>
               </div>
             )}
 
             {purchaseStep === "done" && selectedShow.is_subscription && (
-              <div className="space-y-4 text-center">
-                <CheckCircle className="mx-auto h-12 w-12 text-success" />
-                <h4 className="text-lg font-bold text-foreground">Pendaftaran Berhasil!</h4>
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-4 tv:space-y-6 text-center">
+                <CheckCircle className="mx-auto h-12 w-12 tv:h-16 tv:w-16 text-success" />
+                <h4 className="text-lg font-bold text-foreground tv:text-2xl">Pendaftaran Berhasil!</h4>
+                <p className="text-sm text-muted-foreground tv:text-base">
                   Data dan bukti pembayaran Anda telah dikirim. Admin akan mengkonfirmasi pembayaran Anda.
                 </p>
                 {selectedShow.group_link && (
@@ -586,7 +584,7 @@ const Index = () => {
                     href={selectedShow.group_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-primary-foreground transition hover:bg-success/90"
+                    className="inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
                   >
                     🔗 Masuk ke Grup
                   </a>
@@ -596,7 +594,7 @@ const Index = () => {
 
             <button
               onClick={() => setSelectedShow(null)}
-              className="mt-4 w-full rounded-xl bg-secondary py-3 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80"
+              className="mt-4 w-full rounded-xl bg-secondary py-3 tv:py-4 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80 tv:text-base"
             >
               Tutup
             </button>
