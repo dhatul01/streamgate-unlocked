@@ -254,6 +254,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       setPlayerPlaying(false);
       setQualities([]);
       setCurrentQuality(-1);
+      setYtQualities([]);
+      setCurrentYtQuality("auto");
 
       return () => {
         if (hlsRef.current) {
