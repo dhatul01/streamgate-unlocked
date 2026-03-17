@@ -292,6 +292,8 @@ const LivePage = () => {
         (payload: any) => {
           if (payload.new.status === "blocked") {
             setBlocked(true);
+          } else if (payload.new.status === "active") {
+            setBlocked(false);
           }
         }
       )
