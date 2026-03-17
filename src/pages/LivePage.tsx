@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
@@ -37,6 +37,30 @@ const LivePage = () => {
     }
     return fp;
   }, []);
+
+  const syncStreamState = useCallback((nextStream: any) => {
+    setStream((prev: any) => {
+      if (prev?.updated_at === nextStream?.updated_at && prev?.is_live === nextStream?.is_live) {
+        return prev;
+      }
+      return nextStream;
+    });
+  }, []);
+
+  const syncPlaylistsState = useCallback((nextPlaylists: any[]) => {
+    setPlaylists(nextPlaylists || []);
+    setActivePlaylist((prev: any) => {
+      if (!nextPlaylists?.length) return null;
+      if (!prev) return nextPlaylists[0];
+      const matched = nextPlaylists.find((playlist) => playlist.id === prev.id);
+      return matched || nextPlaylists[0];
+    });
+  }, []);
+
+  const playerKey = useMemo(() => {
+    if (!stream?.is_live || !activePlaylist) return "offline";
+    return `${stream.id}-${stream.updated_at}-${activePlaylist.id}-${activePlaylist.type}-${activePlaylist.url}`;
+  }, [stream?.id, stream?.is_live, stream?.updated_at, activePlaylist]);
 
   // Validate token via secure RPC
   useEffect(() => {
@@ -109,11 +133,10 @@ const LivePage = () => {
           supabase.from("site_settings").select("*"),
         ]);
 
-        setStream(streamRes.data);
-        setPlaylists(playlistRes.data || []);
-        if (playlistRes.data && playlistRes.data.length > 0) {
-          setActivePlaylist(playlistRes.data[0]);
+        if (streamRes.data) {
+          syncStreamState(streamRes.data);
         }
+        syncPlaylistsState(playlistRes.data || []);
 
         if (settingsRes.data) {
           settingsRes.data.forEach((s: any) => {
@@ -151,44 +174,71 @@ const LivePage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [tokenCode, getFingerprint]);
 
-  // Realtime: streams
+  // Realtime + polling fallback: streams
   useEffect(() => {
+    let isMounted = true;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let pollDelay = 2000;
+
+    const fetchLatestStream = async () => {
+      const { data } = await supabase.from("streams").select("*").limit(1).single();
+      if (isMounted && data) {
+        syncStreamState(data);
+      }
+    };
+
+    const schedulePoll = () => {
+      if (!isMounted) return;
+      pollTimeout = setTimeout(async () => {
+        await fetchLatestStream();
+        pollDelay = Math.min(pollDelay * 1.5, 10000);
+        schedulePoll();
+      }, pollDelay);
+    };
+
     const channel = supabase
       .channel("stream-realtime")
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "streams" },
+        { event: "*", schema: "public", table: "streams" },
         (payload: any) => {
-          setStream(payload.new);
-          if (payload.new.is_live && !payload.old?.is_live) {
-            setTimeout(() => {
-              playerRef.current?.play();
-            }, 500);
-          }
+          if (!payload.new) return;
+          syncStreamState(payload.new);
+          pollDelay = 2000;
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+
+    fetchLatestStream();
+    schedulePoll();
+
+    return () => {
+      isMounted = false;
+      if (pollTimeout) clearTimeout(pollTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [syncStreamState]);
 
   // Realtime: playlists
   useEffect(() => {
+    const fetchLatestPlaylists = async () => {
+      const { data } = await supabase.from("playlists").select("*").order("sort_order");
+      syncPlaylistsState(data || []);
+    };
+
     const channel = supabase
       .channel("playlist-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "playlists" },
         async () => {
-          const { data } = await supabase.from("playlists").select("*").order("sort_order");
-          setPlaylists(data || []);
-          if (data && data.length > 0 && !activePlaylist) {
-            setActivePlaylist(data[0]);
-          }
+          await fetchLatestPlaylists();
         }
       )
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
-  }, [activePlaylist]);
+  }, [syncPlaylistsState]);
 
   // Realtime: site_settings
   useEffect(() => {
@@ -254,6 +304,15 @@ const LivePage = () => {
     return () => clearInterval(interval);
   }, [nextShowTime, stream?.is_live]);
 
+  // Keep player synced when live status or playlist changes
+  useEffect(() => {
+    if (!stream?.is_live || !activePlaylist) return;
+    const timer = setTimeout(() => {
+      playerRef.current?.play();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [stream?.is_live, activePlaylist, playerKey]);
+
   // Disable right-click on player
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -266,11 +325,11 @@ const LivePage = () => {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
-  const handlePlaylistSwitch = (p: any) => {
+  const handlePlaylistSwitch = (playlist: any) => {
     if (playerRef.current) {
       playerRef.current.pause();
     }
-    setActivePlaylist(p);
+    setActivePlaylist(playlist);
   };
 
   const handleUsernameSet = (name: string) => {
@@ -418,7 +477,7 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist ? (
-            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
+            <VideoPlayer key={playerKey} ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
