@@ -524,7 +524,7 @@ const LivePage = () => {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="w-full max-w-md tv:max-w-xl rounded-2xl border border-border bg-card p-8 tv:p-12 text-center">
-            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float" />
+            <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float rounded-full border-2 border-primary/50 shadow-[0_0_16px_hsl(var(--primary)/0.4)]" />
             <h2 className="mb-2 text-xl font-bold text-foreground tv:text-3xl">Akses Streaming</h2>
             <p className="mb-6 text-muted-foreground tv:text-lg">
               {purchaseMessage || "Untuk mengakses streaming, silakan beli token terlebih dahulu."}
