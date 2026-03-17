@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 
-export type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "lightning" | "aurora";
+export type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
 export const ANIMATION_OPTIONS: { value: AnimationType; label: string; emoji: string }[] = [
   { value: "none", label: "Tidak Ada", emoji: "🚫" },
@@ -15,8 +15,8 @@ export const ANIMATION_OPTIONS: { value: AnimationType; label: string; emoji: st
   { value: "trees", label: "Pohon Berhembus", emoji: "🌳" },
   { value: "hearts", label: "Hati Beterbangan", emoji: "💖" },
   { value: "sakura", label: "Bunga Sakura", emoji: "🌸" },
-  { value: "lightning", label: "Petir & Kilat", emoji: "⚡" },
-  { value: "aurora", label: "Aurora Borealis", emoji: "🌌" },
+  { value: "sparkle", label: "Kilauan Bintang", emoji: "💎" },
+  { value: "balloons", label: "Balon Terbang", emoji: "🎈" },
 ];
 
 interface Particle {
