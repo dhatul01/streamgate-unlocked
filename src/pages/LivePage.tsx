@@ -129,7 +129,7 @@ const LivePage = () => {
 
         const [streamRes, playlistRes, settingsRes] = await Promise.all([
           supabase.from("streams").select("*").limit(1).single(),
-          supabase.from("playlists").select("*").order("sort_order"),
+          supabase.rpc("get_playlists_for_token", { _token_code: tokenCode }),
           supabase.from("site_settings").select("*"),
         ]);
 
