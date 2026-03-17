@@ -454,7 +454,7 @@ const LivePage = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
-      <PlayerAnimations type={playerAnimation} />
+      <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
 
       <div className="flex flex-1 flex-col">
