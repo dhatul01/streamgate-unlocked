@@ -175,10 +175,17 @@ const LivePage = () => {
     const handleBeforeUnload = () => {
       const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/release_token_session`;
       const body = JSON.stringify({ _token_code: tokenCode, _fingerprint: fingerprint });
-      navigator.sendBeacon(
-        url,
-        new Blob([body], { type: "application/json" })
-      );
+      // sendBeacon doesn't support custom headers, so we use fetch keepalive instead
+      // This ensures the apikey header is sent and Supabase accepts the request
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body,
+        keepalive: true,
+      }).catch(() => {});
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);

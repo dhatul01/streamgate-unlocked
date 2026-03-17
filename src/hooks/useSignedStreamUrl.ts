@@ -35,7 +35,6 @@ export function useSignedStreamUrl(
       setLoading(true);
       setError(null);
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const response = await supabase.functions.invoke("stream-proxy", {
         method: "POST",
         body: {
