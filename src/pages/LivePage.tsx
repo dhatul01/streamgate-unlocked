@@ -400,7 +400,7 @@ const LivePage = () => {
           </p>
           <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 mb-4 tv:p-6">
             <p className="text-sm font-semibold text-foreground leading-relaxed tv:text-base">
-              DILARANG RESTREAM DISINI!
+              DILARANG RESTREAM YA, KAN DIBLOKIR TUHHH!!!
             </p>
             <p className="mt-2 text-xs text-muted-foreground tv:text-sm">
               Token Anda telah diblokir secara otomatis karena terdeteksi melakukan pelanggaran restream. Konfirmasi pada admin RealTime48 untuk informasi lebih lanjut.
