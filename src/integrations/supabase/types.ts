@@ -491,6 +491,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      moderator_create_token: {
+        Args: {
+          _code: string
+          _duration_type: string
+          _expires_at: string
+          _max_devices: number
+        }
+        Returns: Json
+      }
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: undefined
