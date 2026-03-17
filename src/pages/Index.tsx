@@ -630,16 +630,6 @@ const Index = () => {
           </motion.div>
         </div>
       )}
-
-            <button
-              onClick={() => setSelectedShow(null)}
-              className="mt-4 w-full rounded-xl bg-secondary py-3 tv:py-4 text-sm font-medium text-secondary-foreground transition hover:bg-secondary/80 tv:text-base"
-            >
-              Tutup
-            </button>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };
