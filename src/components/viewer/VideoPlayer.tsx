@@ -425,8 +425,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   }
                 } catch {}
 
-                if (autoPlay) {
-                  e.target.playVideo();
+                const pendingAction = ytPendingActionRef.current;
+                if (pendingAction === "pause") {
+                  e.target.pauseVideo?.();
+                  ytPendingActionRef.current = null;
+                  return;
+                }
+
+                if (pendingAction === "play" || autoPlay) {
+                  e.target.playVideo?.();
+                  ytPendingActionRef.current = null;
                 }
               },
               onStateChange: (e: any) => {
