@@ -33,6 +33,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<any>(null);
     const ytPlayerRef = useRef<any>(null);
+    const ytReadyRef = useRef(false);
     const ytContainerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cloudflareIframeRef = useRef<HTMLIFrameElement>(null);
