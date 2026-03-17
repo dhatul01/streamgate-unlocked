@@ -25,7 +25,7 @@ interface Order {
 
 const SubscriptionOrderManager = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [shows, setShows] = useState<Record<string, string>>({});
+  const [shows, setShows] = useState<Record<string, { title: string; group_link: string }>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "rejected">("pending");
   const [waMessages, setWaMessages] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
