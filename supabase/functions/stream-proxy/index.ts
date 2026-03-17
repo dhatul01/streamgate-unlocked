@@ -221,7 +221,9 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { token_code, playlist_id } = body;
 
-      if (token_code && !edgeRateLimit(`gen:${token_code}`, 10, 60000)) {
+      // Rate limit per IP (not per token_code!) to avoid blocking shared public tokens
+      const genClientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      if (token_code && !edgeRateLimit(`gen:${genClientIp}`, 15, 60000)) {
         return getRateLimitResponse();
       }
 

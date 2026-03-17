@@ -279,12 +279,13 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: token block & delete detection + polling fallback
+   // Realtime: token block & delete detection + polling fallback
+  // Use longer interval (60s) since realtime handles instant updates
+  // This prevents overwhelming the DB with 1000+ concurrent users
   useEffect(() => {
     if (!tokenData?.id) return;
     let isMounted = true;
 
-    // Polling fallback every 10s to check token still exists and is not blocked
     const pollInterval = setInterval(async () => {
       if (!isMounted) return;
       const { data, error: err } = await supabase.rpc("validate_token", { _code: tokenCode });
@@ -297,10 +298,9 @@ const LivePage = () => {
           setDeleted(true);
         }
       } else {
-        // Token is valid again (e.g. unblocked by admin)
         setBlocked(false);
       }
-    }, 10000);
+    }, 60000); // 60s instead of 10s — realtime handles instant updates
 
     const channel = supabase
       .channel("token-block-realtime")
