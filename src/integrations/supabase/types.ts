@@ -262,6 +262,24 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          key: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          key: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          key?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       session_resets: {
         Row: {
           fingerprint: string
@@ -517,6 +535,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: { _key: string; _max_requests: number; _window_seconds: number }
+        Returns: boolean
+      }
+      cleanup_rate_limits: { Args: never; Returns: undefined }
       create_token_session: {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
