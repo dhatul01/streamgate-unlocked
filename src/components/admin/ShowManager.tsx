@@ -232,6 +232,26 @@ const ShowManager = () => {
               </div>
             )}
 
+            {/* Category selector */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Kategori Show</label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORY_OPTIONS.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => { const u = { ...editing, category: cat.value }; setEditing(u); updateShow(u); }}
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                      (editing.category || "regular") === cat.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>
               <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" />
