@@ -34,6 +34,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const hlsRef = useRef<any>(null);
     const ytPlayerRef = useRef<any>(null);
     const ytReadyRef = useRef(false);
+    const ytPendingActionRef = useRef<"play" | "pause" | null>(null);
     const ytContainerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cloudflareIframeRef = useRef<HTMLIFrameElement>(null);
@@ -75,14 +76,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
     const playYoutube = useCallback(async () => {
       const player = ytPlayerRef.current;
-      if (!ytReadyRef.current || !player?.playVideo) return;
+      ytPendingActionRef.current = "play";
+      if (!player?.playVideo) return;
       setPlayerLoading(true);
-      player.playVideo();
+      try {
+        const state = player.getPlayerState?.();
+        if (state === 0 && player.seekTo) {
+          player.seekTo(0, true);
+        }
+        player.playVideo();
+      } catch {}
     }, [setPlayerLoading]);
 
     const pauseYoutube = useCallback(() => {
-      if (!ytReadyRef.current) return;
-      ytPlayerRef.current?.pauseVideo?.();
+      const player = ytPlayerRef.current;
+      ytPendingActionRef.current = "pause";
+      try {
+        player?.pauseVideo?.();
+      } catch {}
     }, []);
 
     const playCloudflare = useCallback(async () => {
@@ -133,28 +144,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, pauseYoutube, pauseCloudflare, pauseNative]);
 
     const togglePlay = useCallback(() => {
-      // For YouTube: directly query the YT player API (avoids stale React state)
       if (playlist.type === "youtube") {
         const player = ytPlayerRef.current;
-        if (!ytReadyRef.current || !player?.getPlayerState) {
-          console.warn("[VideoPlayer] YT player not ready yet");
+
+        if (!player) {
+          ytPendingActionRef.current = isPlaying ? "pause" : "play";
           return;
         }
-        const state = player.getPlayerState();
-        // YT states: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-        if (state === 1 || state === 3) {
-          player.pauseVideo();
-        } else {
-          // For ended videos (state=0), replay from start
-          if (state === 0) {
-            player.seekTo(0, true);
+
+        try {
+          const state = player.getPlayerState?.();
+          const shouldPause = state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING;
+
+          if (shouldPause) {
+            pauseYoutube();
+          } else {
+            void playYoutube();
           }
-          player.playVideo();
+        } catch {
+          if (isPlaying) {
+            pauseYoutube();
+          } else {
+            void playYoutube();
+          }
         }
         return;
       }
 
-      // For Cloudflare: query actual player state
       if (playlist.type === "cloudflare") {
         const player = cloudflarePlayerRef.current;
         if (!player) return;
@@ -166,7 +182,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         return;
       }
 
-      // For native/HLS: query actual video element state
       const video = videoRef.current;
       if (!video) return;
       if (video.paused || video.ended) {
@@ -175,7 +190,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       } else {
         video.pause();
       }
-    }, [playlist.type, seekNativeToLiveEdge]);
+    }, [playlist.type, isPlaying, pauseYoutube, playYoutube, seekNativeToLiveEdge]);
 
     useImperativeHandle(ref, () => ({
       play: () => {
@@ -231,6 +246,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         }
         ytPlayerRef.current = null;
         ytReadyRef.current = false;
+        ytPendingActionRef.current = null;
 
         if (cloudflareCleanupRef.current) {
           cloudflareCleanupRef.current();
@@ -409,14 +425,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   }
                 } catch {}
 
-                if (autoPlay) {
-                  e.target.playVideo();
+                const pendingAction = ytPendingActionRef.current;
+                if (pendingAction === "pause") {
+                  e.target.pauseVideo?.();
+                  ytPendingActionRef.current = null;
+                  return;
+                }
+
+                if (pendingAction === "play" || autoPlay) {
+                  e.target.playVideo?.();
+                  ytPendingActionRef.current = null;
                 }
               },
               onStateChange: (e: any) => {
                 if (destroyed) return;
 
                 if (e.data === YT_STATE_PLAYING) {
+                  ytPendingActionRef.current = null;
                   setPlayerLoading(false);
                   setPlayerPlaying(true);
                   return;
@@ -427,7 +452,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   return;
                 }
 
-                if (e.data === YT_STATE_PAUSED || e.data === 0 || e.data === 5 || e.data === -1) {
+                if (e.data === YT_STATE_PAUSED) {
+                  ytPendingActionRef.current = null;
+                  setPlayerLoading(false);
+                  setPlayerPlaying(false);
+                  return;
+                }
+
+                if (e.data === 0 || e.data === 5 || e.data === -1) {
                   setPlayerLoading(false);
                   setPlayerPlaying(false);
                 }
