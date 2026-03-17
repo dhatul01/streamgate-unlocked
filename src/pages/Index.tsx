@@ -532,7 +532,7 @@ const Index = () => {
                   Silakan scan QRIS di bawah untuk melakukan pembayaran:
                 </p>
                 {selectedShow.qris_image_url ? (
-                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto max-h-64 tv:max-h-96 rounded-lg" />
+                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto w-full max-w-sm rounded-lg object-contain" />
                 ) : (
                   <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground tv:text-base tv:p-12">
                     QRIS belum tersedia
