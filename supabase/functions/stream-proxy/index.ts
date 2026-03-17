@@ -277,6 +277,11 @@ Deno.serve(async (req) => {
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
+      // Rate limit: 30 play requests per 60 seconds per playlist (HLS refreshes every ~6s)
+      if (pid && !edgeRateLimit(`play:${pid}`, 30, 60000)) {
+        return getRateLimitResponse();
+      }
+
       if (!pid || !exp || !sig) {
         return new Response("Missing parameters", { status: 400, headers: corsHeaders });
       }
