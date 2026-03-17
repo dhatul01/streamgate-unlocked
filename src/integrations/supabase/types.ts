@@ -111,6 +111,75 @@ export type Database = {
         }
         Relationships: []
       }
+      moderator_token_logs: {
+        Row: {
+          created_at: string
+          id: string
+          moderator_id: string
+          token_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          moderator_id: string
+          token_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          moderator_id?: string
+          token_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderator_token_logs_moderator_id_fkey"
+            columns: ["moderator_id"]
+            isOneToOne: false
+            referencedRelation: "moderators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderator_token_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderators: {
+        Row: {
+          background_color: string
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          site_name: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          background_color?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          site_name?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          background_color?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          site_name?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       playlists: {
         Row: {
           created_at: string
