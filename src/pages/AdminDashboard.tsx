@@ -83,10 +83,22 @@ const AdminDashboard = () => {
         onSectionChange={setActiveSection}
         onLogout={handleLogout}
         userRole={userRole}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
       />
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-        {renderSection()}
-      </main>
+      <div className="flex flex-1 flex-col">
+        {/* Mobile header */}
+        <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3 md:hidden">
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <img src={logo} alt="RealTime48" className="h-7 w-7" />
+          <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+        </header>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 };
