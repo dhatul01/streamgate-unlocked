@@ -417,7 +417,6 @@ const LivePage = () => {
         </header>
 
         <div className="player-area relative">
-          <PlayerAnimations type={playerAnimation} />
           {isLive && activePlaylist ? (
             <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
