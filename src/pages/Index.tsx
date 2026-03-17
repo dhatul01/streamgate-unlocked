@@ -331,7 +331,7 @@ const Index = () => {
               {subscriptionShows.map((show, i) => {
                 const confirmed = subscriberCounts[show.id] || 0;
                 const spotsLeft = show.max_subscribers > 0 ? show.max_subscribers - confirmed : null;
-                const isFull = spotsLeft !== null && spotsLeft <= 0;
+                const isFull = (spotsLeft !== null && spotsLeft <= 0) || show.is_order_closed;
                 return (
                   <motion.div
                     key={show.id}
