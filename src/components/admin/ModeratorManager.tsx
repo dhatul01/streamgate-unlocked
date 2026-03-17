@@ -147,6 +147,9 @@ const ModeratorManager = () => {
   };
 
   const resetTokenStatsByDuration = async (mod: Moderator, durationType: string) => {
+    // Map Indonesian key to English DB value for filtering
+    const dbDuration = durationType === "harian" ? "daily" : durationType === "mingguan" ? "weekly" : durationType === "bulanan" ? "monthly" : durationType;
+    
     // Get token IDs with this duration type that belong to this moderator
     const { data: logs } = await supabase
       .from("moderator_token_logs")
@@ -155,7 +158,10 @@ const ModeratorManager = () => {
     
     if (logs) {
       const logIdsToDelete = logs
-        .filter((l: any) => l.tokens?.duration_type === durationType)
+        .filter((l: any) => {
+          const dt = (l.tokens?.duration_type || "").toLowerCase();
+          return dt === dbDuration || dt === durationType;
+        })
         .map((l: any) => l.id);
       
       if (logIdsToDelete.length > 0) {
