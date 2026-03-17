@@ -395,6 +395,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         </div>
       )}
 
+      {/* Quality switching overlay */}
+      {isSwitchingQuality && !isLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/50 backdrop-blur-sm transition-opacity duration-300">
+          <div className="flex flex-col items-center gap-2 tv:gap-4 rounded-xl bg-card/80 px-6 py-4 tv:px-10 tv:py-8 shadow-lg backdrop-blur">
+            <div className="h-8 w-8 tv:h-12 tv:w-12 animate-spin rounded-full border-3 tv:border-4 border-primary border-t-transparent" />
+            <p className="text-xs text-muted-foreground tv:text-base">Mengganti resolusi...</p>
+          </div>
+        </div>
+      )}
+
       {playlist.type === "youtube" && (
         <>
           <div
