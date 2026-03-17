@@ -261,6 +261,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     return () => {
       destroyed = true;
+      ytReadyRef.current = false;
       try {
         if (ytPlayerRef.current?.destroy) {
           ytPlayerRef.current.destroy();
