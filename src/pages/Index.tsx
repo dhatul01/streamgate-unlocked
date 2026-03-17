@@ -66,6 +66,10 @@ const Index = () => {
     whatsapp_channel: "",
     subscription_info: "",
     landing_description_width: "medium",
+    landing_desc_subtitle: "",
+    landing_desc_title: "",
+    landing_desc_quote: "",
+    landing_desc_layout: "list",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
