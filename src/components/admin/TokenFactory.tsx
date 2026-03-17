@@ -49,7 +49,16 @@ const TokenFactory = () => {
     }
   };
 
-  useEffect(() => { fetchTokens(); }, []);
+  useEffect(() => {
+    fetchTokens();
+    // Realtime: refresh when tokens or moderator_token_logs change
+    const channel = supabase
+      .channel("admin-token-factory")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tokens" }, () => fetchTokens())
+      .on("postgres_changes", { event: "*", schema: "public", table: "moderator_token_logs" }, () => fetchTokens())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const generateToken = async () => {
     const count = Math.max(1, Math.min(100, parseInt(bulkCount) || 1));
