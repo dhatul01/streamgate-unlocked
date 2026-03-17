@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe, FileText, ClipboardList } from "lucide-react";
+import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe, FileText, ClipboardList, Users } from "lucide-react";
 
 interface AdminSidebarProps {
   activeSection: string;
@@ -14,6 +14,7 @@ const sections = [
   { id: "shows", label: "Show Manager", icon: Theater },
   { id: "orders", label: "Order Langganan", icon: ClipboardList },
   { id: "descriptions", label: "Deskripsi LP", icon: FileText },
+  { id: "moderators", label: "Moderator", icon: Users },
   { id: "monitor", label: "Monitor", icon: Monitor },
   { id: "site", label: "Website", icon: Globe },
   { id: "settings", label: "Settings", icon: Settings },
