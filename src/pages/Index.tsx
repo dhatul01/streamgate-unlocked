@@ -246,7 +246,7 @@ const Index = () => {
       <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl tv:max-w-[1600px] items-center justify-between px-4 py-3 tv:py-5 tv:px-8">
           <div className="flex items-center gap-2 tv:gap-3">
-            <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12" />
+            <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
           <Sheet>
@@ -258,7 +258,7 @@ const Index = () => {
             <SheetContent side="right" className="w-80 tv:w-[420px] border-border bg-card">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2 text-foreground tv:text-xl">
-                  <img src={logo} alt="" className="h-6 w-6 tv:h-9 tv:w-9" /> RealTime48
+                  <img src={logo} alt="" className="h-6 w-6 tv:h-9 tv:w-9 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" /> RealTime48
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-2 tv:space-y-3">
@@ -303,7 +303,7 @@ const Index = () => {
 
         <div className="relative z-10 text-center px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 tv:h-40 tv:w-40 animate-float" />
+            <img src={logo} alt="RealTime48" className="mx-auto mb-6 h-20 w-20 md:h-28 md:w-28 tv:h-40 tv:w-40 animate-float rounded-full border-2 border-primary/50 shadow-[0_0_20px_hsl(var(--primary)/0.4)]" />
           </motion.div>
           <motion.h1
             className="mb-3 text-4xl font-extrabold tracking-tight text-foreground md:text-6xl tv:text-8xl"
@@ -590,7 +590,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border px-4 py-8 tv:py-12 text-center">
         <div className="flex items-center justify-center gap-2 tv:gap-3">
-          <img src={logo} alt="RealTime48" className="h-6 w-6 tv:h-10 tv:w-10" />
+          <img src={logo} alt="RealTime48" className="h-6 w-6 tv:h-10 tv:w-10 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
           <span className="text-sm font-semibold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
         </div>
         <p className="mt-2 text-xs text-muted-foreground tv:text-base">Secure Streaming Platform</p>
