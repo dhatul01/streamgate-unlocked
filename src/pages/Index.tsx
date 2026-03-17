@@ -322,7 +322,7 @@ const Index = () => {
 
       {/* Subscription Info Banner */}
       {subscriptionShows.length > 0 && (
-        <section className="px-4 py-6 tv:py-10 tv:px-8">
+        <section id="subscriptions" className="px-4 py-6 tv:py-10 tv:px-8">
           <div className="mx-auto max-w-4xl tv:max-w-[1200px]">
             {(() => {
               const hasOpen = subscriptionShows.some((show) => {
@@ -376,112 +376,6 @@ const Index = () => {
                 </motion.div>
               );
             })()}
-          </div>
-        </section>
-      )}
-
-      {/* Subscription Card Section */}
-      {subscriptionShows.length > 0 && (
-        <section id="subscriptions" className="px-4 py-8 tv:py-16 tv:px-8">
-          <div className="mx-auto max-w-6xl tv:max-w-[1600px]">
-            <motion.h2
-              className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl tv:text-5xl tv:mb-12"
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            >
-              <Crown className="mr-2 inline h-8 w-8 tv:h-12 tv:w-12 text-yellow-500" /> Paket Langganan
-            </motion.h2>
-            <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {subscriptionShows.map((show, i) => {
-                const confirmed = subscriberCounts[show.id] || 0;
-                const spotsLeft = show.max_subscribers > 0 ? show.max_subscribers - confirmed : null;
-                const isFull = (spotsLeft !== null && spotsLeft <= 0) || show.is_order_closed;
-                return (
-                  <motion.div
-                    key={show.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.15 }}
-                    className={`group relative overflow-hidden rounded-2xl tv:rounded-3xl border-2 transition-all ${
-                      isFull
-                        ? "border-muted bg-muted/30 opacity-75"
-                        : "border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
-                    }`}
-                  >
-                    <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black tv:text-sm tv:px-4 tv:py-1.5 ${
-                      isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
-                    }`}>
-                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {show.is_order_closed ? "PENDAFTARAN DITUTUP" : isFull ? "MEMBERSHIP PENUH !!!" : "LANGGANAN"}
-                    </div>
-
-                    <div className="relative h-48 tv:h-72 overflow-hidden">
-                      {show.background_image_url ? (
-                        <img src={show.background_image_url} alt={show.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-yellow-500/20 to-primary/10">
-                          <Crown className="h-16 w-16 tv:h-24 tv:w-24 text-yellow-500/30" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                      <div className="absolute bottom-3 left-4 right-4 tv:bottom-5 tv:left-6">
-                        <h3 className="text-xl font-bold text-foreground tv:text-3xl">{show.title}</h3>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-full bg-yellow-500/15 px-3 py-1 text-sm font-bold text-yellow-500 tv:text-lg tv:px-4 tv:py-1.5">
-                          {show.price}
-                        </span>
-                        {spotsLeft !== null && (
-                          <span className="text-xs text-muted-foreground tv:text-sm">
-                            {confirmed}/{show.max_subscribers} terdaftar
-                          </span>
-                        )}
-                      </div>
-
-                      {show.subscription_benefits && (
-                        <div className="space-y-1.5 tv:space-y-2">
-                          {show.subscription_benefits.split("\n").filter(Boolean).map((b, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
-                              <CheckCircle className="mt-0.5 h-3.5 w-3.5 tv:h-5 tv:w-5 shrink-0 text-yellow-500" />
-                              <span>{b}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {show.schedule_date && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
-                          <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-yellow-500" />{show.schedule_date}
-                        </div>
-                      )}
-
-                      {show.lineup && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
-                          <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-yellow-500" />
-                          <span className="line-clamp-2">{show.lineup}</span>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => handleBuy(show)}
-                        disabled={isFull}
-                        className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-bold transition-all tv:text-lg tv:rounded-2xl ${
-                          isFull
-                            ? "bg-muted text-muted-foreground cursor-not-allowed"
-                            : "bg-gradient-to-r from-yellow-500 to-yellow-600 text-background hover:shadow-lg hover:shadow-yellow-500/25"
-                        }`}
-                      >
-                        <Star className="h-4 w-4 tv:h-6 tv:w-6" />
-                        {show.is_order_closed ? "🔒 Pendaftaran Ditutup" : isFull ? "🔒 Membership Penuh !!!" : "Berlangganan"}
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
           </div>
         </section>
       )}
