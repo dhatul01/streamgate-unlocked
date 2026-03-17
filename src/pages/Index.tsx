@@ -30,7 +30,15 @@ interface Show {
   subscription_benefits: string;
   group_link?: string;
   is_order_closed: boolean;
+  category?: string;
 }
+
+const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
+  regular: { label: "🎭 Reguler", color: "bg-primary/20 text-primary" },
+  birthday: { label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/20 text-pink-400" },
+  special: { label: "⭐ Spesial", color: "bg-yellow-500/20 text-yellow-400" },
+  anniversary: { label: "🎉 Anniversary", color: "bg-purple-500/20 text-purple-400" },
+};
 
 interface LandingDescription {
   id: string;
