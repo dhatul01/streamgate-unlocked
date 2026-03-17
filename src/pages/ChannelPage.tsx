@@ -119,17 +119,21 @@ const ChannelPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: playlists
+  // Realtime: moderator playlists
   useEffect(() => {
     const channel = supabase
       .channel("channel-playlist-realtime")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "playlists" },
+        { event: "*", schema: "public", table: "moderator_playlists" },
         async () => {
           if (!username) return;
-          const { data } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username });
-          const list = (data || []) as any[];
+          const { data: modData } = await supabase.rpc("get_moderator_playlists", { _moderator_username: username });
+          let list = (modData || []) as any[];
+          if (list.length === 0) {
+            const { data: mainData } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username });
+            list = (mainData || []) as any[];
+          }
           setPlaylists(list);
           if (list.length > 0 && !activePlaylist) {
             setActivePlaylist(list[0]);
