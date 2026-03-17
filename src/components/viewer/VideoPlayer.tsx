@@ -329,8 +329,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
         if (!Hls.isSupported()) {
           video.src = decodedUrl;
-          if (autoPlay) {
-            await video.play().catch(() => {});
+          if (playbackIntentRef.current === "play") {
+            await video.play().catch(() => {
+              setPlayerLoading(false);
+            });
           } else {
             setPlayerLoading(false);
           }
@@ -374,8 +376,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
           setPlayerLoading(false);
 
-          if (autoPlay) {
-            await video.play().catch(() => {});
+          if (playbackIntentRef.current === "play") {
+            await video.play().catch(() => {
+              setPlayerLoading(false);
+            });
           }
         });
 
@@ -385,7 +389,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       };
 
       void initHls();
-    }, [playlist, autoPlay, setPlayerLoading]);
+    }, [playlist.type, playlist.url, setPlayerLoading]);
 
     useEffect(() => {
       if (playlist.type !== "youtube") return;
