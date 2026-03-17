@@ -14,31 +14,24 @@ const SIGNING_SECRET = SERVICE_ROLE_KEY;
 const PLAYLIST_TOKEN_TTL = 300; // 5 minutes
 const SUB_PLAYLIST_TOKEN_TTL = 600; // 10 minutes for sub-playlists
 
-// --- In-memory rate limiter for edge function ---
+// --- In-memory rate limiter ---
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function edgeRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(key);
-
-  // Cleanup old entries periodically (every 100 checks)
   if (rateLimitMap.size > 1000) {
     for (const [k, v] of rateLimitMap) {
       if (now > v.resetAt) rateLimitMap.delete(k);
     }
   }
-
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
-    return true; // allowed
+    return true;
   }
-
-  if (entry.count >= maxRequests) {
-    return false; // rate limited
-  }
-
+  if (entry.count >= maxRequests) return false;
   entry.count++;
-  return true; // allowed
+  return true;
 }
 
 function getRateLimitResponse(): Response {
@@ -48,21 +41,58 @@ function getRateLimitResponse(): Response {
   );
 }
 
+// --- In-memory cache ---
+// m3u8 content cache: 4 second TTL (fresh enough for live HLS)
+// With 1000 viewers refreshing every 6s, this reduces origin fetches from
+// ~167/sec to ~1 every 4 seconds — a 99.4% reduction
+const M3U8_CACHE_TTL_MS = 4000;
+const PLAYLIST_URL_CACHE_TTL_MS = 30000; // DB URL lookup cache: 30 seconds
+
+interface CacheEntry { content: string; cachedAt: number }
+const m3u8Cache = new Map<string, CacheEntry>();
+const playlistUrlCache = new Map<string, { url: string; cachedAt: number }>();
+
+function getCachedM3u8(key: string): string | null {
+  const entry = m3u8Cache.get(key);
+  if (!entry || Date.now() - entry.cachedAt > M3U8_CACHE_TTL_MS) {
+    if (entry) m3u8Cache.delete(key);
+    return null;
+  }
+  return entry.content;
+}
+
+function setCachedM3u8(key: string, content: string): void {
+  m3u8Cache.set(key, { content, cachedAt: Date.now() });
+  if (m3u8Cache.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of m3u8Cache) {
+      if (now - v.cachedAt > M3U8_CACHE_TTL_MS) m3u8Cache.delete(k);
+    }
+  }
+}
+
+async function getPlaylistUrl(pid: string): Promise<string | null> {
+  const cached = playlistUrlCache.get(pid);
+  if (cached && Date.now() - cached.cachedAt < PLAYLIST_URL_CACHE_TTL_MS) {
+    return cached.url;
+  }
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const { data } = await supabase.from("playlists").select("url").eq("id", pid).single();
+  if (!data) return null;
+  playlistUrlCache.set(pid, { url: data.url, cachedAt: Date.now() });
+  return data.url;
+}
+
 // --- Crypto helpers ---
 async function hmacSign(message: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(SIGNING_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
+    "raw", encoder.encode(SIGNING_SECRET),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
   const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 async function hmacVerify(message: string, signature: string): Promise<boolean> {
@@ -72,9 +102,7 @@ async function hmacVerify(message: string, signature: string): Promise<boolean> 
 
 function base64UrlEncode(str: string): string {
   return btoa(unescape(encodeURIComponent(str)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function base64UrlDecode(str: string): string {
@@ -86,11 +114,8 @@ function base64UrlDecode(str: string): string {
 // --- URL helpers ---
 function resolveUrl(url: string, base: string): string {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  try {
-    return new URL(url, base).href;
-  } catch {
-    const basePath = base.substring(0, base.lastIndexOf("/") + 1);
-    return basePath + url;
+  try { return new URL(url, base).href; } catch {
+    return base.substring(0, base.lastIndexOf("/") + 1) + url;
   }
 }
 
@@ -99,104 +124,78 @@ function getBaseUrl(url: string): string {
 }
 
 function isM3u8Url(url: string, contentType?: string): boolean {
-  return (
-    url.endsWith(".m3u8") ||
-    url.includes(".m3u8?") ||
-    (contentType || "").includes("mpegurl") ||
-    (contentType || "").includes("x-mpegURL")
-  );
+  return url.endsWith(".m3u8") || url.includes(".m3u8?") ||
+    (contentType || "").includes("mpegurl") || (contentType || "").includes("x-mpegURL");
 }
 
 // --- Signed URL generators ---
-async function generatePlaylistSignedUrl(
-  playlistId: string,
-  functionUrl: string,
-  ttl: number = PLAYLIST_TOKEN_TTL
-): Promise<string> {
-  const exp = Math.floor(Date.now() / 1000) + ttl;
-  const message = `playlist:${playlistId}:${exp}`;
-  const sig = await hmacSign(message);
+async function generatePlaylistSignedUrl(playlistId: string, functionUrl: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + PLAYLIST_TOKEN_TTL;
+  const sig = await hmacSign(`playlist:${playlistId}:${exp}`);
   return `${functionUrl}/stream-proxy?mode=play&pid=${playlistId}&exp=${exp}&sig=${sig}`;
 }
 
-async function generateSubPlaylistSignedUrl(
-  rawUrl: string,
-  functionUrl: string,
-  ttl: number = SUB_PLAYLIST_TOKEN_TTL
-): Promise<string> {
-  const exp = Math.floor(Date.now() / 1000) + ttl;
+async function generateSubPlaylistSignedUrl(rawUrl: string, functionUrl: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + SUB_PLAYLIST_TOKEN_TTL;
   const encoded = base64UrlEncode(rawUrl);
-  const message = `sub:${encoded}:${exp}`;
-  const sig = await hmacSign(message);
+  const sig = await hmacSign(`sub:${encoded}:${exp}`);
   return `${functionUrl}/stream-proxy?mode=sub&u=${encoded}&exp=${exp}&sig=${sig}`;
 }
 
 // --- HYBRID m3u8 rewriter ---
-// Only rewrites lines that point to OTHER .m3u8 files (sub-playlists).
-// Segment URLs (.ts, .mp4, .aac, etc.) are resolved to absolute CDN URLs
-// and left UNTOUCHED so the player fetches them directly from CDN.
-async function rewriteM3u8Hybrid(
-  content: string,
-  baseUrl: string,
-  functionUrl: string
-): Promise<string> {
+async function rewriteM3u8Hybrid(content: string, baseUrl: string, functionUrl: string): Promise<string> {
   const lines = content.split("\n");
   const result: string[] = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
+    if (!trimmed) { result.push(line); continue; }
 
-    // Empty lines pass through
-    if (!trimmed) {
-      result.push(line);
-      continue;
-    }
-
-    // Tag lines: check for URI= references (e.g., EXT-X-MAP, EXT-X-KEY)
     if (trimmed.startsWith("#")) {
       if (trimmed.includes('URI="')) {
-        const rewritten = await rewriteUriInTag(trimmed, baseUrl, functionUrl);
-        result.push(rewritten);
-      } else {
-        result.push(line);
-      }
+        const match = trimmed.match(/URI="([^"]+)"/);
+        if (match) {
+          const absUrl = resolveUrl(match[1], baseUrl);
+          if (isM3u8Url(absUrl)) {
+            const signed = await generateSubPlaylistSignedUrl(absUrl, functionUrl);
+            result.push(trimmed.replace(`URI="${match[1]}"`, `URI="${signed}"`));
+          } else {
+            result.push(trimmed.replace(`URI="${match[1]}"`, `URI="${absUrl}"`));
+          }
+        } else { result.push(line); }
+      } else { result.push(line); }
       continue;
     }
 
-    // URL line — determine if it's a sub-playlist (.m3u8) or a segment (.ts etc.)
     const absoluteUrl = resolveUrl(trimmed, baseUrl);
-
     if (isM3u8Url(absoluteUrl)) {
-      // Sub-playlist → proxy through our function (small file, ~1-5KB)
-      const signedUrl = await generateSubPlaylistSignedUrl(absoluteUrl, functionUrl);
-      result.push(signedUrl);
+      result.push(await generateSubPlaylistSignedUrl(absoluteUrl, functionUrl));
     } else {
-      // Segment (.ts, .mp4, .aac, etc.) → direct CDN URL (NO proxy)
-      result.push(absoluteUrl);
+      result.push(absoluteUrl); // Segment → direct CDN
     }
   }
-
   return result.join("\n");
 }
 
-async function rewriteUriInTag(
-  line: string,
-  baseUrl: string,
-  functionUrl: string
-): Promise<string> {
-  const match = line.match(/URI="([^"]+)"/);
-  if (!match) return line;
+// --- Fetch + rewrite with caching ---
+async function fetchAndRewriteM3u8(originUrl: string, cacheKey: string, functionUrl: string): Promise<string | null> {
+  // Check cache first
+  const cached = getCachedM3u8(cacheKey);
+  if (cached) return cached;
 
-  const absoluteUrl = resolveUrl(match[1], baseUrl);
+  // Cache miss — fetch from origin
+  const response = await fetch(originUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)" },
+  });
+  if (!response.ok) return null;
 
-  if (isM3u8Url(absoluteUrl)) {
-    // Sub-playlist or key file that's m3u8 → proxy
-    const signedUrl = await generateSubPlaylistSignedUrl(absoluteUrl, functionUrl);
-    return line.replace(`URI="${match[1]}"`, `URI="${signedUrl}"`);
-  }
+  const content = await response.text();
+  const baseUrl = getBaseUrl(originUrl);
+  const rewritten = await rewriteM3u8Hybrid(content, baseUrl, functionUrl);
 
-  // Non-m3u8 URI (e.g., encryption key .key file) → resolve to absolute but don't proxy
-  return line.replace(`URI="${match[1]}"`, `URI="${absoluteUrl}"`);
+  // Store in cache
+  setCachedM3u8(cacheKey, rewritten);
+  return rewritten;
 }
 
 // --- Main handler ---
@@ -210,12 +209,10 @@ Deno.serve(async (req) => {
 
   try {
     // === MODE: generate === (POST)
-    // Client sends token_code + playlist_id to get a signed proxy URL
     if (req.method === "POST" && (!mode || mode === "generate")) {
       const body = await req.json();
       const { token_code, playlist_id } = body;
 
-      // Rate limit: 10 generate requests per 60 seconds per token
       if (token_code && !edgeRateLimit(`gen:${token_code}`, 10, 60000)) {
         return getRateLimitResponse();
       }
@@ -227,27 +224,20 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Validate token via RPC
       const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-      const { data: validation, error: valErr } = await supabase.rpc("validate_token", {
-        _code: token_code,
-      });
+      const { data: validation, error: valErr } = await supabase.rpc("validate_token", { _code: token_code });
 
       if (valErr || !(validation as any)?.valid) {
         return new Response(
-          JSON.stringify({ error: "Token tidak valid atau expired" }),
+          JSON.stringify({ error: (validation as any)?.error || "Token tidak valid atau expired" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Verify playlist exists and is m3u8
-      const { data: playlist, error: plErr } = await supabase
-        .from("playlists")
-        .select("id, type, url")
-        .eq("id", playlist_id)
-        .single();
+      const { data: playlist } = await supabase
+        .from("playlists").select("id, type").eq("id", playlist_id).single();
 
-      if (plErr || !playlist) {
+      if (!playlist) {
         return new Response(
           JSON.stringify({ error: "Playlist tidak ditemukan" }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -270,14 +260,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // === MODE: play === (GET)
-    // Proxy the MASTER m3u8 playlist only. Segments go direct to CDN.
+    // === MODE: play === (GET) — Master m3u8 with caching
     if (req.method === "GET" && mode === "play") {
       const pid = url.searchParams.get("pid");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
-      // Rate limit: 30 play requests per 60 seconds per playlist (HLS refreshes every ~6s)
       if (pid && !edgeRateLimit(`play:${pid}`, 30, 60000)) {
         return getRateLimitResponse();
       }
@@ -290,37 +278,23 @@ Deno.serve(async (req) => {
         return new Response("Token expired", { status: 403, headers: corsHeaders });
       }
 
-      const valid = await hmacVerify(`playlist:${pid}:${exp}`, sig);
-      if (!valid) {
+      if (!(await hmacVerify(`playlist:${pid}:${exp}`, sig))) {
         return new Response("Invalid signature", { status: 403, headers: corsHeaders });
       }
 
-      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-      const { data: playlist } = await supabase
-        .from("playlists")
-        .select("url")
-        .eq("id", pid)
-        .single();
-
-      if (!playlist) {
+      // Get playlist URL (cached DB lookup)
+      const playlistUrl = await getPlaylistUrl(pid);
+      if (!playlistUrl) {
         return new Response("Playlist not found", { status: 404, headers: corsHeaders });
       }
 
-      // Fetch the actual m3u8 (small file, ~1-5KB)
-      const m3u8Response = await fetch(playlist.url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)" },
-      });
+      // Fetch + rewrite with in-memory cache
+      const functionUrl = `${SUPABASE_URL}/functions/v1`;
+      const rewritten = await fetchAndRewriteM3u8(playlistUrl, `play:${pid}`, functionUrl);
 
-      if (!m3u8Response.ok) {
+      if (!rewritten) {
         return new Response("Failed to fetch stream", { status: 502, headers: corsHeaders });
       }
-
-      const m3u8Content = await m3u8Response.text();
-      const functionUrl = `${SUPABASE_URL}/functions/v1`;
-      const baseUrl = getBaseUrl(playlist.url);
-
-      // HYBRID rewrite: only sub-playlists (.m3u8) get proxied, segments stay CDN-direct
-      const rewritten = await rewriteM3u8Hybrid(m3u8Content, baseUrl, functionUrl);
 
       return new Response(rewritten, {
         status: 200,
@@ -333,16 +307,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === MODE: sub === (GET)
-    // Proxy SUB-PLAYLISTS only (variant/quality m3u8 files, ~1-5KB each).
-    // These contain the actual segment (.ts) URLs which we resolve to absolute
-    // CDN URLs so the player fetches segments DIRECTLY from CDN.
+    // === MODE: sub === (GET) — Sub-playlists with caching
     if (req.method === "GET" && mode === "sub") {
       const encoded = url.searchParams.get("u");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
 
-      // Rate limit: 60 sub-playlist requests per 60 seconds per encoded URL
       if (encoded && !edgeRateLimit(`sub:${encoded.slice(0, 20)}`, 60, 60000)) {
         return getRateLimitResponse();
       }
@@ -355,28 +325,19 @@ Deno.serve(async (req) => {
         return new Response("Token expired", { status: 403, headers: corsHeaders });
       }
 
-      const valid = await hmacVerify(`sub:${encoded}:${exp}`, sig);
-      if (!valid) {
+      if (!(await hmacVerify(`sub:${encoded}:${exp}`, sig))) {
         return new Response("Invalid signature", { status: 403, headers: corsHeaders });
       }
 
       const actualUrl = base64UrlDecode(encoded);
 
-      // Fetch the sub-playlist (small file)
-      const subResponse = await fetch(actualUrl, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; StreamProxy/1.0)" },
-      });
+      // Fetch + rewrite with in-memory cache
+      const functionUrl = `${SUPABASE_URL}/functions/v1`;
+      const rewritten = await fetchAndRewriteM3u8(actualUrl, `sub:${encoded.slice(0, 40)}`, functionUrl);
 
-      if (!subResponse.ok) {
+      if (!rewritten) {
         return new Response("Failed to fetch sub-playlist", { status: 502, headers: corsHeaders });
       }
-
-      const subContent = await subResponse.text();
-      const functionUrl = `${SUPABASE_URL}/functions/v1`;
-      const baseUrl = getBaseUrl(actualUrl);
-
-      // Rewrite: sub-m3u8 references get proxied, segments stay CDN-direct
-      const rewritten = await rewriteM3u8Hybrid(subContent, baseUrl, functionUrl);
 
       return new Response(rewritten, {
         status: 200,
