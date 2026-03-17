@@ -24,13 +24,15 @@ interface Show {
   group_link: string;
   is_order_closed: boolean;
   category: string;
+  category_member: string;
 }
 
 const CATEGORY_OPTIONS = [
-  { value: "regular", label: "🎭 Reguler", color: "bg-primary/10 text-primary" },
-  { value: "birthday", label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/10 text-pink-500" },
-  { value: "special", label: "⭐ Spesial", color: "bg-yellow-500/10 text-yellow-500" },
-  { value: "anniversary", label: "🎉 Anniversary", color: "bg-purple-500/10 text-purple-500" },
+  { value: "regular", label: "🎭 Reguler", color: "bg-primary/10 text-primary", hasMember: false },
+  { value: "birthday", label: "🎂 Ulang Tahun/STS", color: "bg-pink-500/10 text-pink-500", hasMember: true },
+  { value: "special", label: "⭐ Spesial", color: "bg-yellow-500/10 text-yellow-500", hasMember: false },
+  { value: "anniversary", label: "🎉 Anniversary", color: "bg-purple-500/10 text-purple-500", hasMember: false },
+  { value: "last_show", label: "👋 Last Show", color: "bg-red-500/10 text-red-500", hasMember: true },
 ];
 
 const ShowManager = () => {
