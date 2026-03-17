@@ -17,9 +17,12 @@ export interface VideoPlayerHandle {
   pause: () => void;
 }
 
+const YT_STATE_UNSTARTED = -1;
+const YT_STATE_ENDED = 0;
 const YT_STATE_PLAYING = 1;
 const YT_STATE_PAUSED = 2;
 const YT_STATE_BUFFERING = 3;
+const YT_STATE_CUED = 5;
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
   ({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
@@ -34,18 +37,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const hlsRef = useRef<any>(null);
     const ytPlayerRef = useRef<any>(null);
     const ytReadyRef = useRef(false);
-    const ytPendingActionRef = useRef<"play" | "pause" | null>(null);
     const ytContainerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cloudflareIframeRef = useRef<HTMLIFrameElement>(null);
     const cloudflarePlayerRef = useRef<any>(null);
     const cloudflareCleanupRef = useRef<(() => void) | null>(null);
+    const playbackIntentRef = useRef<"play" | "pause">(autoPlay ? "play" : "pause");
+    const playbackStateRef = useRef(false);
 
     const setPlayerLoading = useCallback((loading: boolean) => {
       setIsLoading(loading);
     }, []);
 
     const setPlayerPlaying = useCallback((playing: boolean) => {
+      playbackStateRef.current = playing;
       setIsPlaying(playing);
     }, []);
 
