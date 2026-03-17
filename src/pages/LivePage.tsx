@@ -15,6 +15,7 @@ const LivePage = () => {
   const [tokenData, setTokenData] = useState<any>(null);
   const [error, setError] = useState("");
   const [blocked, setBlocked] = useState(false);
+  const [deleted, setDeleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stream, setStream] = useState<any>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
