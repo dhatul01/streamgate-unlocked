@@ -144,6 +144,8 @@ const LivePage = () => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
             if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
+            if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
+            if (s.key === "purchase_message" && s.value) setPurchaseMessage(s.value);
           });
         }
 
