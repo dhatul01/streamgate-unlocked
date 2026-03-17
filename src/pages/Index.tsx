@@ -48,6 +48,10 @@ interface SiteSettings {
   whatsapp_channel: string;
   subscription_info: string;
   landing_description_width: string;
+  landing_desc_subtitle: string;
+  landing_desc_title: string;
+  landing_desc_quote: string;
+  landing_desc_layout: string;
   [key: string]: string;
 }
 

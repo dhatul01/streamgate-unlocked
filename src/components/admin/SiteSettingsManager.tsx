@@ -116,6 +116,33 @@ const SiteSettingsManager = () => {
         </div>
       ))}
 
+      {/* Description layout mode */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Layout Deskripsi Landing Page</label>
+        <p className="mb-2 text-[10px] text-muted-foreground">Pilih tampilan section deskripsi: daftar vertikal atau kartu grid.</p>
+        <div className="flex gap-2">
+          {[
+            { value: "list", label: "📋 Daftar" },
+            { value: "cards", label: "🃏 Kartu Grid" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, landing_desc_layout: opt.value }));
+                saveSetting("landing_desc_layout", opt.value);
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                (values.landing_desc_layout || "list") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Landing description width */}
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Lebar Deskripsi Landing Page</label>
