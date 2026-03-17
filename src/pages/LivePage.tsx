@@ -59,10 +59,17 @@ const LivePage = () => {
     });
   }, []);
 
+  // Generate signed/tokenized URL for m3u8 playlists
+  const { signedUrl: signedStreamUrl, loading: signedUrlLoading } = useSignedStreamUrl(
+    activePlaylist,
+    tokenCode
+  );
+
   const playerKey = useMemo(() => {
     if (!stream?.is_live || !activePlaylist) return "offline";
-    return `${stream.id}-${stream.updated_at}-${activePlaylist.id}-${activePlaylist.type}-${activePlaylist.url}`;
-  }, [stream?.id, stream?.is_live, stream?.updated_at, activePlaylist]);
+    // Use signedStreamUrl in key so player reloads when URL changes
+    return `${stream.id}-${stream.updated_at}-${activePlaylist.id}-${activePlaylist.type}-${signedStreamUrl || activePlaylist.url}`;
+  }, [stream?.id, stream?.is_live, stream?.updated_at, activePlaylist, signedStreamUrl]);
 
   // Validate token via secure RPC
   useEffect(() => {
