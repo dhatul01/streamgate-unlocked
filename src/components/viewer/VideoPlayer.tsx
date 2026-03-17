@@ -366,6 +366,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const handleQualityChange = (index: number) => {
     if (hlsRef.current) {
+      setIsSwitchingQuality(true);
       hlsRef.current.currentLevel = index;
       setCurrentQuality(index);
     }
