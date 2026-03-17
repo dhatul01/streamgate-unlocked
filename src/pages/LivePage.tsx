@@ -479,7 +479,7 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist ? (
-            <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
+            <VideoPlayer key={playerKey} ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
