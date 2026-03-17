@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,13 +26,17 @@ interface ChatMessage {
   created_at: string;
 }
 
-const ChatMessageItem = ({ msg, canModerate, onPin, onDelete, onBlock, formatTime }: {
+const formatTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+};
+
+const ChatMessageItem = memo(({ msg, canModerate, onPin, onDelete, onBlock }: {
   msg: ChatMessage;
   canModerate: boolean;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
-  formatTime: (d: string) => string;
 }) => (
   <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
     <div className="flex-1 min-w-0">
@@ -70,7 +74,9 @@ const ChatMessageItem = ({ msg, canModerate, onPin, onDelete, onBlock, formatTim
       </div>
     )}
   </div>
-);
+));
+
+ChatMessageItem.displayName = "ChatMessageItem";
 
 const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -80,9 +86,27 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
   const [onlineCount, setOnlineCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isAtBottomRef = useRef(true);
   const { toast } = useToast();
   const [, startTransition] = useTransition();
   const canManageMessages = canModerate ?? isAdmin;
+
+  // Track if user is scrolled to bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 60;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // Auto-scroll only if at bottom
+  const scrollToBottom = useCallback(() => {
+    if (isAtBottomRef.current && scrollRef.current) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!username) return;
@@ -120,6 +144,12 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
           setMessages(sorted);
           setPinnedMessages(sorted.filter((m) => m.is_pinned));
         });
+        // Scroll to bottom on initial load
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, 100);
       }
     };
 
@@ -152,27 +182,27 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
               }
             }
           });
+          // Auto-scroll after new message
+          setTimeout(scrollToBottom, 50);
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  }, [scrollToBottom]);
 
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !username) return;
+    const trimmed = newMessage.trim();
+    if (!trimmed || !username || sending) return;
+
+    // Optimistic: clear input immediately for smooth typing
+    setNewMessage("");
     setSending(true);
 
     const insertData: any = {
       username,
-      message: newMessage.trim(),
+      message: trimmed,
       token_id: tokenId ?? null,
       is_admin: isAdmin,
     };
@@ -181,14 +211,12 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
 
     if (error) {
       toast({ title: error.message || "Gagal mengirim pesan", variant: "destructive" });
-      setSending(false);
-      return;
+      setNewMessage(trimmed); // Restore on error
     }
 
-    setNewMessage("");
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin, toast]);
+  }, [newMessage, username, tokenId, isAdmin, toast, sending]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
@@ -207,15 +235,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
     }
   }, [onDeleteMessage]);
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-  };
-
   return (
     <div className="flex h-full flex-col bg-card/50">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4">
+      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4 shrink-0">
         <div className="flex items-center gap-2 tv:gap-3">
           <div className="flex h-8 w-8 tv:h-12 tv:w-12 items-center justify-center rounded-lg bg-primary/10">
             <span className="text-sm tv:text-xl">💬</span>
@@ -235,21 +258,25 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
 
       {/* Pinned messages */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2">
+        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2 shrink-0 max-h-24 overflow-y-auto">
           {pinnedMessages.map((m) => (
             <div key={m.id} className="flex items-start gap-2 text-xs tv:text-sm">
               <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <span className="font-bold text-primary">{m.username}</span>
-                <span className="ml-1 text-foreground/80">{m.message}</span>
+                <span className="ml-1 text-foreground/80 break-words">{m.message}</span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1">
+      {/* Messages - scrollable area */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1"
+      >
         {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
@@ -258,7 +285,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}
-            formatTime={formatTime}
           />
         ))}
         {messages.length === 0 && (
@@ -269,14 +295,15 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
         )}
       </div>
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3">
+      {/* Input - fixed at bottom */}
+      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3 shrink-0">
         <Input
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder={username ? "Ketik pesan..." : "Masukkan username dulu"}
           disabled={!username || sending}
+          maxLength={500}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button
