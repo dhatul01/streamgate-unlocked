@@ -346,6 +346,8 @@ Deno.serve(async (req) => {
       if (encoded && !edgeRateLimit(`sub:${encoded.slice(0, 20)}`, 60, 60000)) {
         return getRateLimitResponse();
       }
+
+      if (!encoded || !exp || !sig) {
         return new Response("Missing parameters", { status: 400, headers: corsHeaders });
       }
 
