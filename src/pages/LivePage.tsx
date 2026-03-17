@@ -39,6 +39,31 @@ const LivePage = () => {
     return fp;
   }, []);
 
+  const syncStreamState = useCallback((nextStream: any) => {
+    setStream((prev: any) => {
+      if (prev?.updated_at === nextStream?.updated_at && prev?.is_live === nextStream?.is_live) {
+        return prev;
+      }
+      return nextStream;
+    });
+    setLastStreamSync(nextStream?.updated_at || new Date().toISOString());
+  }, []);
+
+  const syncPlaylistsState = useCallback((nextPlaylists: any[]) => {
+    setPlaylists(nextPlaylists || []);
+    setActivePlaylist((prev: any) => {
+      if (!nextPlaylists?.length) return null;
+      if (!prev) return nextPlaylists[0];
+      const matched = nextPlaylists.find((playlist) => playlist.id === prev.id);
+      return matched || nextPlaylists[0];
+    });
+  }, []);
+
+  const playerKey = useMemo(() => {
+    if (!stream?.is_live || !activePlaylist) return "offline";
+    return `${stream.id}-${stream.updated_at}-${activePlaylist.id}-${activePlaylist.type}-${activePlaylist.url}`;
+  }, [stream?.id, stream?.is_live, stream?.updated_at, activePlaylist]);
+
   // Validate token via secure RPC
   useEffect(() => {
     if (!tokenCode) {
