@@ -34,7 +34,7 @@ const CONFETTI_COLORS = [
   "hsl(200, 80%, 60%)",
 ];
 
-const PlayerAnimations = ({ type }: { type: AnimationType }) => {
+const PlayerAnimations = ({ type, backgroundOnly = false }: { type: AnimationType; backgroundOnly?: boolean }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
