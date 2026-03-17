@@ -50,6 +50,7 @@ const ChannelPage = () => {
         const result = data as any;
         if (result?.valid) {
           setTokenValid(true);
+          setChatTokenId(result.id);
         } else {
           setError(result?.error || "Token tidak valid");
           setLoading(false);
