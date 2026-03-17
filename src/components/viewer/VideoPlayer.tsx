@@ -131,12 +131,42 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, pauseYoutube, pauseCloudflare, pauseNative]);
 
     const togglePlay = useCallback(() => {
-      if (isPlaying) {
-        pauseCurrent();
-      } else {
-        void playCurrent();
+      // For YouTube: always query the actual player state to avoid stale closure
+      if (playlist.type === "youtube") {
+        const player = ytPlayerRef.current;
+        if (!player?.getPlayerState) return;
+        const state = player.getPlayerState();
+        // 1=playing, 3=buffering → pause; everything else → play
+        if (state === 1 || state === 3) {
+          player.pauseVideo();
+        } else {
+          player.playVideo();
+        }
+        return;
       }
-    }, [isPlaying, pauseCurrent, playCurrent]);
+
+      // For Cloudflare: query actual player state
+      if (playlist.type === "cloudflare") {
+        const player = cloudflarePlayerRef.current;
+        if (!player) return;
+        if (!player.paused) {
+          player.pause?.();
+        } else {
+          player.play?.().catch(() => {});
+        }
+        return;
+      }
+
+      // For native/HLS: query actual video element state
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.paused || video.ended) {
+        seekNativeToLiveEdge();
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    }, [playlist.type, seekNativeToLiveEdge]);
 
     useImperativeHandle(ref, () => ({
       play: () => {
