@@ -541,10 +541,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         const player = Stream(iframe);
         cloudflarePlayerRef.current = player;
 
-        const onPlay = () => setPlayerPlaying(true);
+        const onPlay = () => {
+          setPlayerPlaying(true);
+          if (playbackIntentRef.current === "pause") {
+            requestAnimationFrame(() => player.pause?.());
+          }
+        };
         const onPlaying = () => {
           setPlayerLoading(false);
           setPlayerPlaying(true);
+          if (playbackIntentRef.current === "pause") {
+            requestAnimationFrame(() => player.pause?.());
+          }
         };
         const onPause = () => {
           setPlayerLoading(false);
@@ -553,7 +561,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         const onWaiting = () => setPlayerLoading(true);
         const onLoadStart = () => setPlayerLoading(true);
         const onCanPlay = () => setPlayerLoading(false);
-        const onEnded = () => setPlayerPlaying(false);
+        const onEnded = () => {
+          setPlayerLoading(false);
+          setPlayerPlaying(false);
+        };
 
         player.addEventListener?.("play", onPlay);
         player.addEventListener?.("playing", onPlaying);
@@ -574,7 +585,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         };
 
         setPlayerLoading(false);
-        if (autoPlay) {
+        if (playbackIntentRef.current === "play") {
           void playCloudflare();
         }
       };
@@ -600,7 +611,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       return () => {
         destroyed = true;
       };
-    }, [playlist, autoPlay, playCloudflare, setPlayerLoading, setPlayerPlaying]);
+    }, [playlist.type, playlist.url, playCloudflare, setPlayerLoading, setPlayerPlaying]);
 
     const extractYTId = (url: string) => {
       const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
