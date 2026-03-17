@@ -17,9 +17,10 @@ const ModeratorMonitor = ({ moderator }: Props) => {
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
       setStream(streamData);
 
-      const { data: playlistData } = await supabase.from("playlists").select("*").order("sort_order");
-      setPlaylists(playlistData || []);
-      if (playlistData && playlistData.length > 0) setActivePlaylist(playlistData[0]);
+      const { data: playlistData } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: moderator.username });
+      const list = (playlistData || []) as any[];
+      setPlaylists(list);
+      if (list.length > 0) setActivePlaylist(list[0]);
     };
     fetch();
   }, []);
