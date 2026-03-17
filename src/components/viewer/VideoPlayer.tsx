@@ -75,12 +75,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
     const playYoutube = useCallback(async () => {
       const player = ytPlayerRef.current;
-      if (!player?.playVideo) return;
+      if (!ytReadyRef.current || !player?.playVideo) return;
       setPlayerLoading(true);
       player.playVideo();
     }, [setPlayerLoading]);
 
     const pauseYoutube = useCallback(() => {
+      if (!ytReadyRef.current) return;
       ytPlayerRef.current?.pauseVideo?.();
     }, []);
 
