@@ -78,9 +78,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, []);
 
+  // Sync isPlaying state with actual video element events
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+    const onWaiting = () => setIsLoading(true);
+    const onCanPlay = () => setIsLoading(false);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("ended", onEnded);
+    video.addEventListener("waiting", onWaiting);
+    video.addEventListener("canplay", onCanPlay);
+    return () => {
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("waiting", onWaiting);
+      video.removeEventListener("canplay", onCanPlay);
+    };
+  }, [playlist]);
+
   // Cleanup HLS on unmount or playlist change
   useEffect(() => {
     setIsLoading(true);
+    setIsPlaying(false);
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -281,12 +305,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       const player = ytPlayerRef.current;
       if (!player || typeof player.getPlayerState !== "function") return;
       const state = player.getPlayerState();
-      // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
       if (state === 1 || state === 3) {
         player.pauseVideo();
-        setIsPlaying(false);
       } else {
-        // Seek to live edge on unpause for YouTube live
         try {
           const duration = player.getDuration?.();
           if (duration && duration > 0) {
@@ -294,19 +315,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           }
         } catch {}
         player.playVideo();
-        setIsPlaying(true);
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
-        // Seek to live edge on unpause for m3u8
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
-        videoRef.current.play();
-        setIsPlaying(true);
+        videoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
-        setIsPlaying(false);
       }
     }
   };
