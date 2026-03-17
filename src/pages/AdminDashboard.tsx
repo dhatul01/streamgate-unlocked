@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import LiveControl from "@/components/admin/LiveControl";
 import PlaylistManager from "@/components/admin/PlaylistManager";
 import TokenFactory from "@/components/admin/TokenFactory";
@@ -18,6 +20,7 @@ const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<"admin" | "moderator">("moderator");
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,10 +83,22 @@ const AdminDashboard = () => {
         onSectionChange={setActiveSection}
         onLogout={handleLogout}
         userRole={userRole}
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
       />
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-        {renderSection()}
-      </main>
+      <div className="flex flex-1 flex-col">
+        {/* Mobile header */}
+        <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3 md:hidden">
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <img src={logo} alt="RealTime48" className="h-7 w-7" />
+          <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+        </header>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 };
