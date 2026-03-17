@@ -45,7 +45,6 @@ const LivePage = () => {
       }
       return nextStream;
     });
-    setLastStreamSync(nextStream?.updated_at || new Date().toISOString());
   }, []);
 
   const syncPlaylistsState = useCallback((nextPlaylists: any[]) => {
