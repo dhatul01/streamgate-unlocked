@@ -506,7 +506,7 @@ const LivePage = () => {
                 onClick={handleSelfReset}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
               >
-                🔄 Reset Session Saya
+                🔄 Reset Token Saya
               </button>
               <button
                 onClick={() => navigate("/")}
