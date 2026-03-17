@@ -27,6 +27,7 @@ const LivePage = () => {
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
+  const [lastStreamSync, setLastStreamSync] = useState<string | null>(null);
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   const getFingerprint = useCallback(() => {
