@@ -113,7 +113,7 @@ const Index = () => {
 
   const handleBuy = (show: Show) => {
     setSelectedShow(show);
-    setPurchaseStep("qris");
+    setPurchaseStep(show.is_subscription ? "qris" : "info");
     setProofUrl("");
     setPhone("");
     setEmail("");
@@ -170,8 +170,22 @@ const Index = () => {
 
   const handleConfirmRegular = () => {
     if (!selectedShow || !settings.whatsapp_number) return;
+    const now = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
     const msg = encodeURIComponent(
-      `✅ *KONFIRMASI PEMBAYARAN*\n\n🎭 Show: *${selectedShow.title}*\n💰 Harga: ${selectedShow.price}${selectedShow.schedule_date ? `\n📅 Jadwal: ${selectedShow.schedule_date} ${selectedShow.schedule_time}` : ""}\n\n📸 Bukti Pembayaran:\n${proofUrl}\n\nMohon dikonfirmasi, terima kasih! 🙏`
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🎬 *PESANAN TIKET BARU*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `🎭 *Show:* ${selectedShow.title}\n` +
+      `💰 *Harga:* ${selectedShow.price}\n` +
+      `${selectedShow.schedule_date ? `📅 *Jadwal:* ${selectedShow.schedule_date} ${selectedShow.schedule_time}\n` : ""}` +
+      `${selectedShow.lineup ? `👥 *Lineup:* ${selectedShow.lineup}\n` : ""}` +
+      `\n` +
+      `📋 *DATA PEMBELI*\n` +
+      `📧 Email: ${email}\n` +
+      `🕐 Waktu Order: ${now}\n\n` +
+      `📸 *Bukti pembayaran akan dikirim menyusul*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Dikirim dari RealTime48_ ✨`
     );
     window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
     setSelectedShow(null);
