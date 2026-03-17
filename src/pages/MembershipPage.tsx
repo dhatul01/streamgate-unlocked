@@ -308,12 +308,22 @@ const MembershipPage = () => {
 
             {purchaseStep === "done" && (
               <div className="space-y-4 text-center">
-                <CheckCircle className="mx-auto h-12 w-12 text-success" />
+                <CheckCircle className="mx-auto h-12 w-12 text-yellow-500" />
                 <h4 className="text-lg font-bold text-foreground">Pendaftaran Berhasil!</h4>
-                <p className="text-sm text-muted-foreground">Admin akan mengkonfirmasi pembayaran Anda.</p>
-                <p className="text-xs text-muted-foreground">
-                  Link grup akan dikirimkan setelah pembayaran dikonfirmasi.
-                </p>
+                <p className="text-sm text-muted-foreground">Terima kasih! Silakan bergabung ke grup membership:</p>
+                {selectedShow?.group_link ? (
+                  <a
+                    href={selectedShow.group_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-3 font-bold text-background transition hover:shadow-lg hover:shadow-yellow-500/25"
+                  >
+                    <Users className="h-4 w-4" />
+                    Gabung Grup Membership
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Link grup belum tersedia. Hubungi admin.</p>
+                )}
               </div>
             )}
 
