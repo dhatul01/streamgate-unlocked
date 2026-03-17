@@ -306,6 +306,15 @@ const LivePage = () => {
     return () => clearInterval(interval);
   }, [nextShowTime, stream?.is_live]);
 
+  // Keep player synced when live status or playlist changes
+  useEffect(() => {
+    if (!stream?.is_live || !activePlaylist) return;
+    const timer = setTimeout(() => {
+      playerRef.current?.play();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [stream?.is_live, activePlaylist, playerKey]);
+
   // Disable right-click on player
   useEffect(() => {
     const handler = (e: MouseEvent) => {
