@@ -207,11 +207,12 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: token block detection
+  // Realtime: token block + delete detection
   useEffect(() => {
     if (!tokenData?.id) return;
+
     const channel = supabase
-      .channel("token-block-realtime")
+      .channel("token-status-realtime")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
@@ -221,7 +222,23 @@ const LivePage = () => {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
+        () => {
+          setError("Token telah dihapus oleh admin.");
+          setTokenData(null);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "blocked_users", filter: `token_id=eq.${tokenData.id}` },
+        () => {
+          setBlocked(true);
+        }
+      )
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
   }, [tokenData?.id]);
 

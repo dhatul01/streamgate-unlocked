@@ -151,6 +151,40 @@ const ChannelPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Realtime: token block + delete detection for channel page
+  useEffect(() => {
+    if (!chatTokenId) return;
+
+    const channel = supabase
+      .channel("channel-token-status-realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tokens", filter: `id=eq.${chatTokenId}` },
+        (payload: any) => {
+          if (payload.new.status === "blocked") {
+            setError("Token telah diblokir");
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "tokens", filter: `id=eq.${chatTokenId}` },
+        () => {
+          setError("Token telah dihapus oleh admin.");
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "blocked_users", filter: `token_id=eq.${chatTokenId}` },
+        () => {
+          setError("Token telah diblokir");
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [chatTokenId]);
+
   // Countdown timer
   useEffect(() => {
     if (!nextShowTime || stream?.is_live) {
