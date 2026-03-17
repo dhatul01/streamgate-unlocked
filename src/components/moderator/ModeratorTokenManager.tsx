@@ -63,24 +63,19 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
     const code = `${moderator.username.toUpperCase().slice(0, 4)}-${generateCode()}`;
     const expiresAt = new Date(Date.now() + durationOption.ms).toISOString();
 
-    const { data: token, error } = await supabase.from("tokens").insert({
-      code,
-      duration_type: durationType,
-      expires_at: expiresAt,
-      max_devices: maxDevices,
-      status: "active",
-    }).select().single();
+    const { data, error } = await supabase.rpc("moderator_create_token", {
+      _code: code,
+      _duration_type: durationType,
+      _expires_at: expiresAt,
+      _max_devices: maxDevices,
+    });
 
-    if (error || !token) {
-      toast({ title: "Gagal membuat token", description: error?.message, variant: "destructive" });
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Gagal membuat token", description: error?.message || result?.error, variant: "destructive" });
       setCreating(false);
       return;
     }
-
-    await supabase.from("moderator_token_logs").insert({
-      moderator_id: moderator.id,
-      token_id: token.id,
-    });
 
     toast({ title: "Token berhasil dibuat!" });
     fetchTokens();
