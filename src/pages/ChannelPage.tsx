@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
@@ -9,6 +9,7 @@ import Watermark from "@/components/viewer/Watermark";
 const ChannelPage = () => {
   const { username } = useParams<{ username: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tokenCode = searchParams.get("token");
 
   const [moderator, setModerator] = useState<any>(null);
@@ -19,6 +20,7 @@ const ChannelPage = () => {
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tokenValid, setTokenValid] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -36,6 +38,22 @@ const ChannelPage = () => {
         return;
       }
       setModerator(mod);
+
+      // Validate token if provided
+      if (tokenCode) {
+        const { data } = await supabase.rpc("validate_token", { _code: tokenCode });
+        const result = data as any;
+        if (result?.valid) {
+          setTokenValid(true);
+        } else {
+          setError(result?.error || "Token tidak valid");
+          setLoading(false);
+          return;
+        }
+      } else {
+        // No token required for channel pages - they can view freely
+        setTokenValid(true);
+      }
 
       // Fetch stream and playlists from main site
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
@@ -56,7 +74,7 @@ const ChannelPage = () => {
       setLoading(false);
     };
     init();
-  }, [username]);
+  }, [username, tokenCode]);
 
   const handleUsernameSet = (name: string) => {
     setChatUsername(name);
@@ -141,6 +159,7 @@ const ChannelPage = () => {
           <div className="h-[500px] lg:h-auto rounded-xl border border-white/10 overflow-hidden tv:min-h-[600px]">
             <LiveChat
               username={chatUsername}
+              tokenId={tokenCode || undefined}
               isLive={stream?.is_live || false}
               isAdmin={false}
             />

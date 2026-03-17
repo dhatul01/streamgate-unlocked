@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Trash2, Shield, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Trash2, Shield, Eye, EyeOff, BarChart3, RotateCcw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,8 +26,13 @@ interface Moderator {
   created_at: string;
 }
 
+interface TokenStats {
+  [moderatorId: string]: number;
+}
+
 const ModeratorManager = () => {
   const [moderators, setModerators] = useState<Moderator[]>([]);
+  const [tokenStats, setTokenStats] = useState<TokenStats>({});
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -41,7 +46,21 @@ const ModeratorManager = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchModerators(); }, []);
+  const fetchTokenStats = async () => {
+    const { data } = await supabase.from("moderator_token_logs").select("moderator_id");
+    if (data) {
+      const stats: TokenStats = {};
+      data.forEach((log: any) => {
+        stats[log.moderator_id] = (stats[log.moderator_id] || 0) + 1;
+      });
+      setTokenStats(stats);
+    }
+  };
+
+  useEffect(() => {
+    fetchModerators();
+    fetchTokenStats();
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +71,6 @@ const ModeratorManager = () => {
     }
     setCreating(true);
 
-    const { data: { session } } = await supabase.auth.getSession();
     const res = await supabase.functions.invoke("create-moderator", {
       body: {
         email: form.email,
@@ -80,12 +98,17 @@ const ModeratorManager = () => {
   };
 
   const deleteModerator = async (mod: Moderator) => {
-    // Delete the moderator profile (cascade will handle token logs)
     await supabase.from("moderators").delete().eq("id", mod.id);
-    // Remove role
     await supabase.from("user_roles").delete().eq("user_id", mod.user_id);
     fetchModerators();
+    fetchTokenStats();
     toast({ title: "Moderator dihapus" });
+  };
+
+  const resetTokenStats = async (mod: Moderator) => {
+    await supabase.from("moderator_token_logs").delete().eq("moderator_id", mod.id);
+    fetchTokenStats();
+    toast({ title: `Log token ${mod.username} direset` });
   };
 
   return (
@@ -112,7 +135,7 @@ const ModeratorManager = () => {
                 required
                 className="bg-background"
               />
-              <p className="mt-1 text-[10px] text-muted-foreground">Akan digunakan sebagai URL: /channel/{form.username || "..."}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">URL: /channel/{form.username || "..."}</p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Website</label>
@@ -176,57 +199,85 @@ const ModeratorManager = () => {
           {moderators.map((mod) => (
             <div
               key={mod.id}
-              className={`flex items-center justify-between rounded-xl border bg-card p-4 transition-all ${
+              className={`rounded-xl border bg-card p-4 transition-all ${
                 mod.is_active ? "border-border" : "border-destructive/30 opacity-60"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
-                  style={{ backgroundColor: mod.background_color }}
-                >
-                  {mod.username.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-foreground">{mod.username}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                      mod.is_active ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                    }`}>
-                      {mod.is_active ? "AKTIF" : "NONAKTIF"}
-                    </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
+                    style={{ backgroundColor: mod.background_color }}
+                  >
+                    {mod.username.charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-xs text-muted-foreground">{mod.site_name} · /channel/{mod.username}</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-foreground">{mod.username}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                        mod.is_active ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                      }`}>
+                        {mod.is_active ? "AKTIF" : "NONAKTIF"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{mod.site_name} · /channel/{mod.username}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => toggleActive(mod)} className="text-xs">
+                    {mod.is_active ? "Nonaktifkan" : "Aktifkan"}
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Moderator?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Akun moderator "{mod.username}" akan dihapus permanen beserta semua log tokennya.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteModerator(mod)}>Ya, Hapus</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleActive(mod)}
-                  className="text-xs"
-                >
-                  {mod.is_active ? "Nonaktifkan" : "Aktifkan"}
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Hapus Moderator?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Akun moderator "{mod.username}" akan dihapus permanen beserta semua log tokennya.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Batal</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteModerator(mod)}>Ya, Hapus</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+
+              {/* Token Stats */}
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-secondary/30 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Token dibuat:</span>
+                  <span className="text-sm font-bold text-foreground">{tokenStats[mod.id] || 0}</span>
+                </div>
+                {(tokenStats[mod.id] || 0) > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                        <RotateCcw className="h-3 w-3" />
+                        Reset
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset Log Token?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Log statistik token untuk "{mod.username}" akan direset ke 0. Token yang sudah dibuat tidak akan terhapus.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => resetTokenStats(mod)}>Ya, Reset</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </div>
           ))}

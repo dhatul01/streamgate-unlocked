@@ -35,12 +35,17 @@ const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTi
   <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5">
-        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
-          {msg.username}
+        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : msg.username.startsWith("MOD:") ? "text-accent-foreground" : "text-foreground/90"}`}>
+          {msg.username.startsWith("MOD:") ? msg.username.slice(4) : msg.username}
         </span>
-        {msg.is_admin && (
+        {msg.is_admin && !msg.username.startsWith("MOD:") && (
           <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-primary">
             STAFF
+          </span>
+        )}
+        {msg.username.startsWith("MOD:") && (
+          <span className="inline-flex items-center rounded bg-accent/20 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-accent-foreground">
+            MOD
           </span>
         )}
         <span className="text-[10px] tv:text-xs text-muted-foreground/60">{formatTime(msg.created_at)}</span>
