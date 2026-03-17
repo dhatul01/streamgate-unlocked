@@ -66,10 +66,11 @@ const ModeratorManager = () => {
       data.forEach((log: any) => {
         const modId = log.moderator_id;
         if (!stats[modId]) stats[modId] = { ...EMPTY_STATS };
-        const durationType = log.tokens?.duration_type || "";
-        if (durationType === "harian") stats[modId].harian++;
-        else if (durationType === "mingguan") stats[modId].mingguan++;
-        else if (durationType === "bulanan") stats[modId].bulanan++;
+        const durationType = (log.tokens?.duration_type || "").toLowerCase();
+        // Map both English (from DB) and Indonesian labels
+        if (durationType === "daily" || durationType === "harian") stats[modId].harian++;
+        else if (durationType === "weekly" || durationType === "mingguan") stats[modId].mingguan++;
+        else if (durationType === "monthly" || durationType === "bulanan") stats[modId].bulanan++;
         else stats[modId].lainnya++;
       });
       setTokenStats(stats);
@@ -79,6 +80,21 @@ const ModeratorManager = () => {
   useEffect(() => {
     fetchModerators();
     fetchTokenStats();
+  }, []);
+
+  // Realtime: token logs for live stats update
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-token-logs-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "moderator_token_logs" },
+        () => {
+          fetchTokenStats();
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
