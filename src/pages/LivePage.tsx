@@ -468,20 +468,53 @@ const LivePage = () => {
 
   if (error) {
     if (error === "device_limit") {
+      const handleSelfReset = async () => {
+        const fingerprint = getFingerprint();
+        try {
+          const { data, error: rpcErr } = await supabase.rpc("self_reset_token_session" as any, {
+            _token_code: tokenCode,
+            _fingerprint: fingerprint,
+          });
+          if (rpcErr) throw rpcErr;
+          const result = data as any;
+          if (result.success) {
+            window.location.reload();
+          } else {
+            setError(result.error || "Gagal reset session");
+          }
+        } catch {
+          setError("Gagal reset session. Coba lagi nanti.");
+        }
+      };
+
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="w-full max-w-md tv:max-w-xl rounded-2xl border border-destructive/30 bg-card p-8 tv:p-12 text-center">
             <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-14 w-14 tv:h-20 tv:w-20" />
             <h2 className="mb-2 text-xl font-bold text-destructive tv:text-3xl">Batas Perangkat Tercapai</h2>
-            <p className="mb-6 text-muted-foreground tv:text-lg">
-              Token ini telah digunakan pada perangkat lain. Silahkan lakukan pembelian show untuk mendapatkan token baru.
+            <p className="mb-4 text-muted-foreground tv:text-lg">
+              Token ini sedang digunakan di perangkat lain.
             </p>
-            <button
-              onClick={() => navigate("/")}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
-            >
-              🏠 Ke Halaman Utama
-            </button>
+            <div className="mb-6 rounded-xl border border-border bg-secondary/30 p-4 tv:p-6 text-left space-y-2">
+              <p className="text-xs font-semibold text-foreground tv:text-sm">🔄 Reset Session Mandiri</p>
+              <p className="text-xs text-muted-foreground tv:text-sm">
+                Jika Anda keluar dari website tanpa menutup tab dengan benar, session mungkin masih terhitung. Gunakan tombol di bawah untuk mereset session (maks 2x/hari).
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleSelfReset}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-lg"
+              >
+                🔄 Reset Session Saya
+              </button>
+              <button
+                onClick={() => navigate("/")}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-secondary px-6 py-3 tv:px-10 tv:py-4 font-semibold text-secondary-foreground transition hover:bg-secondary/80 tv:text-lg"
+              >
+                🏠 Ke Halaman Utama
+              </button>
+            </div>
           </div>
         </div>
       );

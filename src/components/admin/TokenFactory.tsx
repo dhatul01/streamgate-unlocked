@@ -5,20 +5,35 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Trash2, Ban, RefreshCw, Plus, Search, Globe, Lock, ClipboardList, CheckCircle } from "lucide-react";
+
+const DURATION_TABS = [
+  { key: "daily", label: "Harian", emoji: "📅" },
+  { key: "weekly", label: "Mingguan", emoji: "📆" },
+  { key: "monthly", label: "Bulanan", emoji: "🗓️" },
+] as const;
+
+type DurationKey = "daily" | "weekly" | "monthly";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Record<string, number>>({});
-  const [duration, setDuration] = useState("daily");
+  const [duration, setDuration] = useState<DurationKey>("daily");
   const [maxDevices, setMaxDevices] = useState("1");
   const [bulkCount, setBulkCount] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Record<DurationKey, Set<string>>>({
+    daily: new Set(),
+    weekly: new Set(),
+    monthly: new Set(),
+  });
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked" | "expired">("all");
+  const [activeTab, setActiveTab] = useState<DurationKey>("daily");
   const [generating, setGenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem("rt48_copied_tokens");
@@ -33,7 +48,6 @@ const TokenFactory = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setTokens(data || []);
-    // Fetch session counts
     const { data: sessData } = await supabase.from("token_sessions").select("token_id");
     if (sessData) {
       const counts: Record<string, number> = {};
@@ -67,6 +81,7 @@ const TokenFactory = () => {
     await fetchTokens();
     toast({ title: `${count} token berhasil dibuat!` });
     setGenerating(false);
+    setActiveTab(duration);
   };
 
   const markAsCopied = (code: string) => {
@@ -85,18 +100,18 @@ const TokenFactory = () => {
     toast({ title: "Link disalin!" });
   };
 
-  const bulkCopyUncopiedDaily = () => {
-    const dailyUncopied = tokens.filter(
-      (t) => t.duration_type === "daily" && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
+  const bulkCopyUncopied = (dur: DurationKey) => {
+    const uncopied = tokens.filter(
+      (t) => t.duration_type === dur && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
     );
-    if (dailyUncopied.length === 0) {
-      toast({ title: "Tidak ada token harian baru untuk disalin" });
+    if (uncopied.length === 0) {
+      toast({ title: `Tidak ada token ${DURATION_TABS.find(d => d.key === dur)?.label.toLowerCase()} baru untuk disalin` });
       return;
     }
-    const links = dailyUncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
+    const links = uncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
     navigator.clipboard.writeText(links);
-    dailyUncopied.forEach((t) => markAsCopied(t.code));
-    toast({ title: `${dailyUncopied.length} link token harian disalin!` });
+    uncopied.forEach((t) => markAsCopied(t.code));
+    toast({ title: `${uncopied.length} link token disalin!` });
   };
 
   const blockToken = async (id: string) => {
@@ -112,57 +127,197 @@ const TokenFactory = () => {
     toast({ title: "Session direset" });
   };
 
-  const [deleting, setDeleting] = useState(false);
-
-  const deleteTokens = async (ids: string[]) => {
+  const deleteTokens = async (ids: string[], dur: DurationKey) => {
     if (deleting || ids.length === 0) return;
     setDeleting(true);
     try {
-      // Delete related records first (FK constraints), then tokens - batch by using .in()
       await supabase.from("blocked_users").delete().in("token_id", ids);
       await supabase.from("chat_messages").delete().in("token_id", ids);
       await supabase.from("token_sessions").delete().in("token_id", ids);
       await supabase.from("tokens").delete().in("id", ids);
-      setSelected(new Set());
+      setSelected(prev => ({ ...prev, [dur]: new Set() }));
       await fetchTokens();
       toast({ title: `${ids.length} token dihapus` });
-    } catch (err) {
+    } catch {
       toast({ title: "Gagal menghapus token", variant: "destructive" });
     } finally {
       setDeleting(false);
     }
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string, dur: DurationKey) => {
     setSelected((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev[dur]);
       if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+      return { ...prev, [dur]: next };
     });
-  };
-
-  const toggleSelectAll = () => {
-    if (selected.size === filteredTokens.length) setSelected(new Set());
-    else setSelected(new Set(filteredTokens.map((t) => t.id)));
   };
 
   const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
-  const filteredTokens = tokens.filter((t) => {
-    const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
-    if (!matchSearch) return false;
-    if (statusFilter === "all") return true;
-    if (statusFilter === "blocked") return t.status === "blocked";
-    if (statusFilter === "expired") return t.status !== "blocked" && isExpired(t);
-    if (statusFilter === "active") return t.status !== "blocked" && !isExpired(t);
-    return true;
-  });
+  const getFilteredTokens = (dur: DurationKey) => {
+    return tokens.filter((t) => {
+      if (t.duration_type !== dur) return false;
+      const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
+      if (!matchSearch) return false;
+      if (statusFilter === "all") return true;
+      if (statusFilter === "blocked") return t.status === "blocked";
+      if (statusFilter === "expired") return t.status !== "blocked" && isExpired(t);
+      if (statusFilter === "active") return t.status !== "blocked" && !isExpired(t);
+      return true;
+    });
+  };
 
-  const countByStatus = {
-    all: tokens.length,
-    active: tokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
-    blocked: tokens.filter(t => t.status === "blocked").length,
-    expired: tokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+  const getCountByDuration = (dur: DurationKey) => tokens.filter(t => t.duration_type === dur).length;
+
+  const getCountByStatus = (dur: DurationKey) => {
+    const durTokens = tokens.filter(t => t.duration_type === dur);
+    return {
+      all: durTokens.length,
+      active: durTokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
+      blocked: durTokens.filter(t => t.status === "blocked").length,
+      expired: durTokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+    };
+  };
+
+  const renderTokenList = (dur: DurationKey) => {
+    const filtered = getFilteredTokens(dur);
+    const sel = selected[dur];
+    const counts = getCountByStatus(dur);
+
+    const toggleSelectAll = () => {
+      if (sel.size === filtered.length) setSelected(prev => ({ ...prev, [dur]: new Set() }));
+      else setSelected(prev => ({ ...prev, [dur]: new Set(filtered.map(t => t.id)) }));
+    };
+
+    return (
+      <div className="space-y-4">
+        {/* Status filter */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { key: "all", label: "Semua", icon: null },
+            { key: "active", label: "Aktif", icon: "🟢" },
+            { key: "blocked", label: "Diblokir", icon: "🔴" },
+            { key: "expired", label: "Expired", icon: "🟡" },
+          ] as const).map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => { setStatusFilter(key); setSelected(prev => ({ ...prev, [dur]: new Set() })); }}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              {icon && <span>{icon}</span>}
+              {label}
+              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                statusFilter === key ? "bg-primary-foreground/20" : "bg-muted"
+              }`}>
+                {counts[key]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search & bulk actions */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari token..."
+              className="bg-card pl-9"
+            />
+          </div>
+          {sel.size > 0 && (
+            <Button variant="destructive" size="sm" disabled={deleting} onClick={() => deleteTokens(Array.from(sel), dur)}>
+              <Trash2 className="mr-1 h-3 w-3" /> Hapus ({sel.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => bulkCopyUncopied(dur)} title={`Salin semua token ${dur} yang belum pernah disalin`}>
+            <ClipboardList className="mr-1 h-3 w-3" /> Salin Baru
+          </Button>
+        </div>
+
+        {/* Token list */}
+        <div className="space-y-2">
+          {filtered.length > 0 && (
+            <div className="flex items-center gap-2 px-2">
+              <Checkbox
+                checked={sel.size === filtered.length && filtered.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-xs text-muted-foreground">Pilih semua</span>
+            </div>
+          )}
+
+          {filtered.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+              <Checkbox
+                checked={sel.has(t.id)}
+                onCheckedChange={() => toggleSelect(t.id, dur)}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-sm font-semibold text-foreground truncate">{t.code}</p>
+                  {t.is_public && (
+                    <span className="flex items-center gap-0.5 rounded-sm bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                      <Globe className="h-2.5 w-2.5" /> PUBLIK
+                    </span>
+                  )}
+                  {copiedTokens.has(t.code) && (
+                    <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      ✓ tersalin
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
+                    t.status === "blocked"
+                      ? "bg-destructive/20 text-destructive"
+                      : isExpired(t)
+                      ? "bg-warning/20 text-warning"
+                      : "bg-success/20 text-success"
+                  }`}>
+                    {t.status === "blocked" ? "BLOCKED" : isExpired(t) ? "EXPIRED" : "ACTIVE"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {!t.is_public && `${t.max_devices} device`}
+                  </span>
+                  {(sessions[t.id] || 0) > 0 && (
+                    <span className="flex items-center gap-0.5 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                      👤 {sessions[t.id]} aktif
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(t.code)} title="Copy link">
+                  <Copy className="h-3 w-3" />
+                </Button>
+                {!t.is_public && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => resetSessions(t.id)} title="Reset session">
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title={t.status === "blocked" ? "Aktifkan" : "Blokir"}>
+                  {t.status === "blocked" ? <CheckCircle className="h-3 w-3 text-success" /> : <Ban className="h-3 w-3 text-destructive" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={deleting} onClick={() => deleteTokens([t.id], dur)} title="Hapus">
+                  <Trash2 className="h-3 w-3 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {filtered.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">Belum ada token</p>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -170,7 +325,7 @@ const TokenFactory = () => {
       <h2 className="text-xl font-bold text-foreground">🔑 Token Factory</h2>
 
       {/* Generate */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-6">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 md:p-6">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipe</label>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
@@ -186,7 +341,7 @@ const TokenFactory = () => {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Durasi</label>
-          <Select value={duration} onValueChange={setDuration}>
+          <Select value={duration} onValueChange={(v) => setDuration(v as DurationKey)}>
             <SelectTrigger className="w-32 bg-background"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="daily">1 Hari</SelectItem>
@@ -230,130 +385,24 @@ const TokenFactory = () => {
         </p>
       )}
 
-      {/* Status filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {([
-          { key: "all", label: "Semua", icon: null },
-          { key: "active", label: "Aktif", icon: "🟢" },
-          { key: "blocked", label: "Diblokir", icon: "🔴" },
-          { key: "expired", label: "Expired", icon: "🟡" },
-        ] as const).map(({ key, label, icon }) => (
-          <button
-            key={key}
-            onClick={() => { setStatusFilter(key); setSelected(new Set()); }}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              statusFilter === key
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            {icon && <span>{icon}</span>}
-            {label}
-            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-              statusFilter === key ? "bg-primary-foreground/20" : "bg-muted"
-            }`}>
-              {countByStatus[key]}
-            </span>
-          </button>
+      {/* Duration Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as DurationKey); setStatusFilter("all"); }}>
+        <TabsList className="w-full grid grid-cols-3">
+          {DURATION_TABS.map(({ key, label, emoji }) => (
+            <TabsTrigger key={key} value={key} className="gap-1.5 text-xs">
+              <span>{emoji}</span> {label}
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">
+                {getCountByDuration(key)}
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {DURATION_TABS.map(({ key }) => (
+          <TabsContent key={key} value={key} className="mt-4">
+            {renderTokenList(key)}
+          </TabsContent>
         ))}
-      </div>
-
-      {/* Search & bulk actions */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari token..."
-            className="bg-card pl-9"
-          />
-        </div>
-        {selected.size > 0 && (
-          <Button variant="destructive" size="sm" disabled={deleting} onClick={() => deleteTokens(Array.from(selected))}>
-            <Trash2 className="mr-1 h-3 w-3" /> Hapus ({selected.size})
-          </Button>
-        )}
-        <Button variant="outline" size="sm" onClick={bulkCopyUncopiedDaily} title="Salin semua token harian yang belum pernah disalin">
-          <ClipboardList className="mr-1 h-3 w-3" /> Salin Token Harian Baru
-        </Button>
-      </div>
-
-      {/* Token list */}
-      <div className="space-y-2">
-        {filteredTokens.length > 0 && (
-          <div className="flex items-center gap-2 px-2">
-            <Checkbox
-              checked={selected.size === filteredTokens.length && filteredTokens.length > 0}
-              onCheckedChange={toggleSelectAll}
-            />
-            <span className="text-xs text-muted-foreground">Pilih semua</span>
-          </div>
-        )}
-
-        {filteredTokens.map((t) => (
-          <div key={t.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-            <Checkbox
-              checked={selected.has(t.id)}
-              onCheckedChange={() => toggleSelect(t.id)}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-mono text-sm font-semibold text-foreground truncate">{t.code}</p>
-                {t.is_public && (
-                  <span className="flex items-center gap-0.5 rounded-sm bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                    <Globe className="h-2.5 w-2.5" /> PUBLIK
-                  </span>
-                )}
-                {copiedTokens.has(t.code) && (
-                  <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    ✓ tersalin
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
-                  t.status === "blocked"
-                    ? "bg-destructive/20 text-destructive"
-                    : isExpired(t)
-                    ? "bg-warning/20 text-warning"
-                    : "bg-success/20 text-success"
-                }`}>
-                  {t.status === "blocked" ? "BLOCKED" : isExpired(t) ? "EXPIRED" : "ACTIVE"}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {t.duration_type} {!t.is_public && `· ${t.max_devices} device`}
-                </span>
-                {(sessions[t.id] || 0) > 0 && (
-                  <span className="flex items-center gap-0.5 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                    👤 {sessions[t.id]} aktif
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(t.code)} title="Copy link">
-                <Copy className="h-3 w-3" />
-              </Button>
-              {!t.is_public && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => resetSessions(t.id)} title="Reset session">
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => blockToken(t.id)} title={t.status === "blocked" ? "Aktifkan" : "Blokir"}>
-                {t.status === "blocked" ? <CheckCircle className="h-3 w-3 text-success" /> : <Ban className="h-3 w-3 text-destructive" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={deleting} onClick={() => deleteTokens([t.id])} title="Hapus">
-                <Trash2 className="h-3 w-3 text-destructive" />
-              </Button>
-            </div>
-          </div>
-        ))}
-
-        {filteredTokens.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">Belum ada token</p>
-        )}
-      </div>
+      </Tabs>
     </div>
   );
 };
