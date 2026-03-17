@@ -3,8 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Key, Copy, Check } from "lucide-react";
+import { Key, Copy, Check, ShieldBan, ShieldCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   moderator: any;
@@ -76,6 +87,13 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
     setCreating(false);
   };
 
+  const toggleBlock = async (token: any) => {
+    const newStatus = token.status === "blocked" ? "active" : "blocked";
+    await supabase.from("tokens").update({ status: newStatus }).eq("id", token.id);
+    toast({ title: newStatus === "blocked" ? "Token diblokir" : "Token dibuka blokir" });
+    fetchTokens();
+  };
+
   const copyLink = (code: string, id: string) => {
     const link = `${window.location.origin}/channel/${moderator.username}?token=${code}`;
     navigator.clipboard.writeText(link);
@@ -144,7 +162,7 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
             const isBlocked = t.status === "blocked";
             return (
               <div key={t.id} className={`flex items-center justify-between rounded-lg border bg-card px-4 py-3 ${
-                isExpired || isBlocked ? "opacity-50" : ""
+                isExpired || isBlocked ? "opacity-60" : ""
               }`}>
                 <div>
                   <span className="font-mono text-sm font-bold text-foreground">{t.code}</span>
@@ -159,14 +177,41 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
                     </span>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => copyLink(t.code, t.id)}
-                  disabled={isExpired || isBlocked}
-                >
-                  {copiedId === t.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <div className="flex items-center gap-1">
+                  {!isExpired && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className={isBlocked ? "text-success hover:bg-success/10" : "text-destructive hover:bg-destructive/10"}>
+                          {isBlocked ? <ShieldCheck className="h-4 w-4" /> : <ShieldBan className="h-4 w-4" />}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{isBlocked ? "Buka Blokir Token?" : "Blokir Token?"}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {isBlocked
+                              ? `Token "${t.code}" akan dibuka blokirnya dan bisa digunakan kembali.`
+                              : `Token "${t.code}" akan diblokir dan tidak bisa digunakan.`}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => toggleBlock(t)}>
+                            {isBlocked ? "Ya, Buka Blokir" : "Ya, Blokir"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyLink(t.code, t.id)}
+                    disabled={isExpired || isBlocked}
+                  >
+                    {copiedId === t.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             );
           })}

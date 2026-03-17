@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   moderator: any;
@@ -11,9 +12,10 @@ const ModeratorMonitor = ({ moderator }: Props) => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [stream, setStream] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
       setStream(streamData);
 
@@ -22,8 +24,25 @@ const ModeratorMonitor = ({ moderator }: Props) => {
       setPlaylists(list);
       if (list.length > 0) setActivePlaylist(list[0]);
     };
-    fetch();
+    fetchData();
   }, []);
+
+  const handleBlockUser = async (tokenId: string) => {
+    // Check if already blocked
+    const { data: existing } = await supabase
+      .from("blocked_users")
+      .select("id")
+      .eq("token_id", tokenId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      toast({ title: "User sudah diblokir", variant: "destructive" });
+      return;
+    }
+
+    await supabase.from("blocked_users").insert({ token_id: tokenId, reason: `Blocked by MOD:${moderator.username}` });
+    toast({ title: "User berhasil diblokir" });
+  };
 
   return (
     <div className="space-y-6">
@@ -71,6 +90,7 @@ const ModeratorMonitor = ({ moderator }: Props) => {
             onDeleteMessage={async (id) => {
               await supabase.from("chat_messages").delete().eq("id", id);
             }}
+            onBlockUser={handleBlockUser}
           />
         </div>
       </div>
