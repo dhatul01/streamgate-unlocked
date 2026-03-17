@@ -550,7 +550,7 @@ const LivePage = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="rounded-xl border border-destructive/30 bg-card p-8 tv:p-12 text-center">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-12 w-12 tv:h-20 tv:w-20" />
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-12 w-12 tv:h-20 tv:w-20 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
           <h2 className="mb-2 text-xl font-bold text-destructive tv:text-3xl">Akses Ditolak</h2>
           <p className="text-muted-foreground tv:text-lg">{error}</p>
           <div className="mt-4">
