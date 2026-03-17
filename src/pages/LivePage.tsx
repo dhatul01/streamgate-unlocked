@@ -221,8 +221,10 @@ const LivePage = () => {
 
   // Realtime: playlists
   useEffect(() => {
+    if (!tokenCode) return;
+
     const fetchLatestPlaylists = async () => {
-      const { data } = await supabase.from("playlists").select("*").order("sort_order");
+      const { data } = await supabase.rpc("get_playlists_for_token", { _token_code: tokenCode });
       syncPlaylistsState(data || []);
     };
 
@@ -237,8 +239,9 @@ const LivePage = () => {
       )
       .subscribe();
 
+    fetchLatestPlaylists();
     return () => { supabase.removeChannel(channel); };
-  }, [syncPlaylistsState]);
+  }, [tokenCode, syncPlaylistsState]);
 
   // Realtime: site_settings
   useEffect(() => {
