@@ -276,25 +276,32 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return match ? match[1] : url;
   };
 
-  const togglePlay = () => {
+  const togglePlay = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (playlist.type === "youtube") {
       const player = ytPlayerRef.current;
-      if (!player || typeof player.getPlayerState !== "function") return;
-      const state = player.getPlayerState();
-      // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
-      if (state === 1 || state === 3) {
-        player.pauseVideo();
-        setIsPlaying(false);
-      } else {
-        // Seek to live edge on unpause for YouTube live
-        try {
-          const duration = player.getDuration?.();
-          if (duration && duration > 0) {
-            player.seekTo(duration, true);
-          }
-        } catch {}
-        player.playVideo();
-        setIsPlaying(true);
+      if (!player) return;
+      // Ensure player API is ready
+      if (typeof player.getPlayerState !== "function" || typeof player.playVideo !== "function") return;
+      try {
+        const state = player.getPlayerState();
+        // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+        if (state === 1 || state === 3) {
+          player.pauseVideo();
+          setIsPlaying(false);
+        } else {
+          // Seek to live edge on unpause for YouTube live
+          try {
+            const duration = player.getDuration?.();
+            if (duration && duration > 0) {
+              player.seekTo(duration, true);
+            }
+          } catch {}
+          player.playVideo();
+          setIsPlaying(true);
+        }
+      } catch (err) {
+        console.warn("togglePlay YT error:", err);
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
@@ -370,17 +377,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             ref={ytContainerRef}
             className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
-          {/* Multiple overlay layers to fully block iframe inspection & right-click */}
+          {/* Overlay to block iframe inspection & handle play/pause click */}
           <div
             className="absolute inset-0 z-10 cursor-pointer"
-            onClick={togglePlay}
+            onClick={(e) => togglePlay(e)}
             onContextMenu={(e) => e.preventDefault()}
-            style={{ pointerEvents: "auto" }}
           />
           <div
-            className="absolute inset-0 z-[9] bg-transparent"
+            className="absolute inset-0 z-[9] bg-transparent pointer-events-none"
             onContextMenu={(e) => e.preventDefault()}
-            style={{ pointerEvents: "none" }}
           />
         </>
       )}
@@ -419,11 +424,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {/* Custom controls overlay */}
       <div
         className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 tv:gap-4 bg-gradient-to-t from-background/80 to-transparent p-3 tv:p-6 transition-opacity ${
-          showControls ? "opacity-100" : "opacity-0"
+          showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <button
-          onClick={togglePlay}
+          onClick={(e) => togglePlay(e)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
         >
           {isPlaying ? (
