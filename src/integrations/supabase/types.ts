@@ -581,6 +581,8 @@ export type Database = {
         Args: never
         Returns: {
           background_image_url: string
+          category: string
+          category_member: string
           created_at: string
           group_link: string
           id: string
