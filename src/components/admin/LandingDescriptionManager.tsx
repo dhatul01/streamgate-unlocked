@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, Image, AlignLeft, AlignCenter, AlignRight, X } from "lucide-react";
 
 interface Description {
   id: string;
@@ -13,18 +13,37 @@ interface Description {
   icon: string;
   sort_order: number;
   is_active: boolean;
+  image_url: string;
+  text_align: string;
 }
 
 const LandingDescriptionManager = () => {
   const [items, setItems] = useState<Description[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [showGallery, setShowGallery] = useState(false);
+  const [galleryTargetId, setGalleryTargetId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetch = async () => {
+  const fetchItems = async () => {
     const { data } = await supabase.from("landing_descriptions").select("*").order("sort_order");
     setItems((data as Description[]) || []);
   };
 
-  useEffect(() => { fetch(); }, []);
+  const fetchGallery = async () => {
+    const { data } = await supabase.storage.from("show-images").list("", { limit: 100 });
+    if (data) {
+      const urls = data
+        .filter((f) => !f.name.startsWith("."))
+        .map((f) => {
+          const { data: urlData } = supabase.storage.from("show-images").getPublicUrl(f.name);
+          return urlData.publicUrl;
+        });
+      setGalleryImages(urls);
+    }
+  };
+
+  useEffect(() => { fetchItems(); fetchGallery(); }, []);
 
   const create = async () => {
     await supabase.from("landing_descriptions").insert({
@@ -33,22 +52,82 @@ const LandingDescriptionManager = () => {
       icon: "✨",
       sort_order: items.length,
     });
-    await fetch();
+    await fetchItems();
     toast({ title: "Deskripsi ditambahkan" });
   };
 
   const update = async (item: Description) => {
     await supabase
       .from("landing_descriptions")
-      .update({ title: item.title, content: item.content, icon: item.icon, is_active: item.is_active, sort_order: item.sort_order })
+      .update({
+        title: item.title,
+        content: item.content,
+        icon: item.icon,
+        is_active: item.is_active,
+        sort_order: item.sort_order,
+        image_url: item.image_url,
+        text_align: item.text_align,
+      })
       .eq("id", item.id);
-    await fetch();
+    await fetchItems();
   };
 
   const remove = async (id: string) => {
     await supabase.from("landing_descriptions").delete().eq("id", id);
-    await fetch();
+    await fetchItems();
     toast({ title: "Deskripsi dihapus" });
+  };
+
+  const uploadImage = async (file: File, itemId: string) => {
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("show-images").upload(fileName, file);
+    if (error) {
+      toast({ title: "Upload gagal", description: error.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("show-images").getPublicUrl(fileName);
+    const url = urlData.publicUrl;
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      const updated = { ...item, image_url: url };
+      setItems(items.map((i) => i.id === itemId ? updated : i));
+      await update(updated);
+    }
+    await fetchGallery();
+    setUploading(false);
+  };
+
+  const selectFromGallery = async (url: string) => {
+    if (!galleryTargetId) return;
+    const item = items.find((i) => i.id === galleryTargetId);
+    if (item) {
+      const updated = { ...item, image_url: url };
+      setItems(items.map((i) => i.id === galleryTargetId ? updated : i));
+      await update(updated);
+    }
+    setShowGallery(false);
+    setGalleryTargetId(null);
+  };
+
+  const removeImage = async (itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      const updated = { ...item, image_url: "" };
+      setItems(items.map((i) => i.id === itemId ? updated : i));
+      await update(updated);
+    }
+  };
+
+  const setAlign = async (itemId: string, align: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      const updated = { ...item, text_align: align };
+      setItems(items.map((i) => i.id === itemId ? updated : i));
+      await update(updated);
+    }
   };
 
   return (
@@ -88,6 +167,7 @@ const LandingDescriptionManager = () => {
                 </Button>
               </div>
             </div>
+
             <Textarea
               value={item.content}
               onChange={(e) => setItems(items.map((i) => i.id === item.id ? { ...i, content: e.target.value } : i))}
@@ -96,10 +176,77 @@ const LandingDescriptionManager = () => {
               rows={2}
               placeholder="Konten deskripsi..."
             />
+
+            {/* Text alignment */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Rata:</span>
+              {[
+                { value: "left", icon: <AlignLeft className="h-3.5 w-3.5" />, label: "Kiri" },
+                { value: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, label: "Tengah" },
+                { value: "right", icon: <AlignRight className="h-3.5 w-3.5" />, label: "Kanan" },
+              ].map((opt) => (
+                <Button
+                  key={opt.value}
+                  variant={item.text_align === opt.value ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setAlign(item.id, opt.value)}
+                >
+                  {opt.icon}
+                </Button>
+              ))}
+            </div>
+
+            {/* Image */}
+            <div>
+              <span className="mb-1 block text-xs font-medium text-muted-foreground">Foto</span>
+              <div className="flex gap-2">
+                <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs hover:bg-secondary">
+                  <Upload className="h-3 w-3" /> Upload
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadImage(file, item.id);
+                  }} />
+                </label>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setGalleryTargetId(item.id); setShowGallery(true); }}>
+                  <Image className="mr-1 h-3 w-3" /> Galeri
+                </Button>
+                {item.image_url && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => removeImage(item.id)}>
+                    <X className="mr-1 h-3 w-3" /> Hapus
+                  </Button>
+                )}
+              </div>
+              {item.image_url && (
+                <img src={item.image_url} alt="" className="mt-2 h-20 w-full rounded-lg object-cover" />
+              )}
+            </div>
           </div>
         ))}
         {items.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Belum ada deskripsi</p>}
       </div>
+
+      {uploading && <p className="text-xs text-primary">Mengupload...</p>}
+
+      {/* Gallery modal */}
+      {showGallery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="mx-4 max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-semibold text-foreground">📸 Galeri Foto</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowGallery(false)}>Tutup</Button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {galleryImages.map((url) => (
+                <div key={url} className="group relative">
+                  <img src={url} alt="" className="h-28 w-full cursor-pointer rounded-lg object-cover transition hover:ring-2 hover:ring-primary" onClick={() => selectFromGallery(url)} />
+                </div>
+              ))}
+            </div>
+            {galleryImages.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Belum ada foto di galeri</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
