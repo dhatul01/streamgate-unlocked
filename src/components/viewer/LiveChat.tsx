@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useTransition, memo } from "r
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Pin, Trash2, ShieldBan, Users } from "lucide-react";
+import { Send, Pin, Trash2, ShieldBan, ShieldOff, Users } from "lucide-react";
 
 interface LiveChatProps {
   username: string;
@@ -24,46 +24,67 @@ interface ChatMessage {
   created_at: string;
 }
 
-const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTime }: {
+// Badge components
+const AdminBadge = () => (
+  <span className="inline-flex items-center gap-0.5 rounded-md bg-gradient-to-r from-yellow-500/20 via-amber-400/20 to-yellow-600/20 border border-yellow-500/40 px-1.5 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-yellow-400 shadow-[0_0_6px_hsl(45,100%,50%,0.2)]">
+    <span className="text-[8px] tv:text-[10px]">🚩</span>
+    ADMIN
+  </span>
+);
+
+const ModeratorBadge = () => (
+  <span className="inline-flex items-center gap-0.5 rounded-md bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 border border-cyan-400/30 px-1.5 py-0.5 text-[9px] tv:text-[11px] font-bold tracking-wider text-cyan-400">
+    <span className="text-[8px] tv:text-[10px]">🛡️</span>
+    MOD
+  </span>
+);
+
+const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, formatTime }: {
   msg: ChatMessage;
   isAdmin: boolean;
+  isChatMod: boolean;
+  chatModUsernames: Set<string>;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
   formatTime: (d: string) => string;
-}) => (
-  <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-1.5">
-        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
-          {msg.username}
-        </span>
-        {msg.is_admin && (
-          <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-primary">
-            STAFF
+}) => {
+  const canModerate = isAdmin || isChatMod;
+  const isMsgFromMod = chatModUsernames.has(msg.username);
+
+  return (
+    <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-yellow-400" : isMsgFromMod ? "text-cyan-400" : "text-foreground/90"}`}>
+            {msg.username}
           </span>
-        )}
-        <span className="text-[10px] tv:text-xs text-muted-foreground/60">{formatTime(msg.created_at)}</span>
+          {msg.is_admin && <AdminBadge />}
+          {!msg.is_admin && isMsgFromMod && <ModeratorBadge />}
+          <span className="text-[10px] tv:text-xs text-muted-foreground/60">{formatTime(msg.created_at)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
-    </div>
-    {isAdmin && (
-      <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-        <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
-          <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
-        </button>
-        <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
-          <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
-        </button>
-        {msg.token_id && onBlock && (
-          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
-            <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
+      {canModerate && (
+        <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+          {isAdmin && (
+            <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+              <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
+            </button>
+          )}
+          <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+            <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
           </button>
-        )}
-      </div>
-    )}
-  </div>
-));
+          {msg.token_id && onBlock && (
+            <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+              <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 ChatMessageItem.displayName = "ChatMessageItem";
 
 const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
@@ -72,10 +93,33 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
+
+  const isChatMod = chatModUsernames.has(username);
+
+  // Load chat moderators
+  useEffect(() => {
+    const fetchMods = async () => {
+      const { data } = await supabase.from("chat_moderators").select("username");
+      if (data) {
+        setChatModUsernames(new Set(data.map((m: any) => m.username)));
+      }
+    };
+    fetchMods();
+
+    const channel = supabase
+      .channel("chat-mods-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_moderators" }, () => {
+        fetchMods();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Presence for online count
   useEffect(() => {
@@ -247,6 +291,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             key={msg.id}
             msg={msg}
             isAdmin={isAdmin}
+            isChatMod={isChatMod}
+            chatModUsernames={chatModUsernames}
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}

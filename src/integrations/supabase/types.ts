@@ -81,6 +81,27 @@ export type Database = {
           },
         ]
       }
+      chat_moderators: {
+        Row: {
+          appointed_by: string | null
+          created_at: string
+          id: string
+          username: string
+        }
+        Insert: {
+          appointed_by?: string | null
+          created_at?: string
+          id?: string
+          username: string
+        }
+        Update: {
+          appointed_by?: string | null
+          created_at?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       landing_descriptions: {
         Row: {
           content: string
