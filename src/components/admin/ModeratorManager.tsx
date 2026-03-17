@@ -26,9 +26,18 @@ interface Moderator {
   created_at: string;
 }
 
-interface TokenStats {
-  [moderatorId: string]: number;
+interface DurationStats {
+  harian: number;
+  mingguan: number;
+  bulanan: number;
+  lainnya: number;
 }
+
+interface TokenStats {
+  [moderatorId: string]: DurationStats;
+}
+
+const EMPTY_STATS: DurationStats = { harian: 0, mingguan: 0, bulanan: 0, lainnya: 0 };
 
 const ModeratorManager = () => {
   const [moderators, setModerators] = useState<Moderator[]>([]);
@@ -47,11 +56,21 @@ const ModeratorManager = () => {
   };
 
   const fetchTokenStats = async () => {
-    const { data } = await supabase.from("moderator_token_logs").select("moderator_id");
+    // Get logs with token duration_type
+    const { data } = await supabase
+      .from("moderator_token_logs")
+      .select("moderator_id, tokens(duration_type)");
+    
     if (data) {
       const stats: TokenStats = {};
       data.forEach((log: any) => {
-        stats[log.moderator_id] = (stats[log.moderator_id] || 0) + 1;
+        const modId = log.moderator_id;
+        if (!stats[modId]) stats[modId] = { ...EMPTY_STATS };
+        const durationType = log.tokens?.duration_type || "";
+        if (durationType === "harian") stats[modId].harian++;
+        else if (durationType === "mingguan") stats[modId].mingguan++;
+        else if (durationType === "bulanan") stats[modId].bulanan++;
+        else stats[modId].lainnya++;
       });
       setTokenStats(stats);
     }
@@ -108,8 +127,32 @@ const ModeratorManager = () => {
   const resetTokenStats = async (mod: Moderator) => {
     await supabase.from("moderator_token_logs").delete().eq("moderator_id", mod.id);
     fetchTokenStats();
-    toast({ title: `Log token ${mod.username} direset` });
+    toast({ title: `Semua log token ${mod.username} direset` });
   };
+
+  const resetTokenStatsByDuration = async (mod: Moderator, durationType: string) => {
+    // Get token IDs with this duration type that belong to this moderator
+    const { data: logs } = await supabase
+      .from("moderator_token_logs")
+      .select("id, token_id, tokens(duration_type)")
+      .eq("moderator_id", mod.id);
+    
+    if (logs) {
+      const logIdsToDelete = logs
+        .filter((l: any) => l.tokens?.duration_type === durationType)
+        .map((l: any) => l.id);
+      
+      if (logIdsToDelete.length > 0) {
+        await supabase.from("moderator_token_logs").delete().in("id", logIdsToDelete);
+      }
+    }
+
+    fetchTokenStats();
+    const label = durationType === "harian" ? "Harian" : durationType === "mingguan" ? "Mingguan" : "Bulanan";
+    toast({ title: `Log token ${label} untuk ${mod.username} direset` });
+  };
+
+  const getTotal = (stats: DurationStats) => stats.harian + stats.mingguan + stats.bulanan + stats.lainnya;
 
   return (
     <div className="space-y-6">
@@ -196,91 +239,142 @@ const ModeratorManager = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {moderators.map((mod) => (
-            <div
-              key={mod.id}
-              className={`rounded-xl border bg-card p-4 transition-all ${
-                mod.is_active ? "border-border" : "border-destructive/30 opacity-60"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
-                    style={{ backgroundColor: mod.background_color }}
-                  >
-                    {mod.username.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground">{mod.username}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                        mod.is_active ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                      }`}>
-                        {mod.is_active ? "AKTIF" : "NONAKTIF"}
-                      </span>
+          {moderators.map((mod) => {
+            const stats = tokenStats[mod.id] || { ...EMPTY_STATS };
+            const total = getTotal(stats);
+            return (
+              <div
+                key={mod.id}
+                className={`rounded-xl border bg-card p-4 transition-all ${
+                  mod.is_active ? "border-border" : "border-destructive/30 opacity-60"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white"
+                      style={{ backgroundColor: mod.background_color }}
+                    >
+                      {mod.username.charAt(0).toUpperCase()}
                     </div>
-                    <p className="text-xs text-muted-foreground">{mod.site_name} · /channel/{mod.username}</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-foreground">{mod.username}</span>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          mod.is_active ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                        }`}>
+                          {mod.is_active ? "AKTIF" : "NONAKTIF"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{mod.site_name} · /channel/{mod.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => toggleActive(mod)} className="text-xs">
+                      {mod.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Moderator?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Akun moderator "{mod.username}" akan dihapus permanen beserta semua log tokennya.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteModerator(mod)}>Ya, Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => toggleActive(mod)} className="text-xs">
-                    {mod.is_active ? "Nonaktifkan" : "Aktifkan"}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus Moderator?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Akun moderator "{mod.username}" akan dihapus permanen beserta semua log tokennya.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteModerator(mod)}>Ya, Hapus</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
 
-              {/* Token Stats */}
-              <div className="mt-3 flex items-center justify-between rounded-lg bg-secondary/30 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Token dibuat:</span>
-                  <span className="text-sm font-bold text-foreground">{tokenStats[mod.id] || 0}</span>
+                {/* Token Stats by Duration */}
+                <div className="mt-3 space-y-2 rounded-lg bg-secondary/30 px-3 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold text-foreground">Total Token: {total}</span>
+                    </div>
+                    {total > 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                            <RotateCcw className="h-3 w-3" />
+                            Reset Semua
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reset Semua Log Token?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Semua log statistik token untuk "{mod.username}" akan direset ke 0.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => resetTokenStats(mod)}>Ya, Reset</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+
+                  {total > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { key: "harian", label: "Harian", color: "bg-blue-500/15 text-blue-400" },
+                        { key: "mingguan", label: "Mingguan", color: "bg-amber-500/15 text-amber-400" },
+                        { key: "bulanan", label: "Bulanan", color: "bg-emerald-500/15 text-emerald-400" },
+                      ] as const).map(({ key, label, color }) => (
+                        <div key={key} className="flex items-center justify-between rounded-md bg-background/50 px-2.5 py-2">
+                          <div>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${color}`}>{label}</span>
+                            <span className="ml-2 text-sm font-bold text-foreground">{stats[key]}</span>
+                          </div>
+                          {stats[key] > 0 && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button className="text-muted-foreground hover:text-foreground transition-colors">
+                                  <RotateCcw className="h-3 w-3" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Reset Log Token {label}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Log token {label.toLowerCase()} untuk "{mod.username}" ({stats[key]} token) akan direset.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => resetTokenStatsByDuration(mod, key)}>
+                                    Ya, Reset
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {stats.lainnya > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>Lainnya: {stats.lainnya}</span>
+                    </div>
+                  )}
                 </div>
-                {(tokenStats[mod.id] || 0) > 0 && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                        <RotateCcw className="h-3 w-3" />
-                        Reset
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reset Log Token?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Log statistik token untuk "{mod.username}" akan direset ke 0. Token yang sudah dibuat tidak akan terhapus.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => resetTokenStats(mod)}>Ya, Reset</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
