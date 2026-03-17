@@ -23,6 +23,7 @@ const App = () => (
           <Route path="/live" element={<LivePage />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/membership" element={<MembershipPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
