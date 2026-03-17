@@ -216,6 +216,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           events: {
             onReady: (e: any) => {
               if (destroyed) return;
+              ytReadyRef.current = true;
               setIsLoading(false);
               // Hide iframe src from DOM inspection
               try {
@@ -226,7 +227,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                     set: (v) => iframe.setAttribute('src', v),
                     configurable: true,
                   });
-                  // Remove src attribute visibility
                   const origGetAttr = iframe.getAttribute.bind(iframe);
                   iframe.getAttribute = (name: string) => {
                     if (name === 'src') return '';
