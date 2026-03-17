@@ -14,6 +14,40 @@ const SIGNING_SECRET = SERVICE_ROLE_KEY;
 const PLAYLIST_TOKEN_TTL = 300; // 5 minutes
 const SUB_PLAYLIST_TOKEN_TTL = 600; // 10 minutes for sub-playlists
 
+// --- In-memory rate limiter for edge function ---
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function edgeRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  // Cleanup old entries periodically (every 100 checks)
+  if (rateLimitMap.size > 1000) {
+    for (const [k, v] of rateLimitMap) {
+      if (now > v.resetAt) rateLimitMap.delete(k);
+    }
+  }
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true; // allowed
+  }
+
+  if (entry.count >= maxRequests) {
+    return false; // rate limited
+  }
+
+  entry.count++;
+  return true; // allowed
+}
+
+function getRateLimitResponse(): Response {
+  return new Response(
+    JSON.stringify({ error: "Terlalu banyak request. Coba lagi nanti." }),
+    { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "30" } }
+  );
+}
+
 // --- Crypto helpers ---
 async function hmacSign(message: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -181,6 +215,11 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { token_code, playlist_id } = body;
 
+      // Rate limit: 10 generate requests per 60 seconds per token
+      if (token_code && !edgeRateLimit(`gen:${token_code}`, 10, 60000)) {
+        return getRateLimitResponse();
+      }
+
       if (!token_code || !playlist_id) {
         return new Response(
           JSON.stringify({ error: "Missing token_code or playlist_id" }),
@@ -237,6 +276,11 @@ Deno.serve(async (req) => {
       const pid = url.searchParams.get("pid");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
+
+      // Rate limit: 30 play requests per 60 seconds per playlist (HLS refreshes every ~6s)
+      if (pid && !edgeRateLimit(`play:${pid}`, 30, 60000)) {
+        return getRateLimitResponse();
+      }
 
       if (!pid || !exp || !sig) {
         return new Response("Missing parameters", { status: 400, headers: corsHeaders });
@@ -297,6 +341,11 @@ Deno.serve(async (req) => {
       const encoded = url.searchParams.get("u");
       const exp = url.searchParams.get("exp");
       const sig = url.searchParams.get("sig");
+
+      // Rate limit: 60 sub-playlist requests per 60 seconds per encoded URL
+      if (encoded && !edgeRateLimit(`sub:${encoded.slice(0, 20)}`, 60, 60000)) {
+        return getRateLimitResponse();
+      }
 
       if (!encoded || !exp || !sig) {
         return new Response("Missing parameters", { status: 400, headers: corsHeaders });
