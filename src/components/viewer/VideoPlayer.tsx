@@ -188,9 +188,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setIsSwitchingQuality(false);
       });
 
-      hls.on(Hls.Events.ERROR, () => {
+      hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         setIsLoading(false);
         setIsSwitchingQuality(false);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn("[HLS] Network error, attempting recovery...");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn("[HLS] Media error, attempting recovery...");
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error("[HLS] Fatal error, reinitializing...");
+              hls.destroy();
+              setTimeout(() => initHls(), 2000);
+              break;
+          }
+        }
       });
     };
 
