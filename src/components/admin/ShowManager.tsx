@@ -93,6 +93,7 @@ const ShowManager = () => {
         subscription_benefits: show.subscription_benefits,
         group_link: show.group_link,
         is_order_closed: show.is_order_closed,
+        category: show.category,
       })
       .eq("id", show.id);
     await fetchShows();
