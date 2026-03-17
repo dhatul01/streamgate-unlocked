@@ -135,11 +135,10 @@ const LivePage = () => {
           supabase.from("site_settings").select("*"),
         ]);
 
-        setStream(streamRes.data);
-        setPlaylists(playlistRes.data || []);
-        if (playlistRes.data && playlistRes.data.length > 0) {
-          setActivePlaylist(playlistRes.data[0]);
+        if (streamRes.data) {
+          syncStreamState(streamRes.data);
         }
+        syncPlaylistsState(playlistRes.data || []);
 
         if (settingsRes.data) {
           settingsRes.data.forEach((s: any) => {
