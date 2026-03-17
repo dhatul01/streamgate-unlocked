@@ -110,7 +110,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         .from("chat_messages")
         .select("*")
         .order("created_at", { ascending: true })
-        .limit(200);
+        .limit(50);
       if (data) {
         startTransition(() => {
           setMessages(data);

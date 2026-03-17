@@ -3,11 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MonitorView = () => {
   const [stream, setStream] = useState<any>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
+  const [resetting, setResetting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -21,6 +35,17 @@ const MonitorView = () => {
     };
     fetch();
   }, []);
+
+  const handleResetChat = async () => {
+    setResetting(true);
+    const { error } = await supabase.from("chat_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setResetting(false);
+    if (error) {
+      toast({ title: "Gagal mereset chat", variant: "destructive" });
+    } else {
+      toast({ title: "Live chat berhasil direset" });
+    }
+  };
 
   const handleBlockUser = async (tokenId: string) => {
     await supabase.from("tokens").update({ status: "blocked" }).eq("id", tokenId);
@@ -42,6 +67,28 @@ const MonitorView = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">📺 Monitor</h2>
+
+      {/* Reset Chat Button */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" size="sm" disabled={resetting} className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            {resetting ? "Mereset..." : "Reset Live Chat"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Live Chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua pesan chat (termasuk yang di-pin) akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetChat}>Ya, Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Player */}
