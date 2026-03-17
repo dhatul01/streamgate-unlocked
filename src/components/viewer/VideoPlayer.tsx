@@ -600,7 +600,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             />
             <div
               className="absolute inset-0 z-10 cursor-pointer"
-              onClick={togglePlay}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
               onContextMenu={(e) => e.preventDefault()}
               style={{ pointerEvents: "auto" }}
             />
