@@ -49,9 +49,19 @@ const SubscriptionOrderManager = () => {
   useEffect(() => { fetchOrders(); }, []);
 
   const updateStatus = async (id: string, status: string) => {
+    const order = orders.find((o) => o.id === id);
     await supabase.from("subscription_orders").update({ status }).eq("id", id);
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
+
+    // Auto-send group link via WhatsApp when confirmed
+    if (status === "confirmed" && order) {
+      const show = shows[order.show_id];
+      if (show?.group_link) {
+        const msg = `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
+        sendWhatsApp(order.phone, msg);
+      }
+    }
   };
 
   const deleteOrder = async (id: string) => {
