@@ -442,6 +442,14 @@ const LivePage = () => {
 
   const isLive = stream?.is_live || false;
 
+  useEffect(() => {
+    if (!isLive || !activePlaylist) return;
+    const timer = setTimeout(() => {
+      playerRef.current?.play();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isLive, activePlaylist, playerKey]);
+
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
       <PlayerAnimations type={playerAnimation} />
