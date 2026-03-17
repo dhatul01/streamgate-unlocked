@@ -28,6 +28,7 @@ interface Show {
   max_subscribers: number;
   subscription_benefits: string;
   group_link: string;
+  is_order_closed: boolean;
 }
 
 interface LandingDescription {
