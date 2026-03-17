@@ -115,7 +115,7 @@ const ChannelPage = () => {
                   <p className="text-sm text-white/50">Tidak ada sumber video</p>
                 </div>
               )}
-              <Watermark text={chatUsername || "viewer"} />
+              <Watermark tokenCode={tokenCode || "CHANNEL"} />
             </div>
 
             {playlists.length > 1 && (
