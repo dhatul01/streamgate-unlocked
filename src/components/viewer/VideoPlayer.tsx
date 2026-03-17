@@ -201,6 +201,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           width: "100%",
           height: "100%",
           videoId,
+          host: "https://www.youtube.com",
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
             enablejsapi: 1,
@@ -209,7 +210,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             fs: 0,
             modestbranding: 1,
             rel: 0,
-            showinfo: 0,
             iv_load_policy: 3,
             playsinline: 1,
           },
@@ -218,22 +218,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               if (destroyed) return;
               ytReadyRef.current = true;
               setIsLoading(false);
-              // Hide iframe src from DOM inspection
-              try {
-                const iframe = ytContainerRef.current?.querySelector('iframe');
-                if (iframe) {
-                  Object.defineProperty(iframe, 'src', {
-                    get: () => '',
-                    set: (v) => iframe.setAttribute('src', v),
-                    configurable: true,
-                  });
-                  const origGetAttr = iframe.getAttribute.bind(iframe);
-                  iframe.getAttribute = (name: string) => {
-                    if (name === 'src') return '';
-                    return origGetAttr(name);
-                  };
-                }
-              } catch {}
               if (autoPlay) {
                 e.target.playVideo();
               }
