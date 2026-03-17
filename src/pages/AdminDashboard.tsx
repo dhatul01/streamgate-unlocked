@@ -12,6 +12,7 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
 import LandingDescriptionManager from "@/components/admin/LandingDescriptionManager";
 import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManager";
+import ModeratorManager from "@/components/admin/ModeratorManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
