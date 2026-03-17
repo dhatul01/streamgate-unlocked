@@ -65,6 +65,18 @@ const MonitorView = () => {
     await supabase.from("chat_messages").delete().eq("id", id);
   };
 
+  const handleToggleChatMod = async (uname: string, isMod: boolean) => {
+    if (isMod) {
+      await supabase.from("chat_moderators").delete().eq("username", uname);
+      toast({ title: `${uname} dihapus dari moderator chat` });
+    } else {
+      const { error } = await supabase.from("chat_moderators").insert({ username: uname });
+      if (!error) {
+        toast({ title: `${uname} dijadikan moderator chat` });
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">📺 Monitor</h2>
