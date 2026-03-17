@@ -114,12 +114,13 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       const { data } = await supabase
         .from("chat_messages")
         .select("*")
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
         .limit(50);
       if (data) {
+        const sorted = [...data].reverse();
         startTransition(() => {
-          setMessages(data);
-          setPinnedMessages(data.filter((m) => m.is_pinned));
+          setMessages(sorted);
+          setPinnedMessages(sorted.filter((m) => m.is_pinned));
         });
       }
     };
