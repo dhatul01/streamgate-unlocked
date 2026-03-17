@@ -38,10 +38,10 @@ const SubscriptionOrderManager = () => {
       .from("subscription_orders")
       .select("*")
       .order("created_at", { ascending: false });
-    const { data: showsData } = await supabase.from("shows").select("id, title");
+    const { data: showsData } = await supabase.from("shows").select("id, title, group_link");
 
-    const showMap: Record<string, string> = {};
-    showsData?.forEach((s: any) => { showMap[s.id] = s.title; });
+    const showMap: Record<string, { title: string; group_link: string }> = {};
+    showsData?.forEach((s: any) => { showMap[s.id] = { title: s.title, group_link: s.group_link || "" }; });
     setShows(showMap);
     setOrders((ordersData as Order[]) || []);
   };
