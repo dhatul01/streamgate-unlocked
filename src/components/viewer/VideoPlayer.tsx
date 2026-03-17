@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from "react";
 import Watermark from "@/components/viewer/Watermark";
 
 interface VideoPlayerProps {
@@ -201,6 +201,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           width: "100%",
           height: "100%",
           videoId,
+          host: "https://www.youtube.com",
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
             enablejsapi: 1,
@@ -209,7 +210,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             fs: 0,
             modestbranding: 1,
             rel: 0,
-            showinfo: 0,
             iv_load_policy: 3,
             playsinline: 1,
           },
@@ -218,22 +218,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               if (destroyed) return;
               ytReadyRef.current = true;
               setIsLoading(false);
-              // Hide iframe src from DOM inspection
-              try {
-                const iframe = ytContainerRef.current?.querySelector('iframe');
-                if (iframe) {
-                  Object.defineProperty(iframe, 'src', {
-                    get: () => '',
-                    set: (v) => iframe.setAttribute('src', v),
-                    configurable: true,
-                  });
-                  const origGetAttr = iframe.getAttribute.bind(iframe);
-                  iframe.getAttribute = (name: string) => {
-                    if (name === 'src') return '';
-                    return origGetAttr(name);
-                  };
-                }
-              } catch {}
               if (autoPlay) {
                 e.target.playVideo();
               }
@@ -284,6 +268,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return match ? match[1] : url;
   };
 
+  const youtubeEmbedUrl = useMemo(() => {
+    if (playlist.type !== "youtube") return "";
+    const videoId = extractYTId(playlist.url);
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1`;
+  }, [playlist.type, playlist.url]);
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     
