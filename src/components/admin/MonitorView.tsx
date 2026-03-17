@@ -143,6 +143,7 @@ const MonitorView = () => {
             onPinMessage={handlePinMessage}
             onDeleteMessage={handleDeleteMessage}
             onBlockUser={handleBlockUser}
+            onToggleChatMod={handleToggleChatMod}
           />
         </div>
       </div>
