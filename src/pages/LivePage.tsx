@@ -318,11 +318,11 @@ const LivePage = () => {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
-  const handlePlaylistSwitch = (p: any) => {
+  const handlePlaylistSwitch = (playlist: any) => {
     if (playerRef.current) {
       playerRef.current.pause();
     }
-    setActivePlaylist(p);
+    setActivePlaylist(playlist);
   };
 
   const handleUsernameSet = (name: string) => {
