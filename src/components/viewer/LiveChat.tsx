@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useTransition, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Send, Pin, Trash2, ShieldBan, Users } from "lucide-react";
 
 interface LiveChatProps {
@@ -9,6 +10,7 @@ interface LiveChatProps {
   tokenId?: string;
   isLive: boolean;
   isAdmin: boolean;
+  canModerate?: boolean;
   onPinMessage?: (id: string) => void;
   onDeleteMessage?: (id: string) => void;
   onBlockUser?: (tokenId: string) => void;

@@ -21,6 +21,7 @@ const ChannelPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tokenValid, setTokenValid] = useState(false);
+  const [chatTokenId, setChatTokenId] = useState<string | undefined>(undefined);
   const [watermarkUrl, setWatermarkUrl] = useState("");
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
