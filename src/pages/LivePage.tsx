@@ -103,14 +103,15 @@ const LivePage = () => {
 
         const [streamRes, playlistRes, settingsRes] = await Promise.all([
           supabase.from("streams").select("*").limit(1).single(),
-          supabase.from("playlists").select("*").order("sort_order"),
+          supabase.rpc("get_playlists_for_token", { _token_code: tokenCode }),
           supabase.from("site_settings").select("*"),
         ]);
 
         setStream(streamRes.data);
-        setPlaylists(playlistRes.data || []);
-        if (playlistRes.data && playlistRes.data.length > 0) {
-          setActivePlaylist(playlistRes.data[0]);
+        const playlistData = (playlistRes.data || []) as any[];
+        setPlaylists(playlistData);
+        if (playlistData.length > 0) {
+          setActivePlaylist(playlistData[0]);
         }
 
         if (settingsRes.data) {
