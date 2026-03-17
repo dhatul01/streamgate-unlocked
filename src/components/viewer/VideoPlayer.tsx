@@ -618,7 +618,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, playlist.url, playCloudflare, setPlayerLoading, setPlayerPlaying]);
 
     const extractYTId = (url: string) => {
-      const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+      // Support: youtube.com/watch?v=, youtu.be/, /embed/, /v/, /live/
+      const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/|\/live\/)([a-zA-Z0-9_-]{11})/);
       return match ? match[1] : url;
     };
 
