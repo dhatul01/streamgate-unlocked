@@ -30,6 +30,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const [isLoading, setIsLoading] = useState(true);
     const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
     const [currentQuality, setCurrentQuality] = useState(-1);
+    const [ytQualities, setYtQualities] = useState<string[]>([]);
+    const [currentYtQuality, setCurrentYtQuality] = useState("auto");
     const [showControls, setShowControls] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -252,6 +254,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       setPlayerPlaying(false);
       setQualities([]);
       setCurrentQuality(-1);
+      setYtQualities([]);
+      setCurrentYtQuality("auto");
 
       return () => {
         if (hlsRef.current) {
@@ -391,6 +395,53 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       void initHls();
     }, [playlist.type, playlist.url, setPlayerLoading]);
 
+    const YT_QUALITY_MAP: Record<string, string> = {
+      highres: "4320p",
+      hd2160: "2160p",
+      hd1440: "1440p",
+      hd1080: "1080p",
+      hd720: "720p",
+      large: "480p",
+      medium: "360p",
+      small: "240p",
+      tiny: "144p",
+      auto: "Auto",
+    };
+
+    const handleYtQualityChange = (quality: string) => {
+      const player = ytPlayerRef.current;
+      if (!player?.setPlaybackQuality) return;
+
+      try {
+        if (quality === "auto") {
+          player.setPlaybackQuality("default");
+        } else {
+          player.setPlaybackQuality(quality);
+        }
+        setCurrentYtQuality(quality);
+      } catch {}
+    };
+
+    const forceMaxYtQuality = useCallback(() => {
+      const player = ytPlayerRef.current;
+      if (!player?.getAvailableQualityLevels) return;
+
+      try {
+        const levels: string[] = player.getAvailableQualityLevels() || [];
+        if (levels.length === 0) return;
+
+        const validLevels = levels.filter((l: string) => l !== "auto" && l !== "default");
+        setYtQualities(["auto", ...validLevels]);
+
+        // Set highest available quality
+        if (validLevels.length > 0) {
+          const highest = validLevels[0]; // YouTube returns highest first
+          player.setPlaybackQuality(highest);
+          setCurrentYtQuality(highest);
+        }
+      } catch {}
+    }, []);
+
     useEffect(() => {
       if (playlist.type !== "youtube") return;
 
@@ -448,6 +499,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   }
                 } catch {}
 
+                // Force max quality before playback
+                forceMaxYtQuality();
+
                 if (playbackIntentRef.current === "play") {
                   setPlayerLoading(true);
                 }
@@ -459,6 +513,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                 if (e.data === YT_STATE_PLAYING) {
                   setPlayerLoading(false);
                   setPlayerPlaying(true);
+                  // Re-detect qualities once playing (YouTube exposes them after buffering)
+                  forceMaxYtQuality();
                   if (playbackIntentRef.current === "pause") {
                     requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PLAYING));
                   }
@@ -490,6 +546,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                     requestAnimationFrame(() => syncYoutubePlayback(e.data));
                   }
                 }
+              },
+              onPlaybackQualityChange: (e: any) => {
+                if (destroyed) return;
+                setCurrentYtQuality(e.data || "auto");
               },
               onError: () => {
                 if (destroyed) return;
@@ -526,7 +586,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       return () => {
         destroyed = true;
       };
-    }, [playlist.type, playlist.url, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback]);
+    }, [playlist.type, playlist.url, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback, forceMaxYtQuality]);
 
     useEffect(() => {
       if (playlist.type !== "cloudflare") return;
@@ -614,7 +674,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, playlist.url, playCloudflare, setPlayerLoading, setPlayerPlaying]);
 
     const extractYTId = (url: string) => {
-      const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+      // Support: youtube.com/watch?v=, youtu.be/, /embed/, /v/, /live/
+      const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/|\/live\/)([a-zA-Z0-9_-]{11})/);
       return match ? match[1] : url;
     };
 
@@ -646,6 +707,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         setCurrentQuality(index);
       }
     };
+
 
     return (
       <div
@@ -747,6 +809,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             >
               {qualities.map((q) => (
                 <option key={q.index} value={q.index}>{q.label}</option>
+              ))}
+            </select>
+          )}
+
+          {playlist.type === "youtube" && ytQualities.length > 0 && (
+            <select
+              value={currentYtQuality}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleYtQualityChange(e.target.value);
+              }}
+              className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground tv:px-4 tv:py-2 tv:text-base"
+            >
+              {ytQualities.map((q) => (
+                <option key={q} value={q}>{YT_QUALITY_MAP[q] || q}</option>
               ))}
             </select>
           )}
