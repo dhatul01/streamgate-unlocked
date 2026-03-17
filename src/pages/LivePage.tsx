@@ -598,15 +598,25 @@ const LivePage = () => {
         </header>
 
         <div className="player-area relative">
-          {isLive && activePlaylist ? (
+          {isLive && activePlaylist && signedStreamUrl ? (
             <VideoPlayer
               key={playerKey}
               ref={playerRef}
-              playlist={activePlaylist}
+              playlist={{
+                ...activePlaylist,
+                url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
+              }}
               autoPlay
               watermarkUrl={watermarkUrl}
               tokenCode={tokenData?.code}
             />
+          ) : isLive && activePlaylist && signedUrlLoading ? (
+            <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
+              <div className="flex flex-col items-center gap-3 tv:gap-5">
+                <div className="h-10 w-10 tv:h-16 tv:w-16 animate-spin rounded-full border-4 tv:border-[6px] border-primary border-t-transparent" />
+                <p className="text-xs text-muted-foreground animate-pulse tv:text-lg">Mengamankan koneksi streaming...</p>
+              </div>
+            </div>
           ) : isLive && !activePlaylist ? (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <img src={logo} alt="RealTime48" className="mb-4 h-16 w-16 tv:h-28 tv:w-28 opacity-30" />
