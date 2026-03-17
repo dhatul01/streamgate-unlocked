@@ -290,13 +290,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       if (!isYTReady()) return;
       const player = ytPlayerRef.current;
       try {
-        const state = player.getPlayerState();
-        // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
-        if (state === 1) {
-          // Currently playing → pause
+        if (isPlaying) {
           player.pauseVideo();
+          setIsPlaying(false);
         } else {
-          // Any other state → play (seek to live edge first for live streams)
+          // Seek to live edge for live streams
           try {
             const duration = player.getDuration?.();
             if (duration && duration > 0) {
@@ -304,21 +302,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             }
           } catch {}
           player.playVideo();
+          setIsPlaying(true);
         }
-        // Don't manually setIsPlaying here — onStateChange is the single source of truth for YT
       } catch (err) {
         console.warn("togglePlay YT error:", err);
       }
     } else if (videoRef.current) {
-      if (videoRef.current.paused) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
         videoRef.current.play();
         setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
       }
     }
   };
