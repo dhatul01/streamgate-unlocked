@@ -230,6 +230,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
           } catch {}
         }
         ytPlayerRef.current = null;
+        ytReadyRef.current = false;
 
         if (cloudflareCleanupRef.current) {
           cloudflareCleanupRef.current();
