@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import LivePage from "./pages/LivePage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import ModeratorLogin from "./pages/ModeratorLogin";
+import ModeratorDashboard from "./pages/ModeratorDashboard";
+import ChannelPage from "./pages/ChannelPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +25,9 @@ const App = () => (
           <Route path="/live" element={<LivePage />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/moderator" element={<ModeratorLogin />} />
+          <Route path="/moderator/dashboard" element={<ModeratorDashboard />} />
+          <Route path="/channel/:username" element={<ChannelPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

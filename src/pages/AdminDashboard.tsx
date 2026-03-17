@@ -59,6 +59,7 @@ const AdminDashboard = () => {
       case "shows": return <ShowManager />;
       case "orders": return <SubscriptionOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
+      case "moderators": return <ModeratorManager />;
       case "monitor": return <MonitorView />;
       case "site": return <SiteSettingsManager />;
       case "settings": return <AdminSettings />;
