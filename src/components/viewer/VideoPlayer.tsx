@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from "react";
 import Watermark from "@/components/viewer/Watermark";
 
 interface VideoPlayerProps {
