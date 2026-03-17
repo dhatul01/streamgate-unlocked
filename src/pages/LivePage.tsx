@@ -435,6 +435,7 @@ const LivePage = () => {
         </div>
       </div>
     );
+  }
 
   if (error) {
     if (error === "device_limit") {
