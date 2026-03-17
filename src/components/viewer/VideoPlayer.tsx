@@ -708,52 +708,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       }
     };
 
-    const YT_QUALITY_MAP: Record<string, string> = {
-      highres: "4320p",
-      hd2160: "2160p",
-      hd1440: "1440p",
-      hd1080: "1080p",
-      hd720: "720p",
-      large: "480p",
-      medium: "360p",
-      small: "240p",
-      tiny: "144p",
-      auto: "Auto",
-    };
-
-    const handleYtQualityChange = (quality: string) => {
-      const player = ytPlayerRef.current;
-      if (!player?.setPlaybackQuality) return;
-
-      try {
-        if (quality === "auto") {
-          player.setPlaybackQuality("default");
-        } else {
-          player.setPlaybackQuality(quality);
-        }
-        setCurrentYtQuality(quality);
-      } catch {}
-    };
-
-    const forceMaxYtQuality = useCallback(() => {
-      const player = ytPlayerRef.current;
-      if (!player?.getAvailableQualityLevels) return;
-
-      try {
-        const levels: string[] = player.getAvailableQualityLevels() || [];
-        if (levels.length === 0) return;
-
-        const validLevels = levels.filter((l: string) => l !== "auto" && l !== "default");
-        setYtQualities(["auto", ...validLevels]);
-
-        // Set highest available quality
-        if (validLevels.length > 0) {
-          const highest = validLevels[0]; // YouTube returns highest first
-          player.setPlaybackQuality(highest);
-          setCurrentYtQuality(highest);
-        }
-      } catch {}
-    }, []);
 
     return (
       <div
