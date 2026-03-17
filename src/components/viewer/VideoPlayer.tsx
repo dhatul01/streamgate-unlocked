@@ -300,20 +300,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       if (state === 1 || state === 3) {
         player.pauseVideo();
       } else {
-        try {
-          const duration = player.getDuration?.();
-          if (duration && duration > 0) {
-            player.seekTo(duration, true);
-          }
-        } catch {}
         player.playVideo();
       }
-    } else if (videoRef.current) {
+      return;
+    }
+
+    if (videoRef.current) {
       if (videoRef.current.paused) {
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
-        videoRef.current.play().catch(() => {});
+        void videoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
       }
