@@ -127,7 +127,6 @@ const MonitorView = () => {
             username="Admin"
             isLive={stream?.is_live || false}
             isAdmin={true}
-            canModerate={true}
             onPinMessage={handlePinMessage}
             onDeleteMessage={handleDeleteMessage}
             onBlockUser={handleBlockUser}

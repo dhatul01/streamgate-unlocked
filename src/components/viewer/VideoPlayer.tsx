@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from "react";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import Watermark from "@/components/viewer/Watermark";
 
 interface VideoPlayerProps {
@@ -17,876 +17,455 @@ export interface VideoPlayerHandle {
   pause: () => void;
 }
 
-const YT_STATE_UNSTARTED = -1;
-const YT_STATE_ENDED = 0;
-const YT_STATE_PLAYING = 1;
-const YT_STATE_PAUSED = 2;
-const YT_STATE_BUFFERING = 3;
-const YT_STATE_CUED = 5;
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
+  const [currentQuality, setCurrentQuality] = useState(-1);
+  const [showControls, setShowControls] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<any>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-const extractYTId = (url: string) => {
-  const match = url.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/v\/|\/live\/)([a-zA-Z0-9_-]{11})/);
-  return match ? match[1] : url;
-};
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
+        try {
+          const duration = ytPlayerRef.current.getDuration?.();
+          if (duration && duration > 0) ytPlayerRef.current.seekTo(duration, true);
+        } catch {}
+        ytPlayerRef.current.playVideo();
+      } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
+        // Seek to live edge before playing
+        if (hlsRef.current.liveSyncPosition) {
+          videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
+        }
+        videoRef.current.play();
+        setIsPlaying(true);
+      } else if (videoRef.current) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    },
+    pause: () => {
+      if (playlist.type === "youtube" && ytPlayerRef.current?.pauseVideo) {
+        ytPlayerRef.current.pauseVideo();
+      } else if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    },
+  }));
 
-const YT_QUALITY_MAP: Record<string, string> = {
-  highres: "4320p",
-  hd2160: "2160p",
-  hd1440: "1440p",
-  hd1080: "1080p",
-  hd720: "720p",
-  large: "480p",
-  medium: "360p",
-  small: "240p",
-  tiny: "144p",
-  auto: "Auto",
-};
+  // Hide controls after 3s
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    const resetTimer = () => {
+      setShowControls(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setShowControls(false), 3000);
+    };
+    const el = containerRef.current;
+    el?.addEventListener("mousemove", resetTimer);
+    el?.addEventListener("touchstart", resetTimer);
+    resetTimer();
+    return () => {
+      clearTimeout(timeout);
+      el?.removeEventListener("mousemove", resetTimer);
+      el?.removeEventListener("touchstart", resetTimer);
+    };
+  }, []);
 
-// Reliable YT API loader with queue pattern
-let ytApiReady = false;
-let ytApiLoading = false;
-const ytApiCallbacks: (() => void)[] = [];
+  // Cleanup HLS on unmount or playlist change
+  useEffect(() => {
+    setIsLoading(true);
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [playlist]);
 
-function loadYTApi(cb: () => void) {
-  const win = window as any;
-  if (win.YT?.Player) {
-    ytApiReady = true;
-    cb();
-    return;
-  }
+  // Obfuscate helper: encode/decode video source at runtime
+  const obfuscate = (str: string) => btoa(unescape(encodeURIComponent(str)));
+  const deobfuscate = (str: string) => decodeURIComponent(escape(atob(str)));
 
-  ytApiCallbacks.push(cb);
+  // Init HLS for m3u8
+  useEffect(() => {
+    if (playlist.type !== "m3u8" || !videoRef.current) return;
 
-  if (ytApiLoading) return;
-  ytApiLoading = true;
+    const initHls = async () => {
+      const Hls = (await import("hls.js")).default;
+      // Decode URL at runtime only
+      const decodedUrl = deobfuscate(obfuscate(playlist.url));
+      if (!Hls.isSupported()) {
+        videoRef.current!.src = decodedUrl;
+        if (autoPlay) videoRef.current!.play().catch(() => {});
+        return;
+      }
 
-  const prevCb = win.onYouTubeIframeAPIReady;
-  win.onYouTubeIframeAPIReady = () => {
-    ytApiReady = true;
-    ytApiLoading = false;
-    prevCb?.();
-    const cbs = ytApiCallbacks.splice(0);
-    cbs.forEach((fn) => fn());
+      const hls = new Hls({
+        liveSyncDurationCount: 3,
+        // Prevent URL leaking in error logs
+        debug: false,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(decodedUrl);
+      hls.attachMedia(videoRef.current!);
+
+      // Override video src property to hide URL from DOM inspection
+      try {
+        const videoEl = videoRef.current!;
+        const origSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+        Object.defineProperty(videoEl, 'src', {
+          get: () => '',
+          set: (v) => origSrc?.set?.call(videoEl, v),
+          configurable: true,
+        });
+        Object.defineProperty(videoEl, 'currentSrc', {
+          get: () => '',
+          configurable: true,
+        });
+      } catch {}
+
+      hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
+        const levels = data.levels.map((l: any, i: number) => ({
+          label: `${l.height}p`,
+          index: i,
+        }));
+        setQualities([{ label: "Auto", index: -1 }, ...levels]);
+        if (data.levels.length > 0) {
+          hls.currentLevel = data.levels.length - 1;
+          setCurrentQuality(data.levels.length - 1);
+        }
+        setIsLoading(false);
+        if (autoPlay) {
+          videoRef.current!.play().catch(() => {});
+          setIsPlaying(true);
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, () => {
+        setIsLoading(false);
+      });
+    };
+
+    initHls();
+  }, [playlist, autoPlay]);
+
+  // Load YouTube IFrame API
+  useEffect(() => {
+    if (playlist.type !== "youtube") return;
+
+    let destroyed = false;
+
+    const loadYTApi = () => {
+      if ((window as any).YT && (window as any).YT.Player) {
+        createYTPlayer();
+        return;
+      }
+      // Avoid duplicate script tags
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      (window as any).onYouTubeIframeAPIReady = () => {
+        if (!destroyed) createYTPlayer();
+      };
+    };
+
+    const createYTPlayer = () => {
+      if (destroyed) return;
+      const container = ytContainerRef.current;
+      if (!container) return;
+      container.innerHTML = "";
+      const playerDiv = document.createElement("div");
+      playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
+      container.appendChild(playerDiv);
+
+      const videoId = extractYTId(playlist.url);
+
+      try {
+        ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
+          width: "100%",
+          height: "100%",
+          videoId,
+          playerVars: {
+            autoplay: autoPlay ? 1 : 0,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            iv_load_policy: 3,
+            playsinline: 1,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: (e: any) => {
+              if (destroyed) return;
+              setIsLoading(false);
+              // Hide iframe src from DOM inspection
+              try {
+                const iframe = ytContainerRef.current?.querySelector('iframe');
+                if (iframe) {
+                  Object.defineProperty(iframe, 'src', {
+                    get: () => '',
+                    set: (v) => iframe.setAttribute('src', v),
+                    configurable: true,
+                  });
+                  // Remove src attribute visibility
+                  const origGetAttr = iframe.getAttribute.bind(iframe);
+                  iframe.getAttribute = (name: string) => {
+                    if (name === 'src') return '';
+                    return origGetAttr(name);
+                  };
+                }
+              } catch {}
+              if (autoPlay) {
+                e.target.playVideo();
+              }
+            },
+            onStateChange: (e: any) => {
+              if (destroyed) return;
+              // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
+              setIsPlaying(e.data === 1);
+              setIsLoading(e.data === 3);
+            },
+            onError: (e: any) => {
+              if (destroyed) return;
+              console.warn("YT Player error code:", e.data);
+              setIsLoading(false);
+            },
+          },
+        });
+      } catch (err) {
+        console.warn("Failed to create YT player:", err);
+        setIsLoading(false);
+      }
+    };
+
+    loadYTApi();
+
+    return () => {
+      destroyed = true;
+      try {
+        if (ytPlayerRef.current?.destroy) {
+          ytPlayerRef.current.destroy();
+        }
+      } catch {}
+      ytPlayerRef.current = null;
+    };
+  }, [playlist, autoPlay]);
+
+  // Cloudflare loading
+  useEffect(() => {
+    if (playlist.type === "cloudflare") {
+      const timer = setTimeout(() => setIsLoading(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [playlist]);
+
+  const extractYTId = (url: string) => {
+    const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : url;
   };
 
-  if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-  }
-}
-
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
-  ({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
-    const [currentQuality, setCurrentQuality] = useState(-1);
-    const [ytQualities, setYtQualities] = useState<string[]>([]);
-    const [currentYtQuality, setCurrentYtQuality] = useState("auto");
-    const [showControls, setShowControls] = useState(true);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isMuted, setIsMuted] = useState(true); // Start muted for autoplay support
-
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const hlsRef = useRef<any>(null);
-    const ytPlayerRef = useRef<any>(null);
-    const ytReadyRef = useRef(false);
-    const ytContainerRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const cloudflareIframeRef = useRef<HTMLIFrameElement>(null);
-    const cloudflarePlayerRef = useRef<any>(null);
-    const cloudflareCleanupRef = useRef<(() => void) | null>(null);
-    const playbackIntentRef = useRef<"play" | "pause">(autoPlay ? "play" : "pause");
-    const playbackStateRef = useRef(false);
-    const userInteractedRef = useRef(false);
-
-    const pType = playlist.type;
-    const pUrl = playlist.url;
-
-    const setPlayerLoading = useCallback((loading: boolean) => {
-      setIsLoading(loading);
-    }, []);
-
-    const setPlayerPlaying = useCallback((playing: boolean) => {
-      playbackStateRef.current = playing;
-      setIsPlaying(playing);
-    }, []);
-
-    // ─── Native HLS / direct video ───
-    const seekNativeToLiveEdge = useCallback(() => {
-      const video = videoRef.current;
-      if (!video || pType !== "m3u8") return;
-      const liveSyncPosition = hlsRef.current?.liveSyncPosition;
-      if (typeof liveSyncPosition === "number" && Number.isFinite(liveSyncPosition)) {
-        try { video.currentTime = liveSyncPosition; } catch {}
-      }
-    }, [pType]);
-
-    const playNative = useCallback(async () => {
-      const video = videoRef.current;
-      if (!video) return;
-      playbackIntentRef.current = "play";
-      if (video.ended) {
-        try { video.currentTime = 0; } catch {}
-      }
-      seekNativeToLiveEdge();
-      setPlayerLoading(true);
-      try {
-        await video.play();
-      } catch {
-        // Autoplay blocked - try muted
-        try {
-          video.muted = true;
-          setIsMuted(true);
-          await video.play();
-        } catch {
-          setPlayerLoading(false);
-        }
-      }
-    }, [seekNativeToLiveEdge, setPlayerLoading]);
-
-    const pauseNative = useCallback(() => {
-      playbackIntentRef.current = "pause";
-      setPlayerLoading(false);
-      videoRef.current?.pause();
-    }, [setPlayerLoading]);
-
-    // ─── YouTube ───
-    const syncYoutubePlayback = useCallback((forcedState?: number) => {
+  const togglePlay = () => {
+    if (playlist.type === "youtube") {
       const player = ytPlayerRef.current;
-      if (!player || !ytReadyRef.current) return;
-      try {
-        const state = forcedState ?? player.getPlayerState?.();
-        const shouldPause = playbackIntentRef.current === "pause";
-
-        if (shouldPause) {
-          if (state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING) {
-            player.pauseVideo?.();
-          }
-          return;
-        }
-
-        // Want to play
-        if (state === YT_STATE_ENDED) {
-          player.seekTo?.(0, true);
-        }
-        if (state !== YT_STATE_PLAYING && state !== YT_STATE_BUFFERING) {
-          player.playVideo?.();
-        }
-      } catch {}
-    }, []);
-
-    const forceMaxYtQuality = useCallback(() => {
-      const player = ytPlayerRef.current;
-      if (!player?.getAvailableQualityLevels) return;
-      try {
-        const levels: string[] = player.getAvailableQualityLevels() || [];
-        if (levels.length === 0) return;
-        const validLevels = levels.filter((l: string) => l !== "auto" && l !== "default");
-        setYtQualities(["auto", ...validLevels]);
-
-        if (validLevels.length > 0) {
-          const highest = validLevels[0];
-          // Try new API first, fallback to old
-          try {
-            player.setPlaybackQualityRange?.(highest, highest);
-          } catch {}
-          try {
-            player.setPlaybackQuality?.(highest);
-          } catch {}
-          setCurrentYtQuality(highest);
-        }
-      } catch {}
-    }, []);
-
-    const playYoutube = useCallback(async () => {
-      playbackIntentRef.current = "play";
-      setPlayerLoading(true);
-      syncYoutubePlayback();
-    }, [setPlayerLoading, syncYoutubePlayback]);
-
-    const pauseYoutube = useCallback(() => {
-      playbackIntentRef.current = "pause";
-      setPlayerLoading(false);
-      syncYoutubePlayback();
-    }, [setPlayerLoading, syncYoutubePlayback]);
-
-    // ─── Cloudflare ───
-    const playCloudflare = useCallback(async () => {
-      playbackIntentRef.current = "play";
-      const player = cloudflarePlayerRef.current;
-      if (!player?.play) return;
-      setPlayerLoading(true);
-      try {
-        await player.play();
-      } catch {
-        try {
-          player.muted = true;
-          setIsMuted(true);
-          await player.play();
-        } catch {
-          setPlayerLoading(false);
-        }
-      }
-    }, [setPlayerLoading]);
-
-    const pauseCloudflare = useCallback(() => {
-      playbackIntentRef.current = "pause";
-      setPlayerLoading(false);
-      cloudflarePlayerRef.current?.pause?.();
-    }, [setPlayerLoading]);
-
-    // ─── Unified controls ───
-    const playCurrent = useCallback(async () => {
-      userInteractedRef.current = true;
-      if (pType === "youtube") return playYoutube();
-      if (pType === "cloudflare") return playCloudflare();
-      return playNative();
-    }, [pType, playYoutube, playCloudflare, playNative]);
-
-    const pauseCurrent = useCallback(() => {
-      if (pType === "youtube") return pauseYoutube();
-      if (pType === "cloudflare") return pauseCloudflare();
-      return pauseNative();
-    }, [pType, pauseYoutube, pauseCloudflare, pauseNative]);
-
-    const getCurrentPlaybackState = useCallback(() => {
-      if (pType === "youtube") {
-        const player = ytPlayerRef.current;
-        if (!player?.getPlayerState) return playbackStateRef.current;
-        try {
-          const state = player.getPlayerState();
-          return state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING;
-        } catch {
-          return playbackStateRef.current;
-        }
-      }
-      if (pType === "cloudflare") return playbackStateRef.current;
-      const video = videoRef.current;
-      return !!video && !video.paused && !video.ended;
-    }, [pType]);
-
-    const togglePlay = useCallback(() => {
-      if (getCurrentPlaybackState()) {
-        pauseCurrent();
+      if (!player || typeof player.getPlayerState !== "function") return;
+      const state = player.getPlayerState();
+      // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+      if (state === 1 || state === 3) {
+        player.pauseVideo();
+        setIsPlaying(false);
       } else {
-        void playCurrent();
-      }
-    }, [getCurrentPlaybackState, pauseCurrent, playCurrent]);
-
-    const toggleMute = useCallback(() => {
-      if (pType === "youtube") {
-        const player = ytPlayerRef.current;
-        if (!player) return;
+        // Seek to live edge on unpause for YouTube live
         try {
-          if (player.isMuted?.()) {
-            player.unMute?.();
-            setIsMuted(false);
-          } else {
-            player.mute?.();
-            setIsMuted(true);
+          const duration = player.getDuration?.();
+          if (duration && duration > 0) {
+            player.seekTo(duration, true);
           }
         } catch {}
-        return;
+        player.playVideo();
+        setIsPlaying(true);
       }
-      if (pType === "cloudflare") {
-        const player = cloudflarePlayerRef.current;
-        if (!player) return;
-        player.muted = !player.muted;
-        setIsMuted(player.muted);
-        return;
-      }
-      const video = videoRef.current;
-      if (!video) return;
-      video.muted = !video.muted;
-      setIsMuted(video.muted);
-    }, [pType]);
-
-    useImperativeHandle(ref, () => ({
-      play: () => void playCurrent(),
-      pause: () => pauseCurrent(),
-    }), [pauseCurrent, playCurrent]);
-
-    // Controls auto-hide
-    useEffect(() => {
-      let timeout: NodeJS.Timeout;
-      const resetTimer = () => {
-        setShowControls(true);
-        clearTimeout(timeout);
-        timeout = setTimeout(() => setShowControls(false), 3000);
-      };
-      const el = containerRef.current;
-      el?.addEventListener("mousemove", resetTimer);
-      el?.addEventListener("touchstart", resetTimer);
-      resetTimer();
-      return () => {
-        clearTimeout(timeout);
-        el?.removeEventListener("mousemove", resetTimer);
-        el?.removeEventListener("touchstart", resetTimer);
-      };
-    }, []);
-
-    // Fullscreen detection
-    useEffect(() => {
-      const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-      document.addEventListener("fullscreenchange", onFsChange);
-      return () => document.removeEventListener("fullscreenchange", onFsChange);
-    }, []);
-
-    // Reset state on playlist change
-    useEffect(() => {
-      playbackIntentRef.current = autoPlay ? "play" : "pause";
-      playbackStateRef.current = false;
-      setPlayerLoading(true);
-      setPlayerPlaying(false);
-      setQualities([]);
-      setCurrentQuality(-1);
-      setYtQualities([]);
-      setCurrentYtQuality("auto");
-      setIsMuted(true);
-
-      return () => {
-        if (hlsRef.current) {
-          hlsRef.current.destroy();
-          hlsRef.current = null;
+    } else if (videoRef.current) {
+      if (videoRef.current.paused) {
+        // Seek to live edge on unpause for m3u8
+        if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
+          videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
-        if (ytPlayerRef.current?.destroy) {
-          try { ytPlayerRef.current.destroy(); } catch {}
-        }
-        ytPlayerRef.current = null;
-        ytReadyRef.current = false;
-        if (cloudflareCleanupRef.current) {
-          cloudflareCleanupRef.current();
-          cloudflareCleanupRef.current = null;
-        }
-        cloudflarePlayerRef.current = null;
-      };
-    }, [pType, pUrl, autoPlay, setPlayerLoading, setPlayerPlaying]);
-
-    // Native video event listeners - use pType/pUrl not playlist object
-    useEffect(() => {
-      const video = videoRef.current;
-      if (!video || pType !== "m3u8") return;
-
-      const onPlay = () => setPlayerPlaying(true);
-      const onPlaying = () => {
-        setPlayerLoading(false);
-        setPlayerPlaying(true);
-      };
-      const onPause = () => setPlayerPlaying(false);
-      const onEnded = () => setPlayerPlaying(false);
-      const onWaiting = () => setPlayerLoading(true);
-      const onCanPlay = () => setPlayerLoading(false);
-      const onError = () => setPlayerLoading(false);
-
-      video.addEventListener("play", onPlay);
-      video.addEventListener("playing", onPlaying);
-      video.addEventListener("pause", onPause);
-      video.addEventListener("ended", onEnded);
-      video.addEventListener("waiting", onWaiting);
-      video.addEventListener("canplay", onCanPlay);
-      video.addEventListener("error", onError);
-
-      return () => {
-        video.removeEventListener("play", onPlay);
-        video.removeEventListener("playing", onPlaying);
-        video.removeEventListener("pause", onPause);
-        video.removeEventListener("ended", onEnded);
-        video.removeEventListener("waiting", onWaiting);
-        video.removeEventListener("canplay", onCanPlay);
-        video.removeEventListener("error", onError);
-      };
-    }, [pType, pUrl, setPlayerLoading, setPlayerPlaying]);
-
-    // ─── HLS init ───
-    useEffect(() => {
-      if (pType !== "m3u8" || !videoRef.current) return;
-      let destroyed = false;
-
-      const initHls = async () => {
-        const Hls = (await import("hls.js")).default;
-        const video = videoRef.current;
-        if (!video || destroyed) return;
-
-        video.playsInline = true;
-        video.preload = "auto";
-        video.muted = true; // Start muted for autoplay
-
-        const decodedUrl = pUrl;
-
-        if (!Hls.isSupported()) {
-          video.src = decodedUrl;
-          if (playbackIntentRef.current === "play") {
-            try { await video.play(); } catch { setPlayerLoading(false); }
-          } else {
-            setPlayerLoading(false);
-          }
-          return;
-        }
-
-        const hls = new Hls({
-          liveSyncDurationCount: 3,
-          debug: false,
-        });
-        hlsRef.current = hls;
-        hls.loadSource(decodedUrl);
-        hls.attachMedia(video);
-
-        // Hide source URL
-        try {
-          const origSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
-          Object.defineProperty(video, "src", {
-            get: () => "",
-            set: (v) => origSrc?.set?.call(video, v),
-            configurable: true,
-          });
-          Object.defineProperty(video, "currentSrc", {
-            get: () => "",
-            configurable: true,
-          });
-        } catch {}
-
-        hls.on(Hls.Events.MANIFEST_PARSED, async (_: any, data: any) => {
-          if (destroyed) return;
-          const levels = data.levels.map((l: any, i: number) => ({
-            label: `${l.height}p`,
-            index: i,
-          }));
-          setQualities([{ label: "Auto", index: -1 }, ...levels]);
-
-          // Set max quality
-          if (data.levels.length > 0) {
-            hls.currentLevel = data.levels.length - 1;
-            setCurrentQuality(data.levels.length - 1);
-          }
-
-          setPlayerLoading(false);
-          if (playbackIntentRef.current === "play") {
-            try { await video.play(); } catch { setPlayerLoading(false); }
-          }
-        });
-
-        hls.on(Hls.Events.ERROR, (_: any, data: any) => {
-          if (destroyed) return;
-          if (data.fatal) {
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-              hls.startLoad();
-            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              hls.recoverMediaError();
-            }
-          }
-          setPlayerLoading(false);
-        });
-      };
-
-      void initHls();
-
-      return () => { destroyed = true; };
-    }, [pType, pUrl, setPlayerLoading]);
-
-    // ─── YouTube init ───
-    useEffect(() => {
-      if (pType !== "youtube") return;
-      let destroyed = false;
-
-      const createYTPlayer = () => {
-        if (destroyed) return;
-        const container = ytContainerRef.current;
-        if (!container) return;
-
-        container.innerHTML = "";
-        const playerDiv = document.createElement("div");
-        playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
-        container.appendChild(playerDiv);
-
-        const videoId = extractYTId(pUrl);
-        const win = window as any;
-
-        try {
-          ytPlayerRef.current = new win.YT.Player(playerDiv, {
-            width: "100%",
-            height: "100%",
-            videoId,
-            playerVars: {
-              autoplay: autoPlay ? 1 : 0,
-              controls: 0,
-              disablekb: 1,
-              fs: 0,
-              modestbranding: 1,
-              rel: 0,
-              showinfo: 0,
-              iv_load_policy: 3,
-              playsinline: 1,
-              mute: 1, // Start muted so autoplay works
-              origin: window.location.origin,
-            },
-            events: {
-              onReady: () => {
-                if (destroyed) return;
-                ytReadyRef.current = true;
-                setPlayerLoading(false);
-
-                // Hide iframe src
-                try {
-                  const iframe = ytContainerRef.current?.querySelector("iframe");
-                  if (iframe) {
-                    Object.defineProperty(iframe, "src", {
-                      get: () => "",
-                      set: (v) => iframe.setAttribute("src", v),
-                      configurable: true,
-                    });
-                    const origGetAttr = iframe.getAttribute.bind(iframe);
-                    iframe.getAttribute = (name: string) => {
-                      if (name === "src") return "";
-                      return origGetAttr(name);
-                    };
-                  }
-                } catch {}
-
-                // Force max quality
-                forceMaxYtQuality();
-
-                if (playbackIntentRef.current === "play") {
-                  setPlayerLoading(true);
-                  // Player is already muted + autoplay=1, so it should auto-start
-                  syncYoutubePlayback();
-                }
-              },
-              onStateChange: (e: any) => {
-                if (destroyed) return;
-
-                if (e.data === YT_STATE_PLAYING) {
-                  setPlayerLoading(false);
-                  setPlayerPlaying(true);
-                  forceMaxYtQuality();
-                  if (playbackIntentRef.current === "pause") {
-                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PLAYING));
-                  }
-                  return;
-                }
-                if (e.data === YT_STATE_BUFFERING) {
-                  setPlayerLoading(true);
-                  setPlayerPlaying(true);
-                  if (playbackIntentRef.current === "pause") {
-                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_BUFFERING));
-                  }
-                  return;
-                }
-                if (e.data === YT_STATE_PAUSED) {
-                  setPlayerLoading(false);
-                  setPlayerPlaying(false);
-                  if (playbackIntentRef.current === "play") {
-                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PAUSED));
-                  }
-                  return;
-                }
-                if (e.data === YT_STATE_ENDED || e.data === YT_STATE_CUED || e.data === YT_STATE_UNSTARTED) {
-                  setPlayerLoading(false);
-                  setPlayerPlaying(false);
-                  if (playbackIntentRef.current === "play") {
-                    requestAnimationFrame(() => syncYoutubePlayback(e.data));
-                  }
-                }
-              },
-              onPlaybackQualityChange: (e: any) => {
-                if (destroyed) return;
-                setCurrentYtQuality(e.data || "auto");
-              },
-              onError: () => {
-                if (destroyed) return;
-                setPlayerLoading(false);
-                setPlayerPlaying(false);
-              },
-            },
-          });
-        } catch {
-          setPlayerLoading(false);
-        }
-      };
-
-      loadYTApi(createYTPlayer);
-
-      return () => { destroyed = true; };
-    }, [pType, pUrl, autoPlay, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback, forceMaxYtQuality]);
-
-    // ─── Cloudflare init ───
-    useEffect(() => {
-      if (pType !== "cloudflare") return;
-      let destroyed = false;
-
-      const bindCloudflarePlayer = () => {
-        const iframe = cloudflareIframeRef.current;
-        const Stream = (window as any).Stream;
-        if (!iframe || !Stream || destroyed) return;
-
-        const player = Stream(iframe);
-        cloudflarePlayerRef.current = player;
-
-        const onPlay = () => {
-          setPlayerPlaying(true);
-          if (playbackIntentRef.current === "pause") {
-            requestAnimationFrame(() => player.pause?.());
-          }
-        };
-        const onPlaying = () => {
-          setPlayerLoading(false);
-          setPlayerPlaying(true);
-          if (playbackIntentRef.current === "pause") {
-            requestAnimationFrame(() => player.pause?.());
-          }
-        };
-        const onPause = () => {
-          setPlayerLoading(false);
-          setPlayerPlaying(false);
-        };
-        const onWaiting = () => setPlayerLoading(true);
-        const onCanPlay = () => setPlayerLoading(false);
-        const onEnded = () => {
-          setPlayerLoading(false);
-          setPlayerPlaying(false);
-        };
-
-        player.addEventListener?.("play", onPlay);
-        player.addEventListener?.("playing", onPlaying);
-        player.addEventListener?.("pause", onPause);
-        player.addEventListener?.("waiting", onWaiting);
-        player.addEventListener?.("canplay", onCanPlay);
-        player.addEventListener?.("ended", onEnded);
-
-        cloudflareCleanupRef.current = () => {
-          player.removeEventListener?.("play", onPlay);
-          player.removeEventListener?.("playing", onPlaying);
-          player.removeEventListener?.("pause", onPause);
-          player.removeEventListener?.("waiting", onWaiting);
-          player.removeEventListener?.("canplay", onCanPlay);
-          player.removeEventListener?.("ended", onEnded);
-        };
-
-        setPlayerLoading(false);
-        if (playbackIntentRef.current === "play") {
-          void playCloudflare();
-        }
-      };
-
-      const scriptSrc = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
-      if (!(window as any).Stream) {
-        if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
-          const script = document.createElement("script");
-          script.src = scriptSrc;
-          script.async = true;
-          script.onload = () => {
-            if (!destroyed) bindCloudflarePlayer();
-          };
-          document.head.appendChild(script);
-        } else {
-          // Script exists but might not be loaded yet
-          const check = setInterval(() => {
-            if ((window as any).Stream || destroyed) {
-              clearInterval(check);
-              if (!destroyed) bindCloudflarePlayer();
-            }
-          }, 100);
-          setTimeout(() => clearInterval(check), 10000);
-        }
+        videoRef.current.play();
+        setIsPlaying(true);
       } else {
-        bindCloudflarePlayer();
+        videoRef.current.pause();
+        setIsPlaying(false);
       }
+    }
+  };
 
-      return () => { destroyed = true; };
-    }, [pType, pUrl, playCloudflare, setPlayerLoading, setPlayerPlaying]);
-
-    const handleYtQualityChange = (quality: string) => {
-      const player = ytPlayerRef.current;
-      if (!player) return;
-      try {
-        if (quality === "auto") {
-          player.setPlaybackQualityRange?.("default", "default");
-          player.setPlaybackQuality?.("default");
-        } else {
-          player.setPlaybackQualityRange?.(quality, quality);
-          player.setPlaybackQuality?.(quality);
-        }
-        setCurrentYtQuality(quality);
-      } catch {}
-    };
-
-    const toggleFullscreen = async () => {
-      if (!containerRef.current) return;
-      try {
-        if (document.fullscreenElement) {
-          await document.exitFullscreen();
-        } else {
-          await containerRef.current.requestFullscreen();
-        }
-      } catch {}
-    };
-
-    const toggleOrientation = async () => {
-      try {
-        const orientation = screen.orientation;
-        if (orientation.type.includes("portrait")) {
-          await (orientation as any).lock("landscape");
-        } else {
-          await (orientation as any).lock("portrait");
-        }
-      } catch {}
-    };
-
-    const handleQualityChange = (index: number) => {
-      if (hlsRef.current) {
-        hlsRef.current.currentLevel = index;
-        setCurrentQuality(index);
+  const toggleFullscreen = async () => {
+    if (!containerRef.current) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await containerRef.current.requestFullscreen();
       }
-    };
+    } catch {}
+  };
 
-    return (
-      <div
-        ref={containerRef}
-        className={`relative w-full overflow-hidden bg-card ${isFullscreen ? "flex items-center justify-center !h-screen" : ""}`}
-        style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
-      >
-        {isLoading && (
-          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/80">
-            <div className="flex flex-col items-center gap-3 tv:gap-5">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent tv:h-16 tv:w-16 tv:border-[6px]" />
-              <p className="animate-pulse text-xs text-muted-foreground tv:text-lg">Menghubungkan ke streaming...</p>
-            </div>
+  const toggleOrientation = async () => {
+    try {
+      const orientation = screen.orientation;
+      if (orientation.type.includes("portrait")) {
+        await (orientation as any).lock("landscape");
+      } else {
+        await (orientation as any).lock("portrait");
+      }
+    } catch {}
+  };
+
+  const handleQualityChange = (index: number) => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = index;
+      setCurrentQuality(index);
+    }
+  };
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : ""}`}
+      style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
+    >
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
+          <div className="flex flex-col items-center gap-3 tv:gap-5">
+            <div className="h-10 w-10 tv:h-16 tv:w-16 animate-spin rounded-full border-4 tv:border-[6px] border-primary border-t-transparent" />
+            <p className="text-xs text-muted-foreground animate-pulse tv:text-lg">Menghubungkan ke streaming...</p>
           </div>
-        )}
-
-        {pType === "youtube" && (
-          <>
-            <div
-              ref={ytContainerRef}
-              className={`h-full w-full [&>div]:!h-full [&>div]:!w-full [&>div>iframe]:!h-full [&>div>iframe]:!w-full [&>iframe]:!h-full [&>iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!w-full ${isFullscreen ? "relative aspect-video max-h-screen" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
-            />
-            <div
-              className="absolute inset-0 z-10 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                togglePlay();
-              }}
-              onContextMenu={(e) => e.preventDefault()}
-              style={{ pointerEvents: "auto" }}
-            />
-          </>
-        )}
-
-        {pType === "m3u8" && (
-          <video
-            ref={videoRef}
-            onClick={togglePlay}
-            className={`h-full w-full cursor-pointer object-contain ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
-            playsInline
-            preload="auto"
-            muted
-          />
-        )}
-
-        {pType === "cloudflare" && (
-          <>
-            <iframe
-              ref={cloudflareIframeRef}
-              src={`https://customer-${pUrl}.cloudflarestream.com/iframe?controls=false&autoplay=false&muted=true`}
-              className={`h-full w-full ${isFullscreen ? "aspect-video max-h-screen" : "absolute inset-0"}`}
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-              allowFullScreen
-            />
-            <div className="absolute inset-0 z-10 cursor-pointer" onClick={togglePlay} style={{ pointerEvents: "auto" }} />
-          </>
-        )}
-
-        {tokenCode && <Watermark tokenCode={tokenCode} />}
-
-        {watermarkUrl && (
-          <div className="pointer-events-none absolute bottom-12 right-3 z-20 tv:bottom-20 tv:right-6">
-            <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" />
-          </div>
-        )}
-
-        {/* Controls bar */}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-background/80 to-transparent p-3 transition-opacity tv:gap-4 tv:p-6 ${
-            showControls ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ pointerEvents: showControls ? "auto" : "none" }}
-        >
-          {/* Play/Pause */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlay();
-            }}
-            aria-label={isPlaying ? "Pause" : "Play"}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
-          >
-            {isPlaying ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21" /></svg>
-            )}
-          </button>
-
-          {/* Mute/Unmute */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMute();
-            }}
-            aria-label={isMuted ? "Unmute" : "Mute"}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
-          >
-            {isMuted ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
-            )}
-          </button>
-
-          <div className="flex-1" />
-
-          {/* Quality selector - only for m3u8 and cloudflare, NOT youtube */}
-          {pType === "m3u8" && qualities.length > 0 && (
-            <select
-              value={currentQuality}
-              onChange={(e) => { e.stopPropagation(); handleQualityChange(Number(e.target.value)); }}
-              onClick={(e) => e.stopPropagation()}
-              className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground tv:px-4 tv:py-2 tv:text-base"
-            >
-              {qualities.map((q) => (
-                <option key={q.index} value={q.index}>{q.label}</option>
-              ))}
-            </select>
-          )}
-
-          {/* Rotate */}
-          <button
-            type="button"
-            onClick={toggleOrientation}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
-            title="Rotate"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
-          </button>
-
-          {/* Fullscreen */}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
-            title="Fullscreen"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
-          </button>
         </div>
+      )}
+
+      {playlist.type === "youtube" && (
+        <>
+          <div
+            ref={ytContainerRef}
+            className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
+          />
+          {/* Multiple overlay layers to fully block iframe inspection & right-click */}
+          <div
+            className="absolute inset-0 z-10 cursor-pointer"
+            onClick={togglePlay}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ pointerEvents: "auto" }}
+          />
+          <div
+            className="absolute inset-0 z-[9] bg-transparent"
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ pointerEvents: "none" }}
+          />
+        </>
+      )}
+
+      {playlist.type === "m3u8" && (
+        <video
+          ref={videoRef}
+          onClick={togglePlay}
+          className={`h-full w-full object-contain cursor-pointer ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
+          playsInline
+        />
+      )}
+
+      {playlist.type === "cloudflare" && (
+        <>
+          <iframe
+            src={`https://customer-${playlist.url}.cloudflarestream.com/iframe`}
+            className={`h-full w-full ${isFullscreen ? "max-h-screen aspect-video" : "absolute inset-0"}`}
+            allow="autoplay; fullscreen"
+            allowFullScreen
+          />
+          <div className="absolute inset-0 z-10 cursor-pointer" onClick={togglePlay} style={{ pointerEvents: "auto" }} />
+        </>
+      )}
+
+      {/* Token code watermark */}
+      {tokenCode && <Watermark tokenCode={tokenCode} />}
+
+      {/* Admin watermark image */}
+      {watermarkUrl && (
+        <div className="pointer-events-none absolute bottom-12 right-3 z-20 tv:bottom-20 tv:right-6">
+          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" />
+        </div>
+      )}
+
+      {/* Custom controls overlay */}
+      <div
+        className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 tv:gap-4 bg-gradient-to-t from-background/80 to-transparent p-3 tv:p-6 transition-opacity ${
+          showControls ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <button
+          onClick={togglePlay}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
+        >
+          {isPlaying ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          )}
+        </button>
+
+        <div className="flex-1" />
+
+        {playlist.type === "m3u8" && qualities.length > 0 && (
+          <select
+            value={currentQuality}
+            onChange={(e) => handleQualityChange(Number(e.target.value))}
+            className="rounded-md bg-secondary px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground"
+          >
+            {qualities.map((q) => (
+              <option key={q.index} value={q.index}>{q.label}</option>
+            ))}
+          </select>
+        )}
+
+        <button
+          onClick={toggleOrientation}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
+          title="Rotate"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+
+        <button
+          onClick={toggleFullscreen}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
+          title="Fullscreen"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
       </div>
-    );
-  },
-);
+    </div>
+  );
+});
 
 VideoPlayer.displayName = "VideoPlayer";
 

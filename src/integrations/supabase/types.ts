@@ -111,113 +111,6 @@ export type Database = {
         }
         Relationships: []
       }
-      moderator_playlists: {
-        Row: {
-          created_at: string
-          id: string
-          label: string
-          moderator_id: string
-          sort_order: number
-          type: string
-          url: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          label: string
-          moderator_id: string
-          sort_order?: number
-          type?: string
-          url: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          label?: string
-          moderator_id?: string
-          sort_order?: number
-          type?: string
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "moderator_playlists_moderator_id_fkey"
-            columns: ["moderator_id"]
-            isOneToOne: false
-            referencedRelation: "moderators"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      moderator_token_logs: {
-        Row: {
-          created_at: string
-          id: string
-          moderator_id: string
-          token_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          moderator_id: string
-          token_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          moderator_id?: string
-          token_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "moderator_token_logs_moderator_id_fkey"
-            columns: ["moderator_id"]
-            isOneToOne: false
-            referencedRelation: "moderators"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "moderator_token_logs_token_id_fkey"
-            columns: ["token_id"]
-            isOneToOne: false
-            referencedRelation: "tokens"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      moderators: {
-        Row: {
-          background_color: string
-          created_at: string
-          id: string
-          is_active: boolean
-          logo_url: string | null
-          site_name: string
-          user_id: string
-          username: string
-        }
-        Insert: {
-          background_color?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          logo_url?: string | null
-          site_name?: string
-          user_id: string
-          username: string
-        }
-        Update: {
-          background_color?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          logo_url?: string | null
-          site_name?: string
-          user_id?: string
-          username?: string
-        }
-        Relationships: []
-      }
       playlists: {
         Row: {
           created_at: string
@@ -486,75 +379,12 @@ export type Database = {
         Returns: Json
       }
       get_confirmed_order_count: { Args: { _show_id: string }; Returns: number }
-      get_moderator_playlists: {
-        Args: { _moderator_username: string }
-        Returns: {
-          created_at: string
-          id: string
-          label: string
-          moderator_id: string
-          sort_order: number
-          type: string
-          url: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "moderator_playlists"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_playlists_for_channel: {
-        Args: { _moderator_username: string }
-        Returns: {
-          created_at: string
-          id: string
-          label: string
-          sort_order: number
-          stream_id: string | null
-          type: string
-          url: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "playlists"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_playlists_for_token: {
-        Args: { _token_code: string }
-        Returns: {
-          created_at: string
-          id: string
-          label: string
-          sort_order: number
-          stream_id: string | null
-          type: string
-          url: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "playlists"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
-      }
-      moderator_create_token: {
-        Args: {
-          _code: string
-          _duration_type: string
-          _expires_at: string
-          _max_devices: number
-        }
-        Returns: Json
       }
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }

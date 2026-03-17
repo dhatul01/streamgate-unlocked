@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, useTransition, memo } from "r
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { Send, Pin, Trash2, ShieldBan, Users } from "lucide-react";
 
 interface LiveChatProps {
@@ -10,7 +9,6 @@ interface LiveChatProps {
   tokenId?: string;
   isLive: boolean;
   isAdmin: boolean;
-  canModerate?: boolean;
   onPinMessage?: (id: string) => void;
   onDeleteMessage?: (id: string) => void;
   onBlockUser?: (tokenId: string) => void;
@@ -26,48 +24,39 @@ interface ChatMessage {
   created_at: string;
 }
 
-const formatTime = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-};
-
-const ChatMessageItem = memo(({ msg, canModerate, onPin, onDelete, onBlock }: {
+const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTime }: {
   msg: ChatMessage;
-  canModerate: boolean;
+  isAdmin: boolean;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
+  formatTime: (d: string) => string;
 }) => (
   <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5">
-        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : msg.username.startsWith("MOD:") ? "text-accent-foreground" : "text-foreground/90"}`}>
-          {msg.username.startsWith("MOD:") ? msg.username.slice(4) : msg.username}
+        <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-primary" : "text-foreground/90"}`}>
+          {msg.username}
         </span>
-        {msg.is_admin && !msg.username.startsWith("MOD:") && (
+        {msg.is_admin && (
           <span className="inline-flex items-center rounded bg-primary/15 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-primary">
             STAFF
-          </span>
-        )}
-        {msg.username.startsWith("MOD:") && (
-          <span className="inline-flex items-center rounded bg-accent/20 px-1 py-0.5 text-[9px] tv:text-[11px] font-black tracking-wider text-accent-foreground">
-            MOD
           </span>
         )}
         <span className="text-[10px] tv:text-xs text-muted-foreground/60">{formatTime(msg.created_at)}</span>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
     </div>
-    {canModerate && (
+    {isAdmin && (
       <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-        <button type="button" onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+        <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
           <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
-        <button type="button" onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+        <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
           <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
         {msg.token_id && onBlock && (
-          <button type="button" onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
             <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
           </button>
         )}
@@ -75,43 +64,24 @@ const ChatMessageItem = memo(({ msg, canModerate, onPin, onDelete, onBlock }: {
     )}
   </div>
 ));
-
 ChatMessageItem.displayName = "ChatMessageItem";
 
-const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
+const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isAtBottomRef = useRef(true);
-  const { toast } = useToast();
   const [, startTransition] = useTransition();
-  const canManageMessages = canModerate ?? isAdmin;
 
-  // Track if user is scrolled to bottom
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const threshold = 60;
-    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-  }, []);
-
-  // Auto-scroll only if at bottom
-  const scrollToBottom = useCallback(() => {
-    if (isAtBottomRef.current && scrollRef.current) {
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-      });
-    }
-  }, []);
-
+  // Presence for online count
   useEffect(() => {
     if (!username) return;
 
-    const channel = supabase.channel(`online-users:${username}`, {
+    const channel = supabase.channel("online-users", {
       config: { presence: { key: username } },
     });
 
@@ -126,37 +96,33 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
         }
       });
 
+    presenceChannelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [username]);
 
+  // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("chat_messages")
         .select("*")
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(50);
       if (data) {
-        const sorted = [...data].reverse();
         startTransition(() => {
-          setMessages(sorted);
-          setPinnedMessages(sorted.filter((m) => m.is_pinned));
+          setMessages(data);
+          setPinnedMessages(data.filter((m) => m.is_pinned));
         });
-        // Scroll to bottom on initial load
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 100);
       }
     };
 
     fetchMessages();
 
     const channel = supabase
-      .channel(`chat-realtime:${crypto.randomUUID()}`)
+      .channel("chat-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
@@ -164,8 +130,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
           startTransition(() => {
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
-              setMessages((prev) => [...prev.slice(-49), newMsg]);
-              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev.filter((m) => m.id !== newMsg.id), newMsg]);
+              setMessages((prev) => [...prev, newMsg]);
+              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
             } else if (payload.eventType === "DELETE") {
               setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
               setPinnedMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
@@ -182,41 +148,39 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
               }
             }
           });
-          // Auto-scroll after new message
-          setTimeout(scrollToBottom, 50);
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [scrollToBottom]);
+  }, []);
+
+  // Auto-scroll
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = newMessage.trim();
-    if (!trimmed || !username || sending) return;
-
-    // Optimistic: clear input immediately for smooth typing
-    setNewMessage("");
+    if (!newMessage.trim() || !username) return;
     setSending(true);
 
     const insertData: any = {
       username,
-      message: trimmed,
-      token_id: tokenId ?? null,
-      is_admin: isAdmin,
+      message: newMessage.trim(),
+      token_id: tokenId || null,
     };
-
-    const { error } = await supabase.from("chat_messages").insert(insertData);
-
-    if (error) {
-      toast({ title: error.message || "Gagal mengirim pesan", variant: "destructive" });
-      setNewMessage(trimmed); // Restore on error
+    if (isAdmin) {
+      insertData.is_admin = true;
     }
+    await supabase.from("chat_messages").insert(insertData);
 
+    setNewMessage("");
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin, toast, sending]);
+  }, [newMessage, username, tokenId, isAdmin]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
@@ -235,10 +199,15 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
     }
   }, [onDeleteMessage]);
 
+  const formatTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <div className="flex h-full flex-col bg-card/50">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4 shrink-0">
+      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4">
         <div className="flex items-center gap-2 tv:gap-3">
           <div className="flex h-8 w-8 tv:h-12 tv:w-12 items-center justify-center rounded-lg bg-primary/10">
             <span className="text-sm tv:text-xl">💬</span>
@@ -258,33 +227,30 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
 
       {/* Pinned messages */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2 shrink-0 max-h-24 overflow-y-auto">
+        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2">
           {pinnedMessages.map((m) => (
             <div key={m.id} className="flex items-start gap-2 text-xs tv:text-sm">
               <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />
-              <div className="min-w-0">
+              <div>
                 <span className="font-bold text-primary">{m.username}</span>
-                <span className="ml-1 text-foreground/80 break-words">{m.message}</span>
+                <span className="ml-1 text-foreground/80">{m.message}</span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Messages - scrollable area */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1"
-      >
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1">
         {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
             msg={msg}
-            canModerate={canManageMessages}
+            isAdmin={isAdmin}
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}
+            formatTime={formatTime}
           />
         ))}
         {messages.length === 0 && (
@@ -295,15 +261,14 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
         )}
       </div>
 
-      {/* Input - fixed at bottom */}
-      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3 shrink-0">
+      {/* Input */}
+      <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3">
         <Input
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder={username ? "Ketik pesan..." : "Masukkan username dulu"}
           disabled={!username || sending}
-          maxLength={500}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button

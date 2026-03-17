@@ -28,16 +28,11 @@ const TokenFactory = () => {
   const { toast } = useToast();
 
   const fetchTokens = async () => {
-    // Fetch all tokens, then exclude moderator-created ones
-    const [tokensRes, modLogsRes] = await Promise.all([
-      supabase.from("tokens").select("*").order("created_at", { ascending: false }),
-      supabase.from("moderator_token_logs").select("token_id"),
-    ]);
-    
-    const modTokenIds = new Set((modLogsRes.data || []).map((l: any) => l.token_id));
-    const adminTokens = (tokensRes.data || []).filter((t: any) => !modTokenIds.has(t.id));
-    setTokens(adminTokens);
-    
+    const { data } = await supabase
+      .from("tokens")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setTokens(data || []);
     // Fetch session counts
     const { data: sessData } = await supabase.from("token_sessions").select("token_id");
     if (sessData) {
@@ -49,16 +44,7 @@ const TokenFactory = () => {
     }
   };
 
-  useEffect(() => {
-    fetchTokens();
-    // Realtime: refresh when tokens or moderator_token_logs change
-    const channel = supabase
-      .channel("admin-token-factory")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tokens" }, () => fetchTokens())
-      .on("postgres_changes", { event: "*", schema: "public", table: "moderator_token_logs" }, () => fetchTokens())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  useEffect(() => { fetchTokens(); }, []);
 
   const generateToken = async () => {
     const count = Math.max(1, Math.min(100, parseInt(bulkCount) || 1));

@@ -103,15 +103,14 @@ const LivePage = () => {
 
         const [streamRes, playlistRes, settingsRes] = await Promise.all([
           supabase.from("streams").select("*").limit(1).single(),
-          supabase.rpc("get_playlists_for_token", { _token_code: tokenCode }),
+          supabase.from("playlists").select("*").order("sort_order"),
           supabase.from("site_settings").select("*"),
         ]);
 
         setStream(streamRes.data);
-        const playlistData = (playlistRes.data || []) as any[];
-        setPlaylists(playlistData);
-        if (playlistData.length > 0) {
-          setActivePlaylist(playlistData[0]);
+        setPlaylists(playlistRes.data || []);
+        if (playlistRes.data && playlistRes.data.length > 0) {
+          setActivePlaylist(playlistRes.data[0]);
         }
 
         if (settingsRes.data) {
@@ -177,12 +176,10 @@ const LivePage = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "playlists" },
         async () => {
-          if (!tokenCode) return;
-          const { data } = await supabase.rpc("get_playlists_for_token", { _token_code: tokenCode });
-          const list = (data || []) as any[];
-          setPlaylists(list);
-          if (list.length > 0 && !activePlaylist) {
-            setActivePlaylist(list[0]);
+          const { data } = await supabase.from("playlists").select("*").order("sort_order");
+          setPlaylists(data || []);
+          if (data && data.length > 0 && !activePlaylist) {
+            setActivePlaylist(data[0]);
           }
         }
       )
@@ -207,12 +204,11 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: token block + delete detection
+  // Realtime: token block detection
   useEffect(() => {
     if (!tokenData?.id) return;
-
     const channel = supabase
-      .channel("token-status-realtime")
+      .channel("token-block-realtime")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
@@ -222,23 +218,7 @@ const LivePage = () => {
           }
         }
       )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "tokens", filter: `id=eq.${tokenData.id}` },
-        () => {
-          setError("Token telah dihapus oleh admin.");
-          setTokenData(null);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "blocked_users", filter: `token_id=eq.${tokenData.id}` },
-        () => {
-          setBlocked(true);
-        }
-      )
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [tokenData?.id]);
 

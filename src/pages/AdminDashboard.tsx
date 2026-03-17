@@ -12,7 +12,6 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
 import LandingDescriptionManager from "@/components/admin/LandingDescriptionManager";
 import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManager";
-import ModeratorManager from "@/components/admin/ModeratorManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -59,7 +58,6 @@ const AdminDashboard = () => {
       case "shows": return <ShowManager />;
       case "orders": return <SubscriptionOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
-      case "moderators": return <ModeratorManager />;
       case "monitor": return <MonitorView />;
       case "site": return <SiteSettingsManager />;
       case "settings": return <AdminSettings />;
@@ -74,7 +72,7 @@ const AdminDashboard = () => {
         onSectionChange={setActiveSection}
         onLogout={handleLogout}
       />
-      <main className="flex-1 overflow-y-auto p-4 pt-16 md:p-6 md:pt-6 lg:p-8">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         {renderSection()}
       </main>
     </div>
