@@ -268,6 +268,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             onReady: (e: any) => {
               if (destroyed) return;
               ytReadyRef.current = true;
+              // Force highest quality first
+              try {
+                const qualities = e.target.getAvailableQualityLevels?.();
+                if (qualities && qualities.length > 0) {
+                  const highest = qualities[0]; // first is highest (e.g. "hd1080")
+                  e.target.setPlaybackQuality(highest);
+                  e.target.setPlaybackQualityRange?.(highest, highest);
+                }
+              } catch {}
               setIsLoading(false);
               if (autoPlay) {
                 e.target.playVideo();
