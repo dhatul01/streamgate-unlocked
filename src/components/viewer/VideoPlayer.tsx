@@ -116,7 +116,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
 
       const hls = new Hls({
+        // Live stream tuning for smooth playback
         liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 6,
+        liveDurationInfinity: true,
+        // Buffer settings - keep enough buffer to prevent stalls
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        maxBufferHole: 0.5,
+        // Fast ABR switching for Auto mode
+        abrEwmaDefaultEstimate: 1_000_000,
+        abrBandWidthFactor: 0.9,
+        abrBandWidthUpFactor: 0.7,
+        // Recovery & retry
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        // Faster start
+        startFragPrefetch: true,
+        testBandwidth: true,
+        progressive: true,
+        lowLatencyMode: false,
         // Prevent URL leaking in error logs
         debug: false,
       });
@@ -166,9 +188,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setIsSwitchingQuality(false);
       });
 
-      hls.on(Hls.Events.ERROR, () => {
+      hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         setIsLoading(false);
         setIsSwitchingQuality(false);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn("[HLS] Network error, attempting recovery...");
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn("[HLS] Media error, attempting recovery...");
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error("[HLS] Fatal error, reinitializing...");
+              hls.destroy();
+              setTimeout(() => initHls(), 2000);
+              break;
+          }
+        }
       });
     };
 
