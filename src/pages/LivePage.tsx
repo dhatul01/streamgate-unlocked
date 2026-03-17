@@ -382,7 +382,7 @@ const LivePage = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float" />
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 animate-float rounded-full border-2 border-primary/50 shadow-[0_0_16px_hsl(var(--primary)/0.4)]" />
           <p className="text-muted-foreground tv:text-xl">Memvalidasi akses...</p>
         </div>
       </div>
