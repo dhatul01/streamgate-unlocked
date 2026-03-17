@@ -246,6 +246,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, []);
 
     useEffect(() => {
+      playbackIntentRef.current = autoPlay ? "play" : "pause";
+      playbackStateRef.current = false;
       setPlayerLoading(true);
       setPlayerPlaying(false);
       setQualities([]);
@@ -264,7 +266,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         }
         ytPlayerRef.current = null;
         ytReadyRef.current = false;
-        ytPendingActionRef.current = null;
 
         if (cloudflareCleanupRef.current) {
           cloudflareCleanupRef.current();
@@ -272,7 +273,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         }
         cloudflarePlayerRef.current = null;
       };
-    }, [playlist, setPlayerLoading, setPlayerPlaying]);
+    }, [playlist.type, playlist.url, autoPlay, setPlayerLoading, setPlayerPlaying]);
 
     useEffect(() => {
       const video = videoRef.current;
