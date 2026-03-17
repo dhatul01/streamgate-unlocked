@@ -175,7 +175,13 @@ const ShowManager = () => {
                   <p className="font-semibold text-foreground truncate">{show.title}</p>
                   {show.is_subscription && <Crown className="h-3 w-3 text-yellow-500" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
+                  {(() => {
+                    const cat = CATEGORY_OPTIONS.find(c => c.value === show.category) || CATEGORY_OPTIONS[0];
+                    return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${cat.color}`}>{cat.label}</span>;
+                  })()}
+                </div>
               </div>
               {show.is_active ? <Eye className="h-4 w-4 text-success" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
             </button>
