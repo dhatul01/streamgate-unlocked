@@ -36,6 +36,17 @@ const MonitorView = () => {
     fetch();
   }, []);
 
+  const handleResetChat = async () => {
+    setResetting(true);
+    const { error } = await supabase.from("chat_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setResetting(false);
+    if (error) {
+      toast({ title: "Gagal mereset chat", variant: "destructive" });
+    } else {
+      toast({ title: "Live chat berhasil direset" });
+    }
+  };
+
   const handleBlockUser = async (tokenId: string) => {
     await supabase.from("tokens").update({ status: "blocked" }).eq("id", tokenId);
     await supabase.from("blocked_users").insert({ token_id: tokenId, reason: "Blocked from chat" });
