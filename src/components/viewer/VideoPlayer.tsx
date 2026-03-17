@@ -370,8 +370,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : ""}`}
-      style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
+      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"}`}
     >
       {/* Loading overlay */}
       {isLoading && (
