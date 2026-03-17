@@ -308,6 +308,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}
+            onToggleMod={onToggleChatMod}
             formatTime={formatTime}
           />
         ))}
