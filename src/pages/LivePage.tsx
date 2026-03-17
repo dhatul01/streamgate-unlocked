@@ -5,6 +5,7 @@ import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer"
 import LiveChat from "@/components/viewer/LiveChat";
 import UsernameModal from "@/components/viewer/UsernameModal";
 import PlayerAnimations, { type AnimationType } from "@/components/viewer/PlayerAnimations";
+import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 
 import logo from "@/assets/logo.png";
 
