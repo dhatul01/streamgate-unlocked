@@ -70,38 +70,64 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       const video = videoRef.current;
       if (!video) return;
 
+      playbackIntentRef.current = "play";
+      if (video.ended) {
+        try {
+          video.currentTime = 0;
+        } catch {}
+      }
       seekNativeToLiveEdge();
       setPlayerLoading(true);
-      await video.play().catch(() => {});
+      await video.play().catch(() => {
+        setPlayerLoading(false);
+      });
     }, [seekNativeToLiveEdge, setPlayerLoading]);
 
     const pauseNative = useCallback(() => {
+      playbackIntentRef.current = "pause";
+      setPlayerLoading(false);
       videoRef.current?.pause();
+    }, [setPlayerLoading]);
+
+    const syncYoutubePlayback = useCallback((forcedState?: number) => {
+      const player = ytPlayerRef.current;
+      if (!player || !ytReadyRef.current) return;
+
+      try {
+        const state = forcedState ?? player.getPlayerState?.();
+        const shouldPause = playbackIntentRef.current === "pause";
+
+        if (shouldPause) {
+          if (state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING) {
+            player.pauseVideo?.();
+          }
+          return;
+        }
+
+        if (state === YT_STATE_ENDED) {
+          player.seekTo?.(0, true);
+        }
+
+        if (state !== YT_STATE_PLAYING && state !== YT_STATE_BUFFERING) {
+          player.playVideo?.();
+        }
+      } catch {}
     }, []);
 
     const playYoutube = useCallback(async () => {
-      const player = ytPlayerRef.current;
-      ytPendingActionRef.current = "play";
-      if (!player?.playVideo) return;
+      playbackIntentRef.current = "play";
       setPlayerLoading(true);
-      try {
-        const state = player.getPlayerState?.();
-        if (state === 0 && player.seekTo) {
-          player.seekTo(0, true);
-        }
-        player.playVideo();
-      } catch {}
-    }, [setPlayerLoading]);
+      syncYoutubePlayback();
+    }, [setPlayerLoading, syncYoutubePlayback]);
 
     const pauseYoutube = useCallback(() => {
-      const player = ytPlayerRef.current;
-      ytPendingActionRef.current = "pause";
-      try {
-        player?.pauseVideo?.();
-      } catch {}
-    }, []);
+      playbackIntentRef.current = "pause";
+      setPlayerLoading(false);
+      syncYoutubePlayback();
+    }, [setPlayerLoading, syncYoutubePlayback]);
 
     const playCloudflare = useCallback(async () => {
+      playbackIntentRef.current = "play";
       const player = cloudflarePlayerRef.current;
       if (!player?.play) return;
 
@@ -112,13 +138,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         try {
           player.muted = true;
           await player.play();
-        } catch {}
+        } catch {
+          setPlayerLoading(false);
+        }
       }
     }, [setPlayerLoading]);
 
     const pauseCloudflare = useCallback(() => {
+      playbackIntentRef.current = "pause";
+      setPlayerLoading(false);
       cloudflarePlayerRef.current?.pause?.();
-    }, []);
+    }, [setPlayerLoading]);
 
     const playCurrent = useCallback(async () => {
       if (playlist.type === "youtube") {
@@ -148,54 +178,37 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       pauseNative();
     }, [playlist.type, pauseYoutube, pauseCloudflare, pauseNative]);
 
-    const togglePlay = useCallback(() => {
+    const getCurrentPlaybackState = useCallback(() => {
       if (playlist.type === "youtube") {
         const player = ytPlayerRef.current;
-
-        if (!player) {
-          ytPendingActionRef.current = isPlaying ? "pause" : "play";
-          return;
+        if (!player?.getPlayerState) {
+          return playbackStateRef.current;
         }
 
         try {
-          const state = player.getPlayerState?.();
-          const shouldPause = state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING;
-
-          if (shouldPause) {
-            pauseYoutube();
-          } else {
-            void playYoutube();
-          }
+          const state = player.getPlayerState();
+          return state === YT_STATE_PLAYING || state === YT_STATE_BUFFERING;
         } catch {
-          if (isPlaying) {
-            pauseYoutube();
-          } else {
-            void playYoutube();
-          }
+          return playbackStateRef.current;
         }
-        return;
       }
 
       if (playlist.type === "cloudflare") {
-        const player = cloudflarePlayerRef.current;
-        if (!player) return;
-        if (!player.paused) {
-          player.pause?.();
-        } else {
-          player.play?.().catch(() => {});
-        }
-        return;
+        return playbackStateRef.current;
       }
 
       const video = videoRef.current;
-      if (!video) return;
-      if (video.paused || video.ended) {
-        seekNativeToLiveEdge();
-        video.play().catch(() => {});
-      } else {
-        video.pause();
+      return !!video && !video.paused && !video.ended;
+    }, [playlist.type]);
+
+    const togglePlay = useCallback(() => {
+      if (getCurrentPlaybackState()) {
+        pauseCurrent();
+        return;
       }
-    }, [playlist.type, isPlaying, pauseYoutube, playYoutube, seekNativeToLiveEdge]);
+
+      void playCurrent();
+    }, [getCurrentPlaybackState, pauseCurrent, playCurrent]);
 
     useImperativeHandle(ref, () => ({
       play: () => {
