@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Pencil, Check, X } from "lucide-react";
 
 const PlaylistManager = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
@@ -12,6 +12,10 @@ const PlaylistManager = () => {
   const [newType, setNewType] = useState("youtube");
   const [newUrl, setNewUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editType, setEditType] = useState("");
+  const [editUrl, setEditUrl] = useState("");
   const { toast } = useToast();
 
   const fetchPlaylists = async () => {
@@ -24,10 +28,7 @@ const PlaylistManager = () => {
   const addPlaylist = async () => {
     if (!newLabel || !newUrl) return;
     setLoading(true);
-
-    // Get stream id
     const { data: stream } = await supabase.from("streams").select("id").limit(1).single();
-
     await supabase.from("playlists").insert({
       stream_id: stream?.id,
       label: newLabel,
@@ -35,12 +36,38 @@ const PlaylistManager = () => {
       url: newUrl,
       sort_order: playlists.length,
     });
-
     setNewLabel("");
     setNewUrl("");
     await fetchPlaylists();
     toast({ title: "Playlist ditambahkan!" });
     setLoading(false);
+  };
+
+  const startEdit = (p: any) => {
+    setEditingId(p.id);
+    setEditLabel(p.label);
+    setEditType(p.type);
+    setEditUrl(p.url);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editLabel || !editUrl) return;
+    const { error } = await supabase.from("playlists").update({
+      label: editLabel,
+      type: editType,
+      url: editUrl,
+    }).eq("id", editingId);
+    if (!error) {
+      toast({ title: "Playlist diperbarui!" });
+      setEditingId(null);
+      await fetchPlaylists();
+    } else {
+      toast({ title: "Gagal memperbarui", variant: "destructive" });
+    }
   };
 
   const deletePlaylist = async (id: string) => {
@@ -88,18 +115,60 @@ const PlaylistManager = () => {
       {/* Existing playlists */}
       <div className="space-y-2">
         {playlists.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">{p.label}</p>
-              <p className="text-xs text-muted-foreground">
-                <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[10px] uppercase">{p.type}</span>
-                {" "}{p.url.length > 40 ? p.url.slice(0, 40) + "..." : p.url}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => deletePlaylist(p.id)}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+          <div key={p.id} className="rounded-lg border border-border bg-card p-4">
+            {editingId === p.id ? (
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    placeholder="Label"
+                    className="bg-background"
+                  />
+                  <Select value={editType} onValueChange={setEditType}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="m3u8">M3U8 / HLS</SelectItem>
+                      <SelectItem value="cloudflare">Cloudflare Stream</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="URL atau ID video"
+                  className="bg-background font-mono text-xs"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveEdit} disabled={!editLabel || !editUrl} className="gap-1">
+                    <Check className="h-3.5 w-3.5" /> Simpan
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={cancelEdit} className="gap-1">
+                    <X className="h-3.5 w-3.5" /> Batal
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{p.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-[10px] uppercase">{p.type}</span>
+                    {" "}{p.url}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => startEdit(p)} title="Edit">
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => deletePlaylist(p.id)} title="Hapus">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            )}
           </div>
         ))}
         {playlists.length === 0 && (
