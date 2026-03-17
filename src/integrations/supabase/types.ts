@@ -548,6 +548,7 @@ export type Database = {
         Returns: {
           background_image_url: string
           created_at: string
+          group_link: string
           id: string
           is_active: boolean
           is_order_closed: boolean
