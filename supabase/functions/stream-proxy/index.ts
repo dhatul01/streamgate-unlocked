@@ -215,6 +215,11 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { token_code, playlist_id } = body;
 
+      // Rate limit: 10 generate requests per 60 seconds per token
+      if (token_code && !edgeRateLimit(`gen:${token_code}`, 10, 60000)) {
+        return getRateLimitResponse();
+      }
+
       if (!token_code || !playlist_id) {
         return new Response(
           JSON.stringify({ error: "Missing token_code or playlist_id" }),
