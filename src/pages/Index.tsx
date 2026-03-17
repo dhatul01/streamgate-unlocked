@@ -80,7 +80,7 @@ const Index = () => {
       if (subShows.length > 0) {
         const counts: Record<string, number> = {};
         for (const s of subShows) {
-          const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
+          const { data: count } = await supabase.rpc("get_order_count", { _show_id: s.id });
           counts[s.id] = (count as number) || 0;
         }
         setSubscriberCounts(counts);
