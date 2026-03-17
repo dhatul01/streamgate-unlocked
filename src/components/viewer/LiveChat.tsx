@@ -26,9 +26,9 @@ interface ChatMessage {
   created_at: string;
 }
 
-const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTime }: {
+const ChatMessageItem = ({ msg, canModerate, onPin, onDelete, onBlock, formatTime }: {
   msg: ChatMessage;
-  isAdmin: boolean;
+  canModerate: boolean;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
@@ -54,24 +54,23 @@ const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTi
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
     </div>
-    {isAdmin && (
+    {canModerate && (
       <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-        <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+        <button type="button" onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
           <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
-        <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+        <button type="button" onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
           <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
         {msg.token_id && onBlock && (
-          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+          <button type="button" onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
             <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
           </button>
         )}
       </div>
     )}
   </div>
-));
-ChatMessageItem.displayName = "ChatMessageItem";
+);
 
 const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
