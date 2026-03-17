@@ -21,6 +21,7 @@ const ChannelPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tokenValid, setTokenValid] = useState(false);
+  const [chatTokenId, setChatTokenId] = useState<string | undefined>(undefined);
   const [watermarkUrl, setWatermarkUrl] = useState("");
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
@@ -49,6 +50,7 @@ const ChannelPage = () => {
         const result = data as any;
         if (result?.valid) {
           setTokenValid(true);
+          setChatTokenId(result.id);
         } else {
           setError(result?.error || "Token tidak valid");
           setLoading(false);
@@ -328,7 +330,7 @@ const ChannelPage = () => {
           <div className="h-[500px] lg:h-auto rounded-xl border border-white/10 overflow-hidden tv:min-h-[600px]">
             <LiveChat
               username={chatUsername}
-              tokenId={tokenCode || undefined}
+              tokenId={chatTokenId}
               isLive={isLive}
               isAdmin={false}
             />

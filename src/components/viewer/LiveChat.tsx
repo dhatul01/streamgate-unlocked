@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useTransition, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Send, Pin, Trash2, ShieldBan, Users } from "lucide-react";
 
 interface LiveChatProps {
@@ -9,6 +10,7 @@ interface LiveChatProps {
   tokenId?: string;
   isLive: boolean;
   isAdmin: boolean;
+  canModerate?: boolean;
   onPinMessage?: (id: string) => void;
   onDeleteMessage?: (id: string) => void;
   onBlockUser?: (tokenId: string) => void;
@@ -24,9 +26,9 @@ interface ChatMessage {
   created_at: string;
 }
 
-const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTime }: {
+const ChatMessageItem = ({ msg, canModerate, onPin, onDelete, onBlock, formatTime }: {
   msg: ChatMessage;
-  isAdmin: boolean;
+  canModerate: boolean;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
@@ -52,41 +54,40 @@ const ChatMessageItem = memo(({ msg, isAdmin, onPin, onDelete, onBlock, formatTi
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
     </div>
-    {isAdmin && (
+    {canModerate && (
       <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-        <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
+        <button type="button" onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
           <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
-        <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+        <button type="button" onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
           <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
         </button>
         {msg.token_id && onBlock && (
-          <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+          <button type="button" onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
             <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
           </button>
         )}
       </div>
     )}
   </div>
-));
-ChatMessageItem.displayName = "ChatMessageItem";
+);
 
-const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
+const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   const [, startTransition] = useTransition();
+  const canManageMessages = canModerate ?? isAdmin;
 
-  // Presence for online count
   useEffect(() => {
     if (!username) return;
 
-    const channel = supabase.channel("online-users", {
+    const channel = supabase.channel(`online-users:${username}`, {
       config: { presence: { key: username } },
     });
 
@@ -101,14 +102,11 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         }
       });
 
-    presenceChannelRef.current = channel;
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [username]);
 
-  // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -128,7 +126,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     fetchMessages();
 
     const channel = supabase
-      .channel("chat-realtime")
+      .channel(`chat-realtime:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
@@ -136,8 +134,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           startTransition(() => {
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
-              setMessages((prev) => [...prev, newMsg]);
-              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
+              setMessages((prev) => [...prev.slice(-49), newMsg]);
+              if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev.filter((m) => m.id !== newMsg.id), newMsg]);
             } else if (payload.eventType === "DELETE") {
               setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
               setPinnedMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
@@ -161,7 +159,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -176,17 +173,22 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     const insertData: any = {
       username,
       message: newMessage.trim(),
-      token_id: tokenId || null,
+      token_id: tokenId ?? null,
+      is_admin: isAdmin,
     };
-    if (isAdmin) {
-      insertData.is_admin = true;
+
+    const { error } = await supabase.from("chat_messages").insert(insertData);
+
+    if (error) {
+      toast({ title: error.message || "Gagal mengirim pesan", variant: "destructive" });
+      setSending(false);
+      return;
     }
-    await supabase.from("chat_messages").insert(insertData);
 
     setNewMessage("");
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin]);
+  }, [newMessage, username, tokenId, isAdmin, toast]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
@@ -252,7 +254,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           <ChatMessageItem
             key={msg.id}
             msg={msg}
-            isAdmin={isAdmin}
+            canModerate={canManageMessages}
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}
