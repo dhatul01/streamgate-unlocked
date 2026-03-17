@@ -274,7 +274,7 @@ const ChannelPage = () => {
                   playlist={activePlaylist}
                   autoPlay
                   watermarkUrl={watermarkUrl}
-                  tokenCode={tokenCode || undefined}
+                  tokenCode={tokenCode || "CHANNEL"}
                 />
               ) : (
                 <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-black/40">
@@ -303,7 +303,6 @@ const ChannelPage = () => {
                   )}
                 </div>
               )}
-              {isLive && <Watermark tokenCode={tokenCode || "CHANNEL"} />}
             </div>
 
             {isLive && playlists.length > 1 && (

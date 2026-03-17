@@ -28,11 +28,16 @@ const TokenFactory = () => {
   const { toast } = useToast();
 
   const fetchTokens = async () => {
-    const { data } = await supabase
-      .from("tokens")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setTokens(data || []);
+    // Fetch all tokens, then exclude moderator-created ones
+    const [tokensRes, modLogsRes] = await Promise.all([
+      supabase.from("tokens").select("*").order("created_at", { ascending: false }),
+      supabase.from("moderator_token_logs").select("token_id"),
+    ]);
+    
+    const modTokenIds = new Set((modLogsRes.data || []).map((l: any) => l.token_id));
+    const adminTokens = (tokensRes.data || []).filter((t: any) => !modTokenIds.has(t.id));
+    setTokens(adminTokens);
+    
     // Fetch session counts
     const { data: sessData } = await supabase.from("token_sessions").select("token_id");
     if (sessData) {
