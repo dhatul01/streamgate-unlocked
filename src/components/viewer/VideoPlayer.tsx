@@ -133,15 +133,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, pauseYoutube, pauseCloudflare, pauseNative]);
 
     const togglePlay = useCallback(() => {
-      // For YouTube: always query the actual player state to avoid stale closure
+      // For YouTube: directly query the YT player API (avoids stale React state)
       if (playlist.type === "youtube") {
         const player = ytPlayerRef.current;
-        if (!player?.getPlayerState) return;
+        if (!ytReadyRef.current || !player?.getPlayerState) {
+          console.warn("[VideoPlayer] YT player not ready yet");
+          return;
+        }
         const state = player.getPlayerState();
-        // 1=playing, 3=buffering → pause; everything else → play
+        // YT states: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
         if (state === 1 || state === 3) {
           player.pauseVideo();
         } else {
+          // For ended videos (state=0), replay from start
+          if (state === 0) {
+            player.seekTo(0, true);
+          }
           player.playVideo();
         }
         return;
