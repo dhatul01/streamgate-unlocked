@@ -40,7 +40,7 @@ const ModeratorBadge = () => (
   </span>
 );
 
-const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, formatTime }: {
+const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, onToggleMod, formatTime }: {
   msg: ChatMessage;
   isAdmin: boolean;
   isChatMod: boolean;
@@ -48,6 +48,7 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
+  onToggleMod?: (username: string, isMod: boolean) => void;
   formatTime: (d: string) => string;
 }) => {
   const canModerate = isAdmin || isChatMod;
@@ -79,6 +80,16 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
           {msg.token_id && onBlock && (
             <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
               <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
+            </button>
+          )}
+          {/* Admin can toggle mod status directly from chat */}
+          {isAdmin && !msg.is_admin && onToggleMod && (
+            <button
+              onClick={() => onToggleMod(msg.username, isMsgFromMod)}
+              className={`rounded p-1 tv:p-1.5 text-muted-foreground ${isMsgFromMod ? "hover:bg-destructive/10 hover:text-destructive" : "hover:bg-cyan-500/10 hover:text-cyan-400"}`}
+              title={isMsgFromMod ? "Hapus Moderator" : "Jadikan Moderator"}
+            >
+              {isMsgFromMod ? <ShieldMinus className="h-3 w-3 tv:h-4 tv:w-4" /> : <ShieldPlus className="h-3 w-3 tv:h-4 tv:w-4" />}
             </button>
           )}
         </div>
