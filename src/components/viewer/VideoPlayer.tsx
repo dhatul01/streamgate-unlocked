@@ -203,6 +203,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
+            enablejsapi: 1,
             controls: 0,
             disablekb: 1,
             fs: 0,
@@ -211,7 +212,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             showinfo: 0,
             iv_load_policy: 3,
             playsinline: 1,
-            origin: window.location.origin,
           },
           events: {
             onReady: (e: any) => {
