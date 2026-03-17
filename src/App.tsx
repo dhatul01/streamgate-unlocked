@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import LivePage from "./pages/LivePage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import MembershipPage from "./pages/MembershipPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
