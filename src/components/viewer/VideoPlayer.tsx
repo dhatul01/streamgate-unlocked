@@ -284,6 +284,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return match ? match[1] : url;
   };
 
+  const youtubeEmbedUrl = useMemo(() => {
+    if (playlist.type !== "youtube") return "";
+    const videoId = extractYTId(playlist.url);
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1`;
+  }, [playlist.type, playlist.url]);
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     
