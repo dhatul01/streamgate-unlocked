@@ -274,6 +274,7 @@ const ShowManager = () => {
             })()}
 
             <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>
               <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" />
             </div>
             <div>
