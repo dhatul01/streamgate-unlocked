@@ -34,7 +34,7 @@ const CONFETTI_COLORS = [
   "hsl(200, 80%, 60%)",
 ];
 
-const PlayerAnimations = ({ type }: { type: AnimationType }) => {
+const PlayerAnimations = ({ type, backgroundOnly = false }: { type: AnimationType; backgroundOnly?: boolean }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ const PlayerAnimations = ({ type }: { type: AnimationType }) => {
         @keyframes anim-firefly { 0% { transform: translate(0, 0); opacity: 0.2; } 25% { transform: translate(15px, -20px); opacity: 1; } 50% { transform: translate(-10px, -40px); opacity: 0.3; } 75% { transform: translate(20px, -15px); opacity: 0.8; } 100% { transform: translate(0, 0); opacity: 0.2; } }
         @keyframes anim-confetti { 0% { transform: translateY(-10px) rotate(0deg); } 100% { transform: translateY(100vh) rotate(720deg); } }
       `}</style>
-      <div className="pointer-events-none fixed inset-0 z-[1] overflow-hidden">
+      <div className={`pointer-events-none fixed inset-0 overflow-hidden ${backgroundOnly ? "z-0" : "z-[1]"}`}>
         {particles.map((p) => (
           <div key={p.id} style={getStyle(p)}>
             {type === "leaves" ? leafEmojis[p.id % leafEmojis.length] : null}
