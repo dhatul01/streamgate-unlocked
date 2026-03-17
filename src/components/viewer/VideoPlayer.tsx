@@ -30,6 +30,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const [isLoading, setIsLoading] = useState(true);
     const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
     const [currentQuality, setCurrentQuality] = useState(-1);
+    const [ytQualities, setYtQualities] = useState<string[]>([]);
+    const [currentYtQuality, setCurrentYtQuality] = useState("auto");
     const [showControls, setShowControls] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
