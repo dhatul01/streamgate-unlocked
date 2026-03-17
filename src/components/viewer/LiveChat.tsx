@@ -12,6 +12,7 @@ interface LiveChatProps {
   onPinMessage?: (id: string) => void;
   onDeleteMessage?: (id: string) => void;
   onBlockUser?: (tokenId: string) => void;
+  onToggleChatMod?: (username: string, isMod: boolean) => void;
 }
 
 interface ChatMessage {
