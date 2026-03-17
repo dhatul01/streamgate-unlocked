@@ -254,7 +254,25 @@ const ShowManager = () => {
               </div>
             </div>
 
-            <div>
+            {/* Member name input for birthday/last_show */}
+            {(() => {
+              const selectedCat = CATEGORY_OPTIONS.find(c => c.value === (editing.category || "regular"));
+              return selectedCat?.hasMember ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    {editing.category === "birthday" ? "Nama Member Ulang Tahun" : "Nama Member Last Show"}
+                  </label>
+                  <Input
+                    value={editing.category_member || ""}
+                    onChange={(e) => setEditing({ ...editing, category_member: e.target.value })}
+                    onBlur={() => updateShow(editing)}
+                    className="bg-background"
+                    placeholder={editing.category === "birthday" ? "Contoh: Shani, Gracia" : "Contoh: Melody, Haruka"}
+                  />
+                </div>
+              ) : null;
+            })()}
+
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>
               <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" />
             </div>
