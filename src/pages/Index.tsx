@@ -590,7 +590,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border px-4 py-8 tv:py-12 text-center">
         <div className="flex items-center justify-center gap-2 tv:gap-3">
-          <img src={logo} alt="RealTime48" className="h-6 w-6 tv:h-10 tv:w-10" />
+          <img src={logo} alt="RealTime48" className="h-6 w-6 tv:h-10 tv:w-10 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
           <span className="text-sm font-semibold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
         </div>
         <p className="mt-2 text-xs text-muted-foreground tv:text-base">Secure Streaming Platform</p>
