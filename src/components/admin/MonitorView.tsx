@@ -134,6 +134,9 @@ const MonitorView = () => {
           />
         </div>
       </div>
+
+      {/* Chat Moderator Management */}
+      <ChatModeratorManager />
     </div>
   );
 };
