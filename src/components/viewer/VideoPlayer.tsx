@@ -847,31 +847,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
           <div className="flex-1" />
 
-          {/* HLS quality selector */}
+          {/* Quality selector - only for m3u8 and cloudflare, NOT youtube */}
           {pType === "m3u8" && qualities.length > 0 && (
             <select
               value={currentQuality}
-              onChange={(e) => handleQualityChange(Number(e.target.value))}
+              onChange={(e) => { e.stopPropagation(); handleQualityChange(Number(e.target.value)); }}
+              onClick={(e) => e.stopPropagation()}
               className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground tv:px-4 tv:py-2 tv:text-base"
             >
               {qualities.map((q) => (
                 <option key={q.index} value={q.index}>{q.label}</option>
-              ))}
-            </select>
-          )}
-
-          {/* YouTube quality selector */}
-          {pType === "youtube" && ytQualities.length > 0 && (
-            <select
-              value={currentYtQuality}
-              onChange={(e) => {
-                e.stopPropagation();
-                handleYtQualityChange(e.target.value);
-              }}
-              className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground tv:px-4 tv:py-2 tv:text-base"
-            >
-              {ytQualities.map((q) => (
-                <option key={q} value={q}>{YT_QUALITY_MAP[q] || q}</option>
               ))}
             </select>
           )}
