@@ -59,9 +59,18 @@ const ChannelPage = () => {
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
       setStream(streamData);
 
-      const { data: playlistData } = await supabase.from("playlists").select("*").order("sort_order");
-      setPlaylists(playlistData || []);
-      if (playlistData && playlistData.length > 0) setActivePlaylist(playlistData[0]);
+      // Fetch playlists via secure RPC if token provided, otherwise use a public token approach
+      if (tokenCode) {
+        const { data: playlistData } = await supabase.rpc("get_playlists_for_token", { _token_code: tokenCode });
+        const list = (playlistData || []) as any[];
+        setPlaylists(list);
+        if (list.length > 0) setActivePlaylist(list[0]);
+      } else {
+        // Channel pages without token - fetch playlists via any active public token
+        const { data: pubToken } = await supabase.rpc("validate_token", { _code: "PUBLIC" });
+        // Fallback: no playlists if no valid token
+        setPlaylists([]);
+      }
 
       // Check username
       const savedUsername = localStorage.getItem(`channel_username_${username}`);

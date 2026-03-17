@@ -177,10 +177,12 @@ const LivePage = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "playlists" },
         async () => {
-          const { data } = await supabase.from("playlists").select("*").order("sort_order");
-          setPlaylists(data || []);
-          if (data && data.length > 0 && !activePlaylist) {
-            setActivePlaylist(data[0]);
+          if (!tokenCode) return;
+          const { data } = await supabase.rpc("get_playlists_for_token", { _token_code: tokenCode });
+          const list = (data || []) as any[];
+          setPlaylists(list);
+          if (list.length > 0 && !activePlaylist) {
+            setActivePlaylist(list[0]);
           }
         }
       )
