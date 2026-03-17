@@ -11,22 +11,10 @@ interface Props {
 }
 
 const DURATION_OPTIONS = [
-  { value: "1h", label: "1 Jam" },
-  { value: "3h", label: "3 Jam" },
-  { value: "6h", label: "6 Jam" },
-  { value: "12h", label: "12 Jam" },
-  { value: "1d", label: "1 Hari" },
-  { value: "3d", label: "3 Hari" },
-  { value: "7d", label: "7 Hari" },
+  { value: "harian", label: "Harian (1 Hari)", ms: 86400000 },
+  { value: "mingguan", label: "Mingguan (7 Hari)", ms: 604800000 },
+  { value: "bulanan", label: "Bulanan (30 Hari)", ms: 2592000000 },
 ];
-
-const getDurationMs = (type: string) => {
-  const map: Record<string, number> = {
-    "1h": 3600000, "3h": 10800000, "6h": 21600000,
-    "12h": 43200000, "1d": 86400000, "3d": 259200000, "7d": 604800000,
-  };
-  return map[type] || 86400000;
-};
 
 const generateCode = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -39,13 +27,12 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [durationType, setDurationType] = useState("1d");
+  const [durationType, setDurationType] = useState("harian");
   const [maxDevices, setMaxDevices] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchTokens = async () => {
-    // Get tokens created by this moderator via logs
     const { data: logs } = await supabase
       .from("moderator_token_logs")
       .select("token_id, tokens(*)")
@@ -61,8 +48,9 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
 
   const handleCreate = async () => {
     setCreating(true);
+    const durationOption = DURATION_OPTIONS.find(d => d.value === durationType)!;
     const code = `${moderator.username.toUpperCase().slice(0, 4)}-${generateCode()}`;
-    const expiresAt = new Date(Date.now() + getDurationMs(durationType)).toISOString();
+    const expiresAt = new Date(Date.now() + durationOption.ms).toISOString();
 
     const { data: token, error } = await supabase.from("tokens").insert({
       code,
@@ -73,12 +61,11 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
     }).select().single();
 
     if (error || !token) {
-      toast({ title: "Gagal membuat token", variant: "destructive" });
+      toast({ title: "Gagal membuat token", description: error?.message, variant: "destructive" });
       setCreating(false);
       return;
     }
 
-    // Log the token creation
     await supabase.from("moderator_token_logs").insert({
       moderator_id: moderator.id,
       token_id: token.id,
@@ -96,6 +83,11 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const getDurationLabel = (type: string) => {
+    const opt = DURATION_OPTIONS.find(d => d.value === type);
+    return opt ? opt.label : type;
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">🔑 Token Manager</h2>
@@ -107,7 +99,7 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Durasi</label>
             <Select value={durationType} onValueChange={setDurationType}>
-              <SelectTrigger className="w-32 bg-background">
+              <SelectTrigger className="w-44 bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,7 +149,7 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
                 <div>
                   <span className="font-mono text-sm font-bold text-foreground">{t.code}</span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground">{t.duration_type} · {t.max_devices} device</span>
+                    <span className="text-[10px] text-muted-foreground">{getDurationLabel(t.duration_type)} · {t.max_devices} device</span>
                     <span className={`rounded px-1 py-0.5 text-[9px] font-bold ${
                       isBlocked ? "bg-destructive/15 text-destructive" :
                       isExpired ? "bg-muted text-muted-foreground" :
