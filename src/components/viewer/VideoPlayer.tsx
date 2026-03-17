@@ -439,7 +439,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           <select
             value={currentQuality}
             onChange={(e) => handleQualityChange(Number(e.target.value))}
-            className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground"
+            className="rounded-md bg-secondary px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground"
           >
             {qualities.map((q) => (
               <option key={q.index} value={q.index}>{q.label}</option>
