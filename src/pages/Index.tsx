@@ -44,6 +44,8 @@ interface SiteSettings {
   site_title: string;
   whatsapp_channel: string;
   subscription_info: string;
+  landing_description_width: string;
+  [key: string]: string;
 }
 
 const Index = () => {
