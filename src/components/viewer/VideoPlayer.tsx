@@ -452,6 +452,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   }
                 } catch {}
 
+                // Force max quality before playback
+                forceMaxYtQuality();
+
                 if (playbackIntentRef.current === "play") {
                   setPlayerLoading(true);
                 }
@@ -463,6 +466,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                 if (e.data === YT_STATE_PLAYING) {
                   setPlayerLoading(false);
                   setPlayerPlaying(true);
+                  // Re-detect qualities once playing (YouTube exposes them after buffering)
+                  forceMaxYtQuality();
                   if (playbackIntentRef.current === "pause") {
                     requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PLAYING));
                   }
@@ -494,6 +499,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                     requestAnimationFrame(() => syncYoutubePlayback(e.data));
                   }
                 }
+              },
+              onPlaybackQualityChange: (e: any) => {
+                if (destroyed) return;
+                setCurrentYtQuality(e.data || "auto");
+              },
               },
               onError: () => {
                 if (destroyed) return;
