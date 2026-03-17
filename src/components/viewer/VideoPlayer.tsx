@@ -441,6 +441,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                 if (destroyed) return;
 
                 if (e.data === YT_STATE_PLAYING) {
+                  ytPendingActionRef.current = null;
                   setPlayerLoading(false);
                   setPlayerPlaying(true);
                   return;
@@ -451,7 +452,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   return;
                 }
 
-                if (e.data === YT_STATE_PAUSED || e.data === 0 || e.data === 5 || e.data === -1) {
+                if (e.data === YT_STATE_PAUSED) {
+                  ytPendingActionRef.current = null;
+                  setPlayerLoading(false);
+                  setPlayerPlaying(false);
+                  return;
+                }
+
+                if (e.data === 0 || e.data === 5 || e.data === -1) {
                   setPlayerLoading(false);
                   setPlayerPlaying(false);
                 }
