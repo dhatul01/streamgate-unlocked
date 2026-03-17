@@ -254,7 +254,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, canModerate, onPinMessag
           <ChatMessageItem
             key={msg.id}
             msg={msg}
-            isAdmin={isAdmin}
+            canModerate={canManageMessages}
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}

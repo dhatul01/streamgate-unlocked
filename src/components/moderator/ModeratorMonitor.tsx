@@ -82,7 +82,8 @@ const ModeratorMonitor = ({ moderator }: Props) => {
           <LiveChat
             username={`MOD:${moderator.username}`}
             isLive={stream?.is_live || false}
-            isAdmin={true}
+            isAdmin={false}
+            canModerate={true}
             onPinMessage={async (id) => {
               const { data: msg } = await supabase.from("chat_messages").select("is_pinned").eq("id", id).single();
               if (msg) await supabase.from("chat_messages").update({ is_pinned: !msg.is_pinned }).eq("id", id);

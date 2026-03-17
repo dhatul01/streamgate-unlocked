@@ -330,7 +330,7 @@ const ChannelPage = () => {
           <div className="h-[500px] lg:h-auto rounded-xl border border-white/10 overflow-hidden tv:min-h-[600px]">
             <LiveChat
               username={chatUsername}
-              tokenId={tokenCode || undefined}
+              tokenId={chatTokenId}
               isLive={isLive}
               isAdmin={false}
             />

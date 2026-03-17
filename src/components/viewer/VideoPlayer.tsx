@@ -397,6 +397,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           onClick={togglePlay}
           className={`h-full w-full object-contain cursor-pointer ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
           playsInline
+          preload="auto"
         />
       )}
 
