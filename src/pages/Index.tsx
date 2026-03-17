@@ -542,9 +542,11 @@ const Index = () => {
                     {/* Category badge */}
                     {show.category && show.category !== "regular" && (() => {
                       const cat = SHOW_CATEGORIES[show.category] || SHOW_CATEGORIES.regular;
+                      const memberText = show.category_member && (show.category === "birthday" || show.category === "last_show")
+                        ? ` — ${show.category_member}` : "";
                       return (
                         <span className={`absolute top-3 left-3 tv:top-4 tv:left-4 rounded-full px-3 py-1 text-[10px] tv:text-xs font-bold backdrop-blur-sm ${cat.color}`}>
-                          {cat.label}
+                          {cat.label}{memberText}
                         </span>
                       );
                     })()}
