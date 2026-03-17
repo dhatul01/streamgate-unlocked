@@ -84,6 +84,7 @@ const ShowManager = () => {
         max_subscribers: show.max_subscribers,
         subscription_benefits: show.subscription_benefits,
         group_link: show.group_link,
+        is_order_closed: show.is_order_closed,
       })
       .eq("id", show.id);
     await fetchShows();
