@@ -286,17 +286,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    
     if (playlist.type === "youtube") {
-      if (!isYTReady()) return;
       const player = ytPlayerRef.current;
+      if (!player || !ytReadyRef.current) {
+        console.warn("[VideoPlayer] YT player not ready, ytReadyRef:", ytReadyRef.current);
+        return;
+      }
       try {
-        if (isPlaying) {
+        // Always use actual YT player state, not React state
+        const state = typeof player.getPlayerState === "function" ? player.getPlayerState() : -1;
+        console.log("[VideoPlayer] YT state:", state, "isPlaying:", isPlaying);
+        
+        if (state === 1 || state === 3) {
+          // Playing or buffering → pause
           player.pauseVideo();
           setIsPlaying(false);
         } else {
-          // Seek to live edge for live streams
+          // Paused, ended, unstarted, cued → play
           try {
-            const duration = player.getDuration?.();
+            const duration = typeof player.getDuration === "function" ? player.getDuration() : 0;
             if (duration && duration > 0) {
               player.seekTo(duration, true);
             }
@@ -305,18 +314,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           setIsPlaying(true);
         }
       } catch (err) {
-        console.warn("togglePlay YT error:", err);
+        console.warn("[VideoPlayer] togglePlay YT error:", err);
       }
+    } else if (playlist.type === "cloudflare") {
+      // Cloudflare uses iframe, toggle state only
+      setIsPlaying(!isPlaying);
     } else if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
+      // m3u8 or other HTML5 video — use actual paused state
+      const video = videoRef.current;
+      console.log("[VideoPlayer] video.paused:", video.paused, "isPlaying:", isPlaying);
+      
+      if (video.paused) {
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
-          videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
+          video.currentTime = hlsRef.current.liveSyncPosition;
         }
-        videoRef.current.play();
-        setIsPlaying(true);
+        video.play()
+          .then(() => setIsPlaying(true))
+          .catch((err) => {
+            console.warn("[VideoPlayer] play() failed:", err);
+            setIsPlaying(false);
+          });
+      } else {
+        video.pause();
+        setIsPlaying(false);
       }
     }
   };
