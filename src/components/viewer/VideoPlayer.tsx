@@ -807,9 +807,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
         {/* Controls bar */}
         <div
+          onClick={(e) => e.stopPropagation()}
           className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-background/80 to-transparent p-3 transition-opacity tv:gap-4 tv:p-6 ${
             showControls ? "opacity-100" : "opacity-0"
           }`}
+          style={{ pointerEvents: showControls ? "auto" : "none" }}
         >
           {/* Play/Pause */}
           <button
