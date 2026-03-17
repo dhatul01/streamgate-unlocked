@@ -196,8 +196,7 @@ const Index = () => {
       icon: <CreditCard className="h-5 w-5 tv:h-7 tv:w-7 text-yellow-500" />,
       label: "Informasi Langganan",
       description: settings.subscription_info || "Info paket berlangganan",
-      action: () => { document.getElementById("subscriptions")?.scrollIntoView({ behavior: "smooth" }); },
-      expandable: !!settings.subscription_info,
+      action: () => { window.location.href = "/membership"; },
     },
     {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
