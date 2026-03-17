@@ -429,7 +429,7 @@ const LivePage = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md tv:max-w-xl animate-in fade-in zoom-in-95 duration-500 rounded-2xl border-2 border-destructive/50 bg-card p-8 tv:p-12 text-center shadow-2xl">
-          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24" />
+          <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16 tv:h-24 tv:w-24 rounded-full border-2 border-primary/50 shadow-[0_0_16px_hsl(var(--primary)/0.4)]" />
           <div className="mx-auto mb-4 flex h-20 w-20 tv:h-28 tv:w-28 items-center justify-center rounded-full bg-destructive/10">
             <span className="text-4xl tv:text-6xl">❌</span>
           </div>
