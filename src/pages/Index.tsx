@@ -70,7 +70,7 @@ const Index = () => {
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
-      supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
+      supabase.rpc("get_public_shows"),
       supabase.from("site_settings").select("*"),
       supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
     ]);

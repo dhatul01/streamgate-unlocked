@@ -35,7 +35,8 @@ const MembershipPage = () => {
   const [email, setEmail] = useState("");
 
   const fetchData = async () => {
-    const { data } = await supabase.from("shows").select("*").eq("is_active", true).eq("is_subscription", true).order("sort_order");
+    const { data: allShows } = await supabase.rpc("get_public_shows");
+    const data = (allShows || []).filter((s: any) => s.is_subscription);
     const subShows = (data as Show[]) || [];
     setShows(subShows);
     const counts: Record<string, number> = {};
