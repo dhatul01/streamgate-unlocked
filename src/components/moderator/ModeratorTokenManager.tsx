@@ -22,9 +22,9 @@ interface Props {
 }
 
 const DURATION_OPTIONS = [
-  { value: "harian", label: "Harian (1 Hari)", ms: 86400000 },
-  { value: "mingguan", label: "Mingguan (7 Hari)", ms: 604800000 },
-  { value: "bulanan", label: "Bulanan (30 Hari)", ms: 2592000000 },
+  { value: "daily", label: "Harian (1 Hari)", ms: 86400000 },
+  { value: "weekly", label: "Mingguan (7 Hari)", ms: 604800000 },
+  { value: "monthly", label: "Bulanan (30 Hari)", ms: 2592000000 },
 ];
 
 const generateCode = () => {
@@ -38,7 +38,7 @@ const ModeratorTokenManager = ({ moderator }: Props) => {
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [durationType, setDurationType] = useState("harian");
+  const [durationType, setDurationType] = useState("daily");
   const [maxDevices, setMaxDevices] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
