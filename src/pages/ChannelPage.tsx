@@ -108,9 +108,18 @@ const ChannelPage = () => {
       {/* Header */}
       <header className="border-b border-white/10 px-4 py-3 tv:px-8 tv:py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <h1 className="text-lg font-bold text-white tv:text-2xl">
-            {moderator?.site_name || "Channel"}
-          </h1>
+          <div className="flex items-center gap-3">
+            {moderator?.logo_url ? (
+              <img src={moderator.logo_url} alt="Logo" className="h-8 w-8 rounded-lg object-cover tv:h-12 tv:w-12" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-sm font-bold text-white tv:h-12 tv:w-12 tv:text-lg">
+                {(moderator?.site_name || "C").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <h1 className="text-lg font-bold text-white tv:text-2xl">
+              {moderator?.site_name || "Channel"}
+            </h1>
+          </div>
           {stream?.is_live && (
             <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-bold text-red-400 tv:px-4 tv:py-1.5 tv:text-sm">
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
