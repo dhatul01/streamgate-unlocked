@@ -61,15 +61,21 @@ const ChannelPage = () => {
         setTokenValid(true);
       }
 
-      // Fetch stream, playlists, and site settings
-      const [streamRes, playlistRes, settingsRes] = await Promise.all([
+      // Fetch stream, moderator playlists, and site settings
+      const [streamRes, modPlaylistRes, settingsRes] = await Promise.all([
         supabase.from("streams").select("*").limit(1).single(),
-        supabase.rpc("get_playlists_for_channel", { _moderator_username: username! }),
+        supabase.rpc("get_moderator_playlists", { _moderator_username: username! }),
         supabase.from("site_settings").select("*"),
       ]);
 
       setStream(streamRes.data);
-      const list = (playlistRes.data || []) as any[];
+
+      // Use moderator's own playlists; fall back to main playlists if none
+      let list = (modPlaylistRes.data || []) as any[];
+      if (list.length === 0) {
+        const { data: mainPlaylists } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: username! });
+        list = (mainPlaylists || []) as any[];
+      }
       setPlaylists(list);
       if (list.length > 0) setActivePlaylist(list[0]);
 
