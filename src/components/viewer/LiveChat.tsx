@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useTransition, memo } from "r
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Pin, Trash2, ShieldBan, ShieldOff, Users } from "lucide-react";
+import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users } from "lucide-react";
 
 interface LiveChatProps {
   username: string;
@@ -12,6 +12,7 @@ interface LiveChatProps {
   onPinMessage?: (id: string) => void;
   onDeleteMessage?: (id: string) => void;
   onBlockUser?: (tokenId: string) => void;
+  onToggleChatMod?: (username: string, isMod: boolean) => void;
 }
 
 interface ChatMessage {
@@ -39,7 +40,7 @@ const ModeratorBadge = () => (
   </span>
 );
 
-const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, formatTime }: {
+const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, onToggleMod, formatTime }: {
   msg: ChatMessage;
   isAdmin: boolean;
   isChatMod: boolean;
@@ -47,6 +48,7 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
+  onToggleMod?: (username: string, isMod: boolean) => void;
   formatTime: (d: string) => string;
 }) => {
   const canModerate = isAdmin || isChatMod;
@@ -80,6 +82,16 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
               <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
             </button>
           )}
+          {/* Admin can toggle mod status directly from chat */}
+          {isAdmin && !msg.is_admin && onToggleMod && (
+            <button
+              onClick={() => onToggleMod(msg.username, isMsgFromMod)}
+              className={`rounded p-1 tv:p-1.5 text-muted-foreground ${isMsgFromMod ? "hover:bg-destructive/10 hover:text-destructive" : "hover:bg-cyan-500/10 hover:text-cyan-400"}`}
+              title={isMsgFromMod ? "Hapus Moderator" : "Jadikan Moderator"}
+            >
+              {isMsgFromMod ? <ShieldMinus className="h-3 w-3 tv:h-4 tv:w-4" /> : <ShieldPlus className="h-3 w-3 tv:h-4 tv:w-4" />}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -87,7 +99,7 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
 });
 ChatMessageItem.displayName = "ChatMessageItem";
 
-const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser }: LiveChatProps) => {
+const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMessage, onBlockUser, onToggleChatMod }: LiveChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -296,6 +308,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             onPin={handlePin}
             onDelete={handleDelete}
             onBlock={onBlockUser}
+            onToggleMod={onToggleChatMod}
             formatTime={formatTime}
           />
         ))}
