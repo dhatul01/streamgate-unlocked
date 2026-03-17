@@ -20,6 +20,7 @@ export interface VideoPlayerHandle {
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
   const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [showControls, setShowControls] = useState(true);
@@ -144,10 +145,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           index: i,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        if (data.levels.length > 0) {
-          hls.currentLevel = data.levels.length - 1;
-          setCurrentQuality(data.levels.length - 1);
-        }
+        // Default to Auto (-1) for adaptive bitrate
+        hls.currentLevel = -1;
+        setCurrentQuality(-1);
         setIsLoading(false);
         if (autoPlay) {
           videoRef.current!.play().catch(() => {});
@@ -155,8 +155,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         }
       });
 
+      // Show loading when level is switching
+      hls.on(Hls.Events.LEVEL_SWITCHING, () => {
+        setIsSwitchingQuality(true);
+      });
+      hls.on(Hls.Events.LEVEL_SWITCHED, () => {
+        setIsSwitchingQuality(false);
+      });
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        setIsSwitchingQuality(false);
+      });
+
       hls.on(Hls.Events.ERROR, () => {
         setIsLoading(false);
+        setIsSwitchingQuality(false);
       });
     };
 
@@ -354,6 +366,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const handleQualityChange = (index: number) => {
     if (hlsRef.current) {
+      setIsSwitchingQuality(true);
       hlsRef.current.currentLevel = index;
       setCurrentQuality(index);
     }
@@ -378,6 +391,16 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           <div className="flex flex-col items-center gap-3 tv:gap-5">
             <div className="h-10 w-10 tv:h-16 tv:w-16 animate-spin rounded-full border-4 tv:border-[6px] border-primary border-t-transparent" />
             <p className="text-xs text-muted-foreground animate-pulse tv:text-lg">Menghubungkan ke streaming...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Quality switching overlay */}
+      {isSwitchingQuality && !isLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/50 backdrop-blur-sm transition-opacity duration-300">
+          <div className="flex flex-col items-center gap-2 tv:gap-4 rounded-xl bg-card/80 px-6 py-4 tv:px-10 tv:py-8 shadow-lg backdrop-blur">
+            <div className="h-8 w-8 tv:h-12 tv:w-12 animate-spin rounded-full border-3 tv:border-4 border-primary border-t-transparent" />
+            <p className="text-xs text-muted-foreground tv:text-base">Mengganti resolusi...</p>
           </div>
         </div>
       )}
