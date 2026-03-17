@@ -58,6 +58,7 @@ const Index = () => {
     site_title: "RealTime48 Streaming",
     whatsapp_channel: "",
     subscription_info: "",
+    landing_description_width: "medium",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
