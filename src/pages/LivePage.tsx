@@ -201,6 +201,7 @@ const LivePage = () => {
           const row = payload.new;
           if (row?.key === "watermark_image_url") setWatermarkUrl(row.value || "");
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
+          if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
         }
       )
       .subscribe();
