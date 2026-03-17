@@ -216,7 +216,7 @@ const Index = () => {
     {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Data Show",
-      description: `${shows.length} show tersedia`,
+      description: `${regularShows.length} show tersedia`,
       action: () => { document.getElementById("shows")?.scrollIntoView({ behavior: "smooth" }); },
     },
   ];
