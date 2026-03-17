@@ -504,7 +504,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                 if (destroyed) return;
                 setCurrentYtQuality(e.data || "auto");
               },
-              },
               onError: () => {
                 if (destroyed) return;
                 setPlayerLoading(false);
@@ -540,7 +539,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       return () => {
         destroyed = true;
       };
-    }, [playlist.type, playlist.url, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback]);
+    }, [playlist.type, playlist.url, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback, forceMaxYtQuality]);
 
     useEffect(() => {
       if (playlist.type !== "cloudflare") return;
