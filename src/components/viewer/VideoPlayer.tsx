@@ -32,21 +32,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useImperativeHandle(ref, () => ({
     play: () => {
       if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
-        try {
-          const duration = ytPlayerRef.current.getDuration?.();
-          if (duration && duration > 0) ytPlayerRef.current.seekTo(duration, true);
-        } catch {}
         ytPlayerRef.current.playVideo();
       } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
-        // Seek to live edge before playing
         if (hlsRef.current.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
-        videoRef.current.play();
-        setIsPlaying(true);
+        void videoRef.current.play().catch(() => {});
       } else if (videoRef.current) {
-        videoRef.current.play();
-        setIsPlaying(true);
+        void videoRef.current.play().catch(() => {});
       }
     },
     pause: () => {
@@ -54,7 +47,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         ytPlayerRef.current.pauseVideo();
       } else if (videoRef.current) {
         videoRef.current.pause();
-        setIsPlaying(false);
       }
     },
   }));
