@@ -415,7 +415,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             height: "100%",
             videoId,
             playerVars: {
-              autoplay: autoPlay ? 1 : 0,
+              autoplay: 0,
               controls: 0,
               disablekb: 1,
               fs: 0,
@@ -427,7 +427,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
               origin: window.location.origin,
             },
             events: {
-              onReady: (e: any) => {
+              onReady: () => {
                 if (destroyed) return;
                 ytReadyRef.current = true;
                 setPlayerLoading(false);
@@ -448,43 +448,47 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                   }
                 } catch {}
 
-                const pendingAction = ytPendingActionRef.current;
-                if (pendingAction === "pause") {
-                  e.target.pauseVideo?.();
-                  ytPendingActionRef.current = null;
-                  return;
+                if (playbackIntentRef.current === "play") {
+                  setPlayerLoading(true);
                 }
-
-                if (pendingAction === "play" || autoPlay) {
-                  e.target.playVideo?.();
-                  ytPendingActionRef.current = null;
-                }
+                syncYoutubePlayback();
               },
               onStateChange: (e: any) => {
                 if (destroyed) return;
 
                 if (e.data === YT_STATE_PLAYING) {
-                  ytPendingActionRef.current = null;
                   setPlayerLoading(false);
                   setPlayerPlaying(true);
+                  if (playbackIntentRef.current === "pause") {
+                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PLAYING));
+                  }
                   return;
                 }
 
                 if (e.data === YT_STATE_BUFFERING) {
                   setPlayerLoading(true);
+                  setPlayerPlaying(true);
+                  if (playbackIntentRef.current === "pause") {
+                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_BUFFERING));
+                  }
                   return;
                 }
 
                 if (e.data === YT_STATE_PAUSED) {
-                  ytPendingActionRef.current = null;
                   setPlayerLoading(false);
                   setPlayerPlaying(false);
+                  if (playbackIntentRef.current === "play") {
+                    requestAnimationFrame(() => syncYoutubePlayback(YT_STATE_PAUSED));
+                  }
                   return;
                 }
 
-                if (e.data === 0 || e.data === 5 || e.data === -1) {
+                if (e.data === YT_STATE_ENDED || e.data === YT_STATE_CUED || e.data === YT_STATE_UNSTARTED) {
                   setPlayerLoading(false);
                   setPlayerPlaying(false);
+                  if (playbackIntentRef.current === "play") {
+                    requestAnimationFrame(() => syncYoutubePlayback(e.data));
+                  }
                 }
               },
               onError: () => {
@@ -522,7 +526,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       return () => {
         destroyed = true;
       };
-    }, [playlist, autoPlay, setPlayerLoading, setPlayerPlaying]);
+    }, [playlist.type, playlist.url, setPlayerLoading, setPlayerPlaying, syncYoutubePlayback]);
 
     useEffect(() => {
       if (playlist.type !== "cloudflare") return;
