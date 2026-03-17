@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import VideoPlayer from "@/components/viewer/VideoPlayer";
+import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,22 +13,42 @@ const ModeratorMonitor = ({ moderator }: Props) => {
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [stream, setStream] = useState<any>(null);
   const { toast } = useToast();
+  const playerRef = useRef<VideoPlayerHandle>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
       setStream(streamData);
 
-      const { data: playlistData } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: moderator.username });
-      const list = (playlistData || []) as any[];
-      setPlaylists(list);
-      if (list.length > 0) setActivePlaylist(list[0]);
+      // Fetch moderator's own playlists
+      const { data: modPlaylists } = await supabase
+        .from("moderator_playlists")
+        .select("*")
+        .eq("moderator_id", moderator.id)
+        .order("sort_order");
+
+      const list = (modPlaylists || []) as any[];
+
+      // If moderator has own playlists, use them; otherwise fall back to main playlists
+      if (list.length > 0) {
+        setPlaylists(list);
+        setActivePlaylist(list[0]);
+      } else {
+        const { data: mainPlaylists } = await supabase.rpc("get_playlists_for_channel", { _moderator_username: moderator.username });
+        const mainList = (mainPlaylists || []) as any[];
+        setPlaylists(mainList);
+        if (mainList.length > 0) setActivePlaylist(mainList[0]);
+      }
     };
     fetchData();
-  }, []);
+  }, [moderator.id, moderator.username]);
+
+  const handlePlaylistSwitch = (p: any) => {
+    playerRef.current?.pause();
+    setActivePlaylist(p);
+  };
 
   const handleBlockUser = async (tokenId: string) => {
-    // Check if already blocked
     const { data: existing } = await supabase
       .from("blocked_users")
       .select("id")
@@ -52,10 +72,10 @@ const ModeratorMonitor = ({ moderator }: Props) => {
         <div className="space-y-2">
           <div className="rounded-xl border border-border overflow-hidden">
             {activePlaylist ? (
-              <VideoPlayer playlist={activePlaylist} />
+              <VideoPlayer ref={playerRef} playlist={activePlaylist} />
             ) : (
               <div className="flex aspect-video items-center justify-center bg-card">
-                <p className="text-sm text-muted-foreground">Tidak ada sumber video</p>
+                <p className="text-sm text-muted-foreground">Tidak ada sumber video. Tambahkan playlist di menu Playlist.</p>
               </div>
             )}
           </div>
@@ -64,7 +84,7 @@ const ModeratorMonitor = ({ moderator }: Props) => {
               {playlists.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => setActivePlaylist(p)}
+                  onClick={() => handlePlaylistSwitch(p)}
                   className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                     activePlaylist?.id === p.id
                       ? "bg-primary text-primary-foreground"
