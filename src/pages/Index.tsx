@@ -300,23 +300,31 @@ const Index = () => {
           <div className={`mx-auto grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3 ${
             settings.landing_description_width === "narrow" ? "max-w-3xl" :
             settings.landing_description_width === "wide" ? "max-w-7xl tv:max-w-[1800px]" :
-            settings.landing_description_width === "full" ? "max-w-full" :
+            settings.landing_description_width === "full" ? "w-full px-0" :
             "max-w-5xl tv:max-w-[1600px]"
           }`}>
-            {descriptions.map((desc, i) => (
-              <motion.div
-                key={desc.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-2xl border border-border bg-card p-6 tv:p-10 text-center transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
-              >
-                <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
-                <h3 className="mb-2 text-lg font-bold text-foreground tv:text-2xl">{desc.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed tv:text-lg">{desc.content}</p>
-              </motion.div>
-            ))}
+            {descriptions.map((desc, i) => {
+              const alignClass = desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : "text-center";
+              return (
+                <motion.div
+                  key={desc.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 ${alignClass}`}
+                >
+                  {desc.image_url && (
+                    <img src={desc.image_url} alt={desc.title} className="h-40 w-full object-cover tv:h-56" />
+                  )}
+                  <div className="p-6 tv:p-10">
+                    <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
+                    <h3 className="mb-2 text-lg font-bold text-foreground tv:text-2xl">{desc.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed tv:text-lg whitespace-pre-line">{desc.content}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </section>
       )}
