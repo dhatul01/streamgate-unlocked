@@ -5,13 +5,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X } from "lucide-react";
+import { ANIMATION_OPTIONS, type AnimationType } from "@/components/viewer/PlayerAnimations";
 
 const settingsKeys = [
-  { key: "site_title", label: "Judul Website", placeholder: "RealTime48 Streaming", type: "input" },
-  { key: "whatsapp_number", label: "Nomor WhatsApp Admin (dengan kode negara)", placeholder: "6281234567890", type: "input", hint: "Contoh: 6281234567890 (tanpa +)" },
-  { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input", hint: "Link saluran WhatsApp untuk info publik" },
-  { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" },
-  { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" },
+  { key: "site_title", label: "Judul Website", placeholder: "RealTime48 Streaming", type: "input" as const },
+  { key: "whatsapp_number", label: "Nomor WhatsApp Admin (dengan kode negara)", placeholder: "6281234567890", type: "input" as const, hint: "Contoh: 6281234567890 (tanpa +)" },
+  { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input" as const, hint: "Link saluran WhatsApp untuk info publik" },
+  { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" as const },
+  { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" as const },
+];
+
+const WIDTH_OPTIONS = [
+  { value: "narrow", label: "Sempit" },
+  { value: "medium", label: "Sedang" },
+  { value: "wide", label: "Lebar" },
+  { value: "full", label: "Penuh" },
 ];
 
 const SiteSettingsManager = () => {
@@ -32,11 +40,12 @@ const SiteSettingsManager = () => {
     fetchSettings();
   }, []);
 
-  const saveSetting = async (key: string) => {
+  const saveSetting = async (key: string, value?: string) => {
     setSaving(key);
+    const val = value ?? values[key] ?? "";
     const { error } = await supabase
       .from("site_settings")
-      .upsert({ key, value: values[key] || "", updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .upsert({ key, value: val, updated_at: new Date().toISOString() }, { onConflict: "key" });
     setSaving(null);
     if (!error) toast({ title: "Pengaturan disimpan" });
   };
@@ -103,6 +112,53 @@ const SiteSettingsManager = () => {
           {s.hint && <p className="mt-1 text-[10px] text-muted-foreground">{s.hint}</p>}
         </div>
       ))}
+
+      {/* Landing description width */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Lebar Deskripsi Landing Page</label>
+        <div className="flex gap-2">
+          {WIDTH_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, landing_description_width: opt.value }));
+                saveSetting("landing_description_width", opt.value);
+              }}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                (values.landing_description_width || "medium") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Player animation */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Animasi Player Streaming</label>
+        <p className="mb-2 text-[10px] text-muted-foreground">Pilih efek animasi yang akan ditampilkan di atas video player.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {ANIMATION_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, player_animation: opt.value }));
+                saveSetting("player_animation", opt.value);
+              }}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                (values.player_animation || "none") === opt.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              <span>{opt.emoji}</span> {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Watermark upload */}
       <div>
