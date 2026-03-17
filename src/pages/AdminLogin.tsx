@@ -36,12 +36,12 @@ const AdminLogin = () => {
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin");
+      .eq("user_id", user.id);
 
-    if (!roles || roles.length === 0) {
+    const hasAccess = roles?.some((r: any) => r.role === "admin" || r.role === "moderator");
+    if (!hasAccess) {
       await supabase.auth.signOut();
-      toast({ title: "Akses ditolak", description: "Anda bukan admin.", variant: "destructive" });
+      toast({ title: "Akses ditolak", description: "Anda tidak memiliki akses.", variant: "destructive" });
       setLoading(false);
       return;
     }

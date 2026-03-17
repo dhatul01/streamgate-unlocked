@@ -12,10 +12,12 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
 import LandingDescriptionManager from "@/components/admin/LandingDescriptionManager";
 import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManager";
+import ModeratorAccountManager from "@/components/admin/ModeratorAccountManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<"admin" | "moderator">("moderator");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,13 +27,18 @@ const AdminDashboard = () => {
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin");
-      if (!roles || roles.length === 0) {
+        .eq("user_id", user.id);
+
+      const isAdmin = roles?.some((r: any) => r.role === "admin");
+      const isModerator = roles?.some((r: any) => r.role === "moderator");
+
+      if (!isAdmin && !isModerator) {
         await supabase.auth.signOut();
         navigate("/admin");
         return;
       }
+
+      setUserRole(isAdmin ? "admin" : "moderator");
       setLoading(false);
     };
     checkAuth();
@@ -60,7 +67,8 @@ const AdminDashboard = () => {
       case "descriptions": return <LandingDescriptionManager />;
       case "monitor": return <MonitorView />;
       case "site": return <SiteSettingsManager />;
-      case "settings": return <AdminSettings />;
+      case "settings": return userRole === "admin" ? <AdminSettings /> : null;
+      case "moderators": return userRole === "admin" ? <ModeratorAccountManager /> : null;
       default: return <LiveControl />;
     }
   };
@@ -71,6 +79,7 @@ const AdminDashboard = () => {
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         onLogout={handleLogout}
+        userRole={userRole}
       />
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         {renderSection()}
