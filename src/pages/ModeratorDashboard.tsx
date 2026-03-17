@@ -78,6 +78,7 @@ const ModeratorDashboard = () => {
   const renderSection = () => {
     switch (activeSection) {
       case "monitor": return <ModeratorMonitor moderator={moderator} />;
+      case "playlists": return <ModeratorPlaylistManager moderator={moderator} />;
       case "tokens": return <ModeratorTokenManager moderator={moderator} />;
       case "site": return <ModeratorSiteSettings moderator={moderator} onUpdate={setModerator} />;
       default: return <ModeratorMonitor moderator={moderator} />;
