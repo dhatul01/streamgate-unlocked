@@ -448,6 +448,42 @@ export type Database = {
         Returns: Json
       }
       get_confirmed_order_count: { Args: { _show_id: string }; Returns: number }
+      get_playlists_for_channel: {
+        Args: { _moderator_username: string }
+        Returns: {
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          stream_id: string | null
+          type: string
+          url: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "playlists"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_playlists_for_token: {
+        Args: { _token_code: string }
+        Returns: {
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          stream_id: string | null
+          type: string
+          url: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "playlists"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
