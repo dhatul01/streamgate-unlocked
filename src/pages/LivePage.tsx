@@ -176,25 +176,50 @@ const LivePage = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [tokenCode, getFingerprint]);
 
-  // Realtime: streams
+  // Realtime + polling fallback: streams
   useEffect(() => {
+    let isMounted = true;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let pollDelay = 2000;
+
+    const fetchLatestStream = async () => {
+      const { data } = await supabase.from("streams").select("*").limit(1).single();
+      if (isMounted && data) {
+        syncStreamState(data);
+      }
+    };
+
+    const schedulePoll = () => {
+      if (!isMounted) return;
+      pollTimeout = setTimeout(async () => {
+        await fetchLatestStream();
+        pollDelay = Math.min(pollDelay * 1.5, 10000);
+        schedulePoll();
+      }, pollDelay);
+    };
+
     const channel = supabase
       .channel("stream-realtime")
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "streams" },
+        { event: "*", schema: "public", table: "streams" },
         (payload: any) => {
-          setStream(payload.new);
-          if (payload.new.is_live && !payload.old?.is_live) {
-            setTimeout(() => {
-              playerRef.current?.play();
-            }, 500);
-          }
+          if (!payload.new) return;
+          syncStreamState(payload.new);
+          pollDelay = 2000;
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+
+    fetchLatestStream();
+    schedulePoll();
+
+    return () => {
+      isMounted = false;
+      if (pollTimeout) clearTimeout(pollTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [syncStreamState]);
 
   // Realtime: playlists
   useEffect(() => {
