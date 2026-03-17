@@ -543,6 +543,26 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_public_shows: {
+        Args: never
+        Returns: {
+          background_image_url: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_order_closed: boolean
+          is_subscription: boolean
+          lineup: string
+          max_subscribers: number
+          price: string
+          qris_image_url: string
+          schedule_date: string
+          schedule_time: string
+          sort_order: number
+          subscription_benefits: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
