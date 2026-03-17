@@ -14,6 +14,40 @@ const SIGNING_SECRET = SERVICE_ROLE_KEY;
 const PLAYLIST_TOKEN_TTL = 300; // 5 minutes
 const SUB_PLAYLIST_TOKEN_TTL = 600; // 10 minutes for sub-playlists
 
+// --- In-memory rate limiter for edge function ---
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function edgeRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  // Cleanup old entries periodically (every 100 checks)
+  if (rateLimitMap.size > 1000) {
+    for (const [k, v] of rateLimitMap) {
+      if (now > v.resetAt) rateLimitMap.delete(k);
+    }
+  }
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true; // allowed
+  }
+
+  if (entry.count >= maxRequests) {
+    return false; // rate limited
+  }
+
+  entry.count++;
+  return true; // allowed
+}
+
+function getRateLimitResponse(): Response {
+  return new Response(
+    JSON.stringify({ error: "Terlalu banyak request. Coba lagi nanti." }),
+    { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "30" } }
+  );
+}
+
 // --- Crypto helpers ---
 async function hmacSign(message: string): Promise<string> {
   const encoder = new TextEncoder();
