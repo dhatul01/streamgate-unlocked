@@ -33,6 +33,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<any>(null);
     const ytPlayerRef = useRef<any>(null);
+    const ytReadyRef = useRef(false);
     const ytContainerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cloudflareIframeRef = useRef<HTMLIFrameElement>(null);
@@ -74,12 +75,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
     const playYoutube = useCallback(async () => {
       const player = ytPlayerRef.current;
-      if (!player?.playVideo) return;
+      if (!ytReadyRef.current || !player?.playVideo) return;
       setPlayerLoading(true);
       player.playVideo();
     }, [setPlayerLoading]);
 
     const pauseYoutube = useCallback(() => {
+      if (!ytReadyRef.current) return;
       ytPlayerRef.current?.pauseVideo?.();
     }, []);
 
@@ -131,15 +133,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
     }, [playlist.type, pauseYoutube, pauseCloudflare, pauseNative]);
 
     const togglePlay = useCallback(() => {
-      // For YouTube: always query the actual player state to avoid stale closure
+      // For YouTube: directly query the YT player API (avoids stale React state)
       if (playlist.type === "youtube") {
         const player = ytPlayerRef.current;
-        if (!player?.getPlayerState) return;
+        if (!ytReadyRef.current || !player?.getPlayerState) {
+          console.warn("[VideoPlayer] YT player not ready yet");
+          return;
+        }
         const state = player.getPlayerState();
-        // 1=playing, 3=buffering → pause; everything else → play
+        // YT states: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
         if (state === 1 || state === 3) {
           player.pauseVideo();
         } else {
+          // For ended videos (state=0), replay from start
+          if (state === 0) {
+            player.seekTo(0, true);
+          }
           player.playVideo();
         }
         return;
@@ -221,6 +230,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
           } catch {}
         }
         ytPlayerRef.current = null;
+        ytReadyRef.current = false;
 
         if (cloudflareCleanupRef.current) {
           cloudflareCleanupRef.current();
@@ -380,6 +390,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             events: {
               onReady: (e: any) => {
                 if (destroyed) return;
+                ytReadyRef.current = true;
                 setPlayerLoading(false);
 
                 try {
@@ -589,7 +600,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             />
             <div
               className="absolute inset-0 z-10 cursor-pointer"
-              onClick={togglePlay}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
               onContextMenu={(e) => e.preventDefault()}
               style={{ pointerEvents: "auto" }}
             />
@@ -639,7 +653,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         >
           <button
             type="button"
-            onClick={togglePlay}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlay();
+            }}
             aria-label={isPlaying ? "Pause" : "Play"}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
           >
