@@ -76,14 +76,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
     const playYoutube = useCallback(async () => {
       const player = ytPlayerRef.current;
-      if (!ytReadyRef.current || !player?.playVideo) return;
+      ytPendingActionRef.current = "play";
+      if (!player?.playVideo) return;
       setPlayerLoading(true);
-      player.playVideo();
+      try {
+        const state = player.getPlayerState?.();
+        if (state === 0 && player.seekTo) {
+          player.seekTo(0, true);
+        }
+        player.playVideo();
+      } catch {}
     }, [setPlayerLoading]);
 
     const pauseYoutube = useCallback(() => {
-      if (!ytReadyRef.current) return;
-      ytPlayerRef.current?.pauseVideo?.();
+      const player = ytPlayerRef.current;
+      ytPendingActionRef.current = "pause";
+      try {
+        player?.pauseVideo?.();
+      } catch {}
     }, []);
 
     const playCloudflare = useCallback(async () => {
