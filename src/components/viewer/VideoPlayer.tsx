@@ -26,19 +26,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
+  const ytReadyRef = useRef(false);
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Helper: check if YT player API is usable
+  const isYTReady = () => {
+    const p = ytPlayerRef.current;
+    return p && ytReadyRef.current && typeof p.getPlayerState === "function" && typeof p.playVideo === "function";
+  };
+
   useImperativeHandle(ref, () => ({
     play: () => {
-      if (playlist.type === "youtube" && ytPlayerRef.current?.playVideo) {
+      if (playlist.type === "youtube" && isYTReady()) {
+        const player = ytPlayerRef.current;
         try {
-          const duration = ytPlayerRef.current.getDuration?.();
-          if (duration && duration > 0) ytPlayerRef.current.seekTo(duration, true);
+          const duration = player.getDuration?.();
+          if (duration && duration > 0) player.seekTo(duration, true);
         } catch {}
-        ytPlayerRef.current.playVideo();
+        player.playVideo();
       } else if (playlist.type === "m3u8" && hlsRef.current && videoRef.current) {
-        // Seek to live edge before playing
         if (hlsRef.current.liveSyncPosition) {
           videoRef.current.currentTime = hlsRef.current.liveSyncPosition;
         }
@@ -50,7 +57,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
     },
     pause: () => {
-      if (playlist.type === "youtube" && ytPlayerRef.current?.pauseVideo) {
+      if (playlist.type === "youtube" && isYTReady()) {
         ytPlayerRef.current.pauseVideo();
       } else if (videoRef.current) {
         videoRef.current.pause();
