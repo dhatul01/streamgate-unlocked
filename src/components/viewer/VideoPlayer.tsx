@@ -276,25 +276,32 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return match ? match[1] : url;
   };
 
-  const togglePlay = () => {
+  const togglePlay = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (playlist.type === "youtube") {
       const player = ytPlayerRef.current;
-      if (!player || typeof player.getPlayerState !== "function") return;
-      const state = player.getPlayerState();
-      // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
-      if (state === 1 || state === 3) {
-        player.pauseVideo();
-        setIsPlaying(false);
-      } else {
-        // Seek to live edge on unpause for YouTube live
-        try {
-          const duration = player.getDuration?.();
-          if (duration && duration > 0) {
-            player.seekTo(duration, true);
-          }
-        } catch {}
-        player.playVideo();
-        setIsPlaying(true);
+      if (!player) return;
+      // Ensure player API is ready
+      if (typeof player.getPlayerState !== "function" || typeof player.playVideo !== "function") return;
+      try {
+        const state = player.getPlayerState();
+        // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+        if (state === 1 || state === 3) {
+          player.pauseVideo();
+          setIsPlaying(false);
+        } else {
+          // Seek to live edge on unpause for YouTube live
+          try {
+            const duration = player.getDuration?.();
+            if (duration && duration > 0) {
+              player.seekTo(duration, true);
+            }
+          } catch {}
+          player.playVideo();
+          setIsPlaying(true);
+        }
+      } catch (err) {
+        console.warn("togglePlay YT error:", err);
       }
     } else if (videoRef.current) {
       if (videoRef.current.paused) {
