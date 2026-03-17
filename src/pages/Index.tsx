@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
+import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
 import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -207,7 +208,8 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      <LandingFloatingEmojis />
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl tv:max-w-[1600px] items-center justify-between px-4 py-3 tv:py-5 tv:px-8">
@@ -296,35 +298,47 @@ const Index = () => {
 
       {/* Descriptions Section */}
       {descriptions.length > 0 && (
-        <section className="px-4 py-16 tv:py-24 tv:px-8">
-          <div className={`mx-auto grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3 ${
-            settings.landing_description_width === "narrow" ? "max-w-3xl" :
-            settings.landing_description_width === "wide" ? "max-w-7xl tv:max-w-[1800px]" :
-            settings.landing_description_width === "full" ? "w-full px-0" :
-            "max-w-5xl tv:max-w-[1600px]"
-          }`}>
-            {descriptions.map((desc, i) => {
-              const alignClass = desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : "text-center";
-              return (
-                <motion.div
-                  key={desc.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className={`overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 ${alignClass}`}
-                >
-                  {desc.image_url && (
-                    <img src={desc.image_url} alt={desc.title} className="h-40 w-full object-cover tv:h-56" />
-                  )}
-                  <div className="p-6 tv:p-10">
-                    <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
-                    <h3 className="mb-2 text-lg font-bold text-foreground tv:text-2xl">{desc.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed tv:text-lg whitespace-pre-line">{desc.content}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+        <section className="py-16 tv:py-24">
+          <div className="mx-auto max-w-7xl tv:max-w-[1800px] px-4 tv:px-8">
+            <div className="space-y-6 tv:space-y-8">
+              {descriptions.map((desc, i) => {
+                const alignClass = desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : "text-center";
+                return (
+                  <motion.div
+                    key={desc.id}
+                    initial={{ opacity: 0, y: 30, scale: 0.97 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                    className={`group relative w-full overflow-hidden rounded-2xl border border-border bg-card/80 backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 ${alignClass}`}
+                  >
+                    {desc.image_url ? (
+                      <div className="md:flex">
+                        <div className="relative h-52 overflow-hidden md:h-auto md:w-2/5 lg:w-1/3">
+                          <img
+                            src={desc.image_url}
+                            alt={desc.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card/20 md:bg-gradient-to-l" />
+                        </div>
+                        <div className="flex flex-1 flex-col justify-center p-6 md:p-8 tv:p-12">
+                          <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
+                          <h3 className="mb-3 text-xl font-bold text-foreground md:text-2xl tv:text-3xl">{desc.title}</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed md:text-base tv:text-lg whitespace-pre-line">{desc.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6 md:p-8 tv:p-12">
+                        <span className="mb-3 inline-block text-3xl tv:text-5xl">{desc.icon}</span>
+                        <h3 className="mb-3 text-xl font-bold text-foreground md:text-2xl tv:text-3xl">{desc.title}</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed md:text-base tv:text-lg whitespace-pre-line">{desc.content}</p>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
