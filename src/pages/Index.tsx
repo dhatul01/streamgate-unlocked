@@ -348,7 +348,7 @@ const Index = () => {
                     <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black tv:text-sm tv:px-4 tv:py-1.5 ${
                       isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
                     }`}>
-                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {isFull ? "LANGGANAN PENUH" : "LANGGANAN"}
+                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {show.is_order_closed ? "PENDAFTARAN DITUTUP" : isFull ? "MEMBERSHIP PENUH !!!" : "LANGGANAN"}
                     </div>
 
                     <div className="relative h-48 tv:h-72 overflow-hidden">
