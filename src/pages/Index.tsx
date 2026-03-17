@@ -28,6 +28,7 @@ interface Show {
   max_subscribers: number;
   subscription_benefits: string;
   group_link: string;
+  is_order_closed: boolean;
 }
 
 interface LandingDescription {
@@ -43,6 +44,8 @@ interface SiteSettings {
   site_title: string;
   whatsapp_channel: string;
   subscription_info: string;
+  landing_description_width: string;
+  [key: string]: string;
 }
 
 const Index = () => {
@@ -55,6 +58,7 @@ const Index = () => {
     site_title: "RealTime48 Streaming",
     whatsapp_channel: "",
     subscription_info: "",
+    landing_description_width: "medium",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
@@ -64,33 +68,44 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const [showsRes, settingsRes, descRes] = await Promise.all([
-        supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("site_settings").select("*"),
-        supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
-      ]);
-      if (showsRes.data) {
-        setShows(showsRes.data as Show[]);
-        const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
-        if (subShows.length > 0) {
-          const counts: Record<string, number> = {};
-          for (const s of subShows) {
-            const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
-            counts[s.id] = (count as number) || 0;
-          }
-          setSubscriberCounts(counts);
+  const fetchData = async () => {
+    const [showsRes, settingsRes, descRes] = await Promise.all([
+      supabase.from("shows").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("site_settings").select("*"),
+      supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+    ]);
+    if (showsRes.data) {
+      setShows(showsRes.data as Show[]);
+      const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
+      if (subShows.length > 0) {
+        const counts: Record<string, number> = {};
+        for (const s of subShows) {
+          const { data: count } = await supabase.rpc("get_confirmed_order_count", { _show_id: s.id });
+          counts[s.id] = (count as number) || 0;
         }
+        setSubscriberCounts(counts);
       }
-      if (settingsRes.data) {
-        const s: any = {};
-        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-        setSettings((prev) => ({ ...prev, ...s }));
-      }
-      if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
-    };
+    }
+    if (settingsRes.data) {
+      const s: any = {};
+      settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
+      setSettings((prev) => ({ ...prev, ...s }));
+    }
+    if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
+  };
+
+  useEffect(() => {
     fetchData();
+
+    // Realtime for shows and orders
+    const showCh = supabase.channel("idx-shows")
+      .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
+      .subscribe();
+    const orderCh = supabase.channel("idx-orders")
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
+      .subscribe();
+
+    return () => { supabase.removeChannel(showCh); supabase.removeChannel(orderCh); };
   }, []);
 
   const handleBuy = (show: Show) => {
@@ -281,7 +296,12 @@ const Index = () => {
       {/* Descriptions Section */}
       {descriptions.length > 0 && (
         <section className="px-4 py-16 tv:py-24 tv:px-8">
-          <div className="mx-auto max-w-5xl tv:max-w-[1600px] grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className={`mx-auto grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3 ${
+            settings.landing_description_width === "narrow" ? "max-w-3xl" :
+            settings.landing_description_width === "wide" ? "max-w-7xl tv:max-w-[1800px]" :
+            settings.landing_description_width === "full" ? "max-w-full" :
+            "max-w-5xl tv:max-w-[1600px]"
+          }`}>
             {descriptions.map((desc, i) => (
               <motion.div
                 key={desc.id}
@@ -314,7 +334,7 @@ const Index = () => {
               {subscriptionShows.map((show, i) => {
                 const confirmed = subscriberCounts[show.id] || 0;
                 const spotsLeft = show.max_subscribers > 0 ? show.max_subscribers - confirmed : null;
-                const isFull = spotsLeft !== null && spotsLeft <= 0;
+                const isFull = (spotsLeft !== null && spotsLeft <= 0) || show.is_order_closed;
                 return (
                   <motion.div
                     key={show.id}
@@ -331,7 +351,7 @@ const Index = () => {
                     <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black tv:text-sm tv:px-4 tv:py-1.5 ${
                       isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
                     }`}>
-                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {isFull ? "LANGGANAN PENUH" : "LANGGANAN"}
+                      <Sparkles className="h-3 w-3 tv:h-4 tv:w-4" /> {show.is_order_closed ? "PENDAFTARAN DITUTUP" : isFull ? "MEMBERSHIP PENUH !!!" : "LANGGANAN"}
                     </div>
 
                     <div className="relative h-48 tv:h-72 overflow-hidden">
@@ -395,7 +415,7 @@ const Index = () => {
                         }`}
                       >
                         <Star className="h-4 w-4 tv:h-6 tv:w-6" />
-                        {isFull ? "🔒 Langganan Penuh" : "Berlangganan"}
+                        {show.is_order_closed ? "🔒 Pendaftaran Ditutup" : isFull ? "🔒 Membership Penuh !!!" : "Berlangganan"}
                       </button>
                     </div>
                   </motion.div>
@@ -515,7 +535,7 @@ const Index = () => {
                   Silakan scan QRIS di bawah untuk melakukan pembayaran:
                 </p>
                 {selectedShow.qris_image_url ? (
-                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto max-h-64 tv:max-h-96 rounded-lg" />
+                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto w-full max-w-sm rounded-lg object-contain" />
                 ) : (
                   <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground tv:text-base tv:p-12">
                     QRIS belum tersedia

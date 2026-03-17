@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image, Crown } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image, Crown, Lock, Unlock } from "lucide-react";
 
 interface Show {
   id: string;
@@ -22,6 +22,7 @@ interface Show {
   max_subscribers: number;
   subscription_benefits: string;
   group_link: string;
+  is_order_closed: boolean;
 }
 
 const ShowManager = () => {
@@ -83,6 +84,7 @@ const ShowManager = () => {
         max_subscribers: show.max_subscribers,
         subscription_benefits: show.subscription_benefits,
         group_link: show.group_link,
+        is_order_closed: show.is_order_closed,
       })
       .eq("id", show.id);
     await fetchShows();
@@ -200,6 +202,20 @@ const ShowManager = () => {
                 onCheckedChange={(v) => { const u = { ...editing, is_subscription: v }; setEditing(u); updateShow(u); }}
               />
             </div>
+
+            {/* Close orders toggle (subscription only) */}
+            {editing.is_subscription && (
+              <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+                <div className="flex items-center gap-2">
+                  {editing.is_order_closed ? <Lock className="h-4 w-4 text-destructive" /> : <Unlock className="h-4 w-4 text-success" />}
+                  <span className="text-sm font-medium text-foreground">Tutup Pendaftaran</span>
+                </div>
+                <Switch
+                  checked={editing.is_order_closed}
+                  onCheckedChange={(v) => { const u = { ...editing, is_order_closed: v }; setEditing(u); updateShow(u); }}
+                />
+              </div>
+            )}
 
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Show</label>

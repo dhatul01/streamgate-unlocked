@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
 import UsernameModal from "@/components/viewer/UsernameModal";
+import PlayerAnimations, { type AnimationType } from "@/components/viewer/PlayerAnimations";
 
 import logo from "@/assets/logo.png";
 
@@ -25,6 +26,7 @@ const LivePage = () => {
   const [watermarkUrl, setWatermarkUrl] = useState("");
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
+  const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   const getFingerprint = useCallback(() => {
@@ -117,6 +119,7 @@ const LivePage = () => {
           settingsRes.data.forEach((s: any) => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
             if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
+            if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
           });
         }
 
@@ -198,6 +201,7 @@ const LivePage = () => {
           const row = payload.new;
           if (row?.key === "watermark_image_url") setWatermarkUrl(row.value || "");
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
+          if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
         }
       )
       .subscribe();
@@ -412,6 +416,7 @@ const LivePage = () => {
         </header>
 
         <div className="player-area relative">
+          <PlayerAnimations type={playerAnimation} />
           {isLive && activePlaylist ? (
             <VideoPlayer ref={playerRef} playlist={activePlaylist} autoPlay watermarkUrl={watermarkUrl} tokenCode={tokenData?.code} />
           ) : (

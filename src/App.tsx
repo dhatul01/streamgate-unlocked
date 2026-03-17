@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import LivePage from "./pages/LivePage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import MembershipPage from "./pages/MembershipPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/live" element={<LivePage />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/membership" element={<MembershipPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
