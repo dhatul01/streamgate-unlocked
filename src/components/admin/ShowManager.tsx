@@ -96,6 +96,7 @@ const ShowManager = () => {
         group_link: show.group_link,
         is_order_closed: show.is_order_closed,
         category: show.category,
+        category_member: show.category_member,
       })
       .eq("id", show.id);
     await fetchShows();
