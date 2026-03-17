@@ -507,6 +507,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_order_count: { Args: { _show_id: string }; Returns: number }
       get_playlists_for_channel: {
         Args: { _moderator_username: string }
         Returns: {
