@@ -264,9 +264,26 @@ const LivePage = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Realtime: token block & delete detection
+  // Realtime: token block & delete detection + polling fallback
   useEffect(() => {
     if (!tokenData?.id) return;
+    let isMounted = true;
+
+    // Polling fallback every 10s to check token still exists and is not blocked
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+      const { data, error: err } = await supabase.rpc("validate_token", { _code: tokenCode });
+      if (err) return;
+      const result = data as any;
+      if (!result.valid) {
+        if (result.error === "Token telah diblokir") {
+          setBlocked(true);
+        } else {
+          setDeleted(true);
+        }
+      }
+    }, 10000);
+
     const channel = supabase
       .channel("token-block-realtime")
       .on(
@@ -286,8 +303,13 @@ const LivePage = () => {
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [tokenData?.id]);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [tokenData?.id, tokenCode]);
 
   // Countdown timer
   useEffect(() => {
