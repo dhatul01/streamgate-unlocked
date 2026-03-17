@@ -616,7 +616,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         style={isFullscreen ? {} : { paddingBottom: "56.25%", height: 0 }}
       >
         {isLoading && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/80">
             <div className="flex flex-col items-center gap-3 tv:gap-5">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent tv:h-16 tv:w-16 tv:border-[6px]" />
               <p className="animate-pulse text-xs text-muted-foreground tv:text-lg">Menghubungkan ke streaming...</p>
