@@ -298,6 +298,10 @@ const ShowManager = () => {
                 <Input value={editing.schedule_time} onChange={(e) => setEditing({ ...editing, schedule_time: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="19:00 WIB" />
               </div>
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Harga Koin (0 = tidak dijual via koin)</label>
+              <Input type="number" value={editing.coin_price} onChange={(e) => setEditing({ ...editing, coin_price: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="0" />
+            </div>
 
             {/* Subscription-specific fields */}
             {editing.is_subscription && (
