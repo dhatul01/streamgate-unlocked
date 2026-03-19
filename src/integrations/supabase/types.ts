@@ -102,6 +102,68 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_balances: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      coin_orders: {
+        Row: {
+          coin_amount: number
+          created_at: string
+          id: string
+          package_id: string
+          payment_proof_url: string
+          price: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          coin_amount: number
+          created_at?: string
+          id?: string
+          package_id: string
+          payment_proof_url?: string
+          price: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          coin_amount?: number
+          created_at?: string
+          id?: string
+          package_id?: string
+          payment_proof_url?: string
+          price?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coin_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "coin_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coin_packages: {
         Row: {
           coin_amount: number
@@ -132,6 +194,36 @@ export type Database = {
           price?: number
           qris_image_url?: string | null
           sort_order?: number
+        }
+        Relationships: []
+      }
+      coin_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -360,6 +452,7 @@ export type Database = {
           background_image_url: string | null
           category: string
           category_member: string
+          coin_price: number
           created_at: string
           group_link: string
           id: string
@@ -380,6 +473,7 @@ export type Database = {
           background_image_url?: string | null
           category?: string
           category_member?: string
+          coin_price?: number
           created_at?: string
           group_link?: string
           id?: string
@@ -400,6 +494,7 @@ export type Database = {
           background_image_url?: string | null
           category?: string
           category_member?: string
+          coin_price?: number
           created_at?: string
           group_link?: string
           id?: string
@@ -594,6 +689,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
       create_token_session: {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
@@ -693,6 +789,7 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_coins_for_token: { Args: { _show_id: string }; Returns: Json }
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: undefined
