@@ -43,6 +43,8 @@ const ShowManager = () => {
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [showGallery, setShowGallery] = useState(false);
   const [galleryTarget, setGalleryTarget] = useState<"bg" | "qris">("bg");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const { toast } = useToast();
 
   const fetchShows = async () => {
