@@ -569,6 +569,12 @@ const Index = () => {
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
                     <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
+                    {show.coin_price > 0 && (
+                      <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
+                        <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
+                        <span className="font-semibold">{show.coin_price} Koin</span>
+                      </div>
+                    )}
                     {show.schedule_date && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
                         <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_date}
