@@ -20,14 +20,28 @@ serve(async (req) => {
     const ADMIN_WA = Deno.env.get('ADMIN_WHATSAPP_NUMBER');
     if (!ADMIN_WA) throw new Error('ADMIN_WHATSAPP_NUMBER is not configured');
 
-    // Fonnte sends webhook data as form or JSON
+    // Fonnte sends webhook data in various formats
     let body: any;
     const contentType = req.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      body = await req.json();
-    } else {
-      const formData = await req.formData();
-      body = Object.fromEntries(formData.entries());
+    try {
+      if (contentType.includes('application/json')) {
+        body = await req.json();
+      } else if (contentType.includes('form')) {
+        const formData = await req.formData();
+        body = Object.fromEntries(formData.entries());
+      } else {
+        // Try JSON first, fallback to text parsing
+        const text = await req.text();
+        try {
+          body = JSON.parse(text);
+        } catch {
+          // Try URL-encoded
+          const params = new URLSearchParams(text);
+          body = Object.fromEntries(params.entries());
+        }
+      }
+    } catch {
+      body = {};
     }
 
     const sender = String(body.sender || body.from || '').replace(/[^0-9]/g, '');
