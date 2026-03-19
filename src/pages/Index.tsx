@@ -232,6 +232,12 @@ const Index = () => {
       action: () => { window.location.href = "/membership"; },
     },
     {
+      icon: <Coins className="h-5 w-5 tv:h-7 tv:w-7 text-warning" />,
+      label: "Coin Shop",
+      description: "Beli koin untuk akses nonton show",
+      action: () => { window.location.href = "/coins"; },
+    },
+    {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Data Show",
       description: `${regularShows.length} show tersedia`,
