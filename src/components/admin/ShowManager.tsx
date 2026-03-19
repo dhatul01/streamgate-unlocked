@@ -25,6 +25,7 @@ interface Show {
   is_order_closed: boolean;
   category: string;
   category_member: string;
+  coin_price: number;
 }
 
 const CATEGORY_OPTIONS = [
