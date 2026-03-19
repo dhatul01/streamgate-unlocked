@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LiveControl from "@/components/admin/LiveControl";
@@ -101,7 +102,12 @@ const AdminDashboard = () => {
             <Menu className="h-5 w-5" />
           </Button>
           <img src={logo} alt="RealTime48" className="h-7 w-7 shrink-0" />
-          <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+          <span className="flex-1 text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
+          <AdminNotifications />
+        </header>
+        {/* Desktop notification bar */}
+        <header className="hidden shrink-0 items-center justify-end gap-3 border-b border-border bg-card px-6 py-3 md:flex">
+          <AdminNotifications />
         </header>
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-6 lg:p-8">
           {renderSection()}
