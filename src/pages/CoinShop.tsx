@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
-import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles } from "lucide-react";
+import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 
@@ -13,6 +13,7 @@ interface Show { id: string; title: string; coin_price: number; schedule_date: s
 
 const CoinShop = () => {
   const [user, setUser] = useState<any>(null);
+  const [username, setUsername] = useState("");
   const [balance, setBalance] = useState(0);
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
@@ -32,6 +33,11 @@ const CoinShop = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
       setUser(user);
+
+      // Get username from profiles
+      const { data: profile } = await (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle();
+      setUsername(profile?.username || user.user_metadata?.username || "User");
+
       await fetchData(user.id);
       setLoading(false);
     };
@@ -111,6 +117,10 @@ const CoinShop = () => {
             <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5">
+              <User className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-foreground">{username}</span>
+            </div>
             <div className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5">
               <Coins className="h-4 w-4 text-warning" />
               <span className="text-sm font-bold text-warning">{balance}</span>
@@ -181,6 +191,7 @@ const CoinShop = () => {
         <button onClick={() => navigate("/")} className="mt-8 flex w-full items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Kembali ke Beranda</button>
       </div>
 
+      {/* Purchase Dialog */}
       <Dialog open={!!selectedPkg} onOpenChange={() => setSelectedPkg(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Beli {selectedPkg?.coin_amount} Koin</DialogTitle><DialogDescription>{formatPrice(selectedPkg?.price || 0)}</DialogDescription></DialogHeader>
@@ -211,6 +222,7 @@ const CoinShop = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Redeem Result */}
       <Dialog open={!!redeemResult} onOpenChange={() => setRedeemResult(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>🎉 Token Berhasil!</DialogTitle><DialogDescription>Gunakan token ini untuk menonton</DialogDescription></DialogHeader>
