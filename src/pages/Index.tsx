@@ -91,6 +91,13 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
 
+  // Coin purchase state
+  const [coinUser, setCoinUser] = useState<any>(null);
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
+  const [coinRedeeming, setCoinRedeeming] = useState(false);
+  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
       supabase.rpc("get_public_shows"),
