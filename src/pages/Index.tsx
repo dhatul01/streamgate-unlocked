@@ -791,6 +791,83 @@ const Index = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Coin Purchase Dialog */}
+      <Dialog open={!!coinShowTarget} onOpenChange={() => { setCoinShowTarget(null); setCoinResult(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🪙 Beli dengan Koin</DialogTitle>
+            <DialogDescription>{coinShowTarget?.title}</DialogDescription>
+          </DialogHeader>
+          {!coinResult ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Show</span>
+                  <span className="font-semibold text-foreground">{coinShowTarget?.title}</span>
+                </div>
+                {coinShowTarget?.schedule_date && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Jadwal</span>
+                    <span className="text-foreground">{coinShowTarget.schedule_date} {coinShowTarget.schedule_time}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Harga</span>
+                  <span className="font-bold text-warning">{coinShowTarget?.coin_price} Koin</span>
+                </div>
+                <div className="flex items-center justify-between text-sm border-t border-border pt-2">
+                  <span className="text-muted-foreground">Saldo Anda</span>
+                  <span className={`font-bold ${coinBalance >= (coinShowTarget?.coin_price || 0) ? "text-success" : "text-destructive"}`}>
+                    {coinBalance} Koin
+                  </span>
+                </div>
+              </div>
+              {coinBalance < (coinShowTarget?.coin_price || 0) ? (
+                <div className="space-y-3">
+                  <p className="text-center text-sm text-destructive">Koin tidak cukup untuk membeli show ini.</p>
+                  <Button className="w-full" variant="outline" onClick={() => { setCoinShowTarget(null); window.location.href = "/coins"; }}>
+                    <Coins className="mr-2 h-4 w-4" /> Beli Koin
+                  </Button>
+                </div>
+              ) : (
+                <Button className="w-full gap-2" onClick={handleCoinRedeem} disabled={coinRedeeming}>
+                  <Coins className="h-4 w-4" />
+                  {coinRedeeming ? "Memproses..." : `Bayar ${coinShowTarget?.coin_price} Koin`}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4 text-center">
+              <CheckCircle className="mx-auto h-12 w-12 text-success" />
+              <p className="font-semibold text-foreground">Pembelian Berhasil!</p>
+              <p className="text-sm text-muted-foreground">Gunakan token ini untuk menonton show</p>
+              <div className="rounded-lg bg-secondary p-4">
+                <p className="font-mono text-lg font-bold text-primary">{coinResult.token_code}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/live?t=${coinResult.token_code}`);
+                    toast({ title: "Link disalin!" });
+                  }}
+                >
+                  <Copy className="h-4 w-4" /> Salin Link
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => { window.location.href = `/live?t=${coinResult.token_code}`; }}
+                >
+                  <Radio className="h-4 w-4" /> Tonton Sekarang
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Sisa saldo: <span className="font-bold text-warning">{coinResult.remaining_balance} koin</span></p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
