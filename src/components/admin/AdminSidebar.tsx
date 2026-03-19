@@ -17,6 +17,8 @@ const allSections = [
   { id: "tokens", label: "Token Factory", icon: Key, adminOnly: false },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },
+  { id: "coin-packages", label: "Paket Koin", icon: Package, adminOnly: true },
+  { id: "coin-orders", label: "Order Koin", icon: Coins, adminOnly: false },
   { id: "descriptions", label: "Deskripsi LP", icon: FileText, adminOnly: false },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
   { id: "site", label: "Website", icon: Globe, adminOnly: false },
