@@ -32,6 +32,7 @@ interface Show {
   is_order_closed: boolean;
   category?: string;
   category_member?: string;
+  coin_price: number;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -568,6 +569,12 @@ const Index = () => {
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
                     <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
+                    {show.coin_price > 0 && (
+                      <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
+                        <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
+                        <span className="font-semibold">{show.coin_price} Koin</span>
+                      </div>
+                    )}
                     {show.schedule_date && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
                         <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_date}
@@ -591,12 +598,13 @@ const Index = () => {
                       >
                         <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
                       </button>
-                      {(show as any).coin_price > 0 && (
+                      {show.coin_price > 0 && (
                         <a
                           href="/coins"
                           className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
+                          title={`Beli dengan ${show.coin_price} koin`}
                         >
-                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {(show as any).coin_price}
+                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price}
                         </a>
                       )}
                     </div>
