@@ -73,8 +73,12 @@ const AdminDashboard = () => {
       case "coin-orders": return <CoinOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
       case "monitor": return <MonitorView />;
-      case "site": return <SiteSettingsManager />;
-      case "settings": return userRole === "admin" ? <AdminSettings /> : null;
+      case "site": return (
+        <div className="space-y-6">
+          <SiteSettingsManager />
+          {userRole === "admin" && <AdminSettings />}
+        </div>
+      );
       case "moderators": return userRole === "admin" ? <ModeratorAccountManager /> : null;
       default: return <LiveControl />;
     }

@@ -21,9 +21,8 @@ const allSections = [
   { id: "coin-orders", label: "Order Koin", icon: Coins, adminOnly: false },
   { id: "descriptions", label: "Deskripsi LP", icon: FileText, adminOnly: false },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
-  { id: "site", label: "Website", icon: Globe, adminOnly: false },
+  { id: "site", label: "Pengaturan", icon: Settings, adminOnly: false },
   { id: "moderators", label: "Akun Moderator", icon: Users, adminOnly: true },
-  { id: "settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 
 const AdminSidebar = ({ activeSection, onSectionChange, onLogout, userRole, mobileOpen, onMobileOpenChange }: AdminSidebarProps) => {
