@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Coins, Mail, Lock, ArrowLeft, Phone, User } from "lucide-react";
+import { Coins, Mail, Lock, ArrowLeft, Phone, User, ShieldCheck } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 type AuthMethod = "phone" | "email";
 
@@ -17,6 +18,13 @@ const ViewerAuth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // OTP state
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpPhone, setOtpPhone] = useState("");
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,8 +39,76 @@ const ViewerAuth = () => {
   const isFormValid = () => {
     if (mode === "forgot") return email.trim().includes("@");
     if (mode === "signup" && !username.trim()) return false;
+    if (mode === "signup" && method === "phone" && normalizePhone(phone).length < 10) return false;
+    if (mode === "signup" && method === "email" && !email.trim().includes("@")) return false;
     if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
     return email.trim().includes("@") && password.length >= 6;
+  };
+
+  const getOtpTarget = () => {
+    if (method === "phone") return phone;
+    // For email method, we still need phone for OTP
+    return phone;
+  };
+
+  const handleSendOtp = async () => {
+    // For signup, always need phone for OTP
+    const target = normalizePhone(phone);
+    if (target.length < 10) {
+      toast({ title: "Nomor HP tidak valid", variant: "destructive" });
+      return;
+    }
+    setOtpSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { phone: target },
+      });
+      if (error || !data?.success) {
+        toast({ title: "Gagal kirim OTP", description: data?.error || error?.message, variant: "destructive" });
+      } else {
+        setOtpPhone(data.phone);
+        setOtpStep(true);
+        toast({ title: "OTP terkirim!", description: "Cek WhatsApp kamu untuk kode verifikasi." });
+      }
+    } catch {
+      toast({ title: "Gagal kirim OTP", variant: "destructive" });
+    }
+    setOtpSending(false);
+  };
+
+  const handleVerifyAndSignup = async () => {
+    setLoading(true);
+    try {
+      // Verify OTP first
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-otp", {
+        body: { phone: otpPhone, code: otpCode },
+      });
+      if (verifyError || !verifyData?.success) {
+        toast({ title: "OTP salah", description: verifyData?.error || "Kode OTP salah atau kedaluwarsa.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      // OTP verified, proceed with signup
+      const authEmail = getAuthEmail();
+      const { error } = await supabase.auth.signUp({
+        email: authEmail,
+        password,
+        options: { data: { username: username.trim() } },
+      });
+      if (error) {
+        const msg = error.message.includes("already registered")
+          ? "Nomor/email ini sudah terdaftar. Silakan masuk."
+          : error.message;
+        toast({ title: "Gagal daftar", description: msg, variant: "destructive" });
+      } else {
+        toast({ title: "Berhasil!" });
+        navigate("/coins");
+      }
+    } catch {
+      toast({ title: "Terjadi kesalahan", variant: "destructive" });
+    }
+    setLoading(false);
   };
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -53,34 +129,35 @@ const ViewerAuth = () => {
     e.preventDefault();
     if (mode === "forgot") return handleForgot(e);
     if (!isFormValid()) return;
+
+    // For signup, send OTP first (if not in OTP step)
+    if (mode === "signup" && !otpStep) {
+      await handleSendOtp();
+      return;
+    }
+
+    // For signup with OTP step, verify and signup
+    if (mode === "signup" && otpStep) {
+      await handleVerifyAndSignup();
+      return;
+    }
+
+    // Login flow (no OTP needed)
     setLoading(true);
-
     const authEmail = getAuthEmail();
-
-    if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email: authEmail,
-        password,
-        options: { data: { username: username.trim() } },
-      });
-      if (error) {
-        const msg = error.message.includes("already registered")
-          ? "Nomor/email ini sudah terdaftar. Silakan masuk."
-          : error.message;
-        toast({ title: "Gagal daftar", description: msg, variant: "destructive" });
-      } else {
-        toast({ title: "Berhasil!" });
-        navigate("/coins");
-      }
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
+    if (error) {
+      toast({ title: "Login gagal", description: "Nomor/email atau password salah.", variant: "destructive" });
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
-      if (error) {
-        toast({ title: "Login gagal", description: "Nomor/email atau password salah.", variant: "destructive" });
-      } else {
-        navigate("/coins");
-      }
+      navigate("/coins");
     }
     setLoading(false);
+  };
+
+  const resetOtp = () => {
+    setOtpStep(false);
+    setOtpCode("");
+    setOtpPhone("");
   };
 
   return (
@@ -99,10 +176,44 @@ const ViewerAuth = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6">
           <h2 className="text-center text-lg font-semibold text-foreground">
-            {mode === "login" ? "Masuk ke Akun" : mode === "signup" ? "Buat Akun Baru" : "Lupa Password"}
+            {otpStep ? "Verifikasi OTP" : mode === "login" ? "Masuk ke Akun" : mode === "signup" ? "Buat Akun Baru" : "Lupa Password"}
           </h2>
 
-          {mode === "forgot" ? (
+          {otpStep ? (
+            /* OTP Verification Step */
+            <>
+              <div className="text-center">
+                <ShieldCheck className="mx-auto mb-2 h-10 w-10 text-primary" />
+                <p className="text-xs text-muted-foreground">
+                  Kode OTP telah dikirim ke WhatsApp<br />
+                  <span className="font-medium text-foreground">{otpPhone}</span>
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || otpCode.length < 6}>
+                {loading ? "Memverifikasi..." : "Verifikasi & Daftar"}
+              </Button>
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" onClick={resetOtp} className="text-muted-foreground hover:text-foreground">
+                  ← Kembali
+                </button>
+                <button type="button" onClick={handleSendOtp} disabled={otpSending} className="text-primary hover:underline">
+                  {otpSending ? "Mengirim..." : "Kirim Ulang OTP"}
+                </button>
+              </div>
+            </>
+          ) : mode === "forgot" ? (
             <>
               <p className="text-center text-xs text-muted-foreground">
                 Masukkan email yang terdaftar untuk reset password.
@@ -144,15 +255,21 @@ const ViewerAuth = () => {
                 </div>
               )}
 
-              {method === "phone" ? (
+              {/* Phone field - always show for signup (needed for OTP) */}
+              {(method === "phone" || mode === "signup") && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Nomor HP {mode === "signup" && method === "email" && <span className="text-[10px]">(untuk verifikasi OTP)</span>}
+                  </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" required className="bg-background pl-10" />
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Email field */}
+              {method === "email" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
                   <div className="relative">
@@ -171,7 +288,7 @@ const ViewerAuth = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
-                {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
+                {loading || otpSending ? "Memproses..." : mode === "login" ? "Masuk" : "Kirim OTP & Daftar"}
               </Button>
 
               {mode === "login" && method === "email" && (
@@ -182,7 +299,7 @@ const ViewerAuth = () => {
 
               <p className="text-center text-xs text-muted-foreground">
                 {mode === "login" ? "Belum punya akun?" : "Sudah punya akun?"}
-                <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="ml-1 font-medium text-primary hover:underline">
+                <button type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); resetOtp(); }} className="ml-1 font-medium text-primary hover:underline">
                   {mode === "login" ? "Daftar" : "Masuk"}
                 </button>
               </p>
