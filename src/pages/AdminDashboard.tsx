@@ -15,6 +15,8 @@ import SiteSettingsManager from "@/components/admin/SiteSettingsManager";
 import LandingDescriptionManager from "@/components/admin/LandingDescriptionManager";
 import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManager";
 import ModeratorAccountManager from "@/components/admin/ModeratorAccountManager";
+import CoinPackageManager from "@/components/admin/CoinPackageManager";
+import CoinOrderManager from "@/components/admin/CoinOrderManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -67,6 +69,8 @@ const AdminDashboard = () => {
       case "tokens": return <TokenFactory />;
       case "shows": return <ShowManager />;
       case "orders": return <SubscriptionOrderManager />;
+      case "coin-packages": return userRole === "admin" ? <CoinPackageManager /> : null;
+      case "coin-orders": return <CoinOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
       case "monitor": return <MonitorView />;
       case "site": return <SiteSettingsManager />;
