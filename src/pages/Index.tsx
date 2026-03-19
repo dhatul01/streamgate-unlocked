@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -90,6 +91,13 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
 
+  // Coin purchase state
+  const [coinUser, setCoinUser] = useState<any>(null);
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
+  const [coinRedeeming, setCoinRedeeming] = useState(false);
+  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
       supabase.rpc("get_public_shows"),
@@ -119,6 +127,17 @@ const Index = () => {
   useEffect(() => {
     fetchData();
 
+    // Fetch coin user & balance
+    const fetchCoinUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCoinUser(user);
+        const { data: bal } = await (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
+        setCoinBalance(bal?.balance || 0);
+      }
+    };
+    fetchCoinUser();
+
     // Realtime for shows and orders
     const showCh = supabase.channel("idx-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
@@ -137,6 +156,29 @@ const Index = () => {
     setPhone("");
     setEmail("");
   };
+
+  const handleCoinBuy = (show: Show) => {
+    if (!coinUser) {
+      toast({ title: "Login terlebih dahulu", description: "Silakan login di halaman /auth untuk membeli dengan koin.", variant: "destructive" });
+      return;
+    }
+    setCoinShowTarget(show);
+    setCoinResult(null);
+  };
+
+  const handleCoinRedeem = async () => {
+    if (!coinShowTarget) return;
+    setCoinRedeeming(true);
+    const { data, error } = await (supabase.rpc as any)("redeem_coins_for_token", { _show_id: coinShowTarget.id });
+    setCoinRedeeming(false);
+    if (error || !data?.success) {
+      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+      return;
+    }
+    setCoinResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
+    setCoinBalance(data.remaining_balance);
+  };
+
 
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -602,13 +644,13 @@ const Index = () => {
                         <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
                       </button>
                       {show.coin_price > 0 && (
-                        <a
-                          href="/coins"
+                        <button
+                          onClick={() => handleCoinBuy(show)}
                           className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
                           title={`Beli dengan ${show.coin_price} koin`}
                         >
                           <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price}
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -749,6 +791,83 @@ const Index = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Coin Purchase Dialog */}
+      <Dialog open={!!coinShowTarget} onOpenChange={() => { setCoinShowTarget(null); setCoinResult(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🪙 Beli dengan Koin</DialogTitle>
+            <DialogDescription>{coinShowTarget?.title}</DialogDescription>
+          </DialogHeader>
+          {!coinResult ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Show</span>
+                  <span className="font-semibold text-foreground">{coinShowTarget?.title}</span>
+                </div>
+                {coinShowTarget?.schedule_date && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Jadwal</span>
+                    <span className="text-foreground">{coinShowTarget.schedule_date} {coinShowTarget.schedule_time}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Harga</span>
+                  <span className="font-bold text-warning">{coinShowTarget?.coin_price} Koin</span>
+                </div>
+                <div className="flex items-center justify-between text-sm border-t border-border pt-2">
+                  <span className="text-muted-foreground">Saldo Anda</span>
+                  <span className={`font-bold ${coinBalance >= (coinShowTarget?.coin_price || 0) ? "text-success" : "text-destructive"}`}>
+                    {coinBalance} Koin
+                  </span>
+                </div>
+              </div>
+              {coinBalance < (coinShowTarget?.coin_price || 0) ? (
+                <div className="space-y-3">
+                  <p className="text-center text-sm text-destructive">Koin tidak cukup untuk membeli show ini.</p>
+                  <Button className="w-full" variant="outline" onClick={() => { setCoinShowTarget(null); window.location.href = "/coins"; }}>
+                    <Coins className="mr-2 h-4 w-4" /> Beli Koin
+                  </Button>
+                </div>
+              ) : (
+                <Button className="w-full gap-2" onClick={handleCoinRedeem} disabled={coinRedeeming}>
+                  <Coins className="h-4 w-4" />
+                  {coinRedeeming ? "Memproses..." : `Bayar ${coinShowTarget?.coin_price} Koin`}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4 text-center">
+              <CheckCircle className="mx-auto h-12 w-12 text-success" />
+              <p className="font-semibold text-foreground">Pembelian Berhasil!</p>
+              <p className="text-sm text-muted-foreground">Gunakan token ini untuk menonton show</p>
+              <div className="rounded-lg bg-secondary p-4">
+                <p className="font-mono text-lg font-bold text-primary">{coinResult.token_code}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/live?t=${coinResult.token_code}`);
+                    toast({ title: "Link disalin!" });
+                  }}
+                >
+                  <Copy className="h-4 w-4" /> Salin Link
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => { window.location.href = `/live?t=${coinResult.token_code}`; }}
+                >
+                  <Radio className="h-4 w-4" /> Tonton Sekarang
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Sisa saldo: <span className="font-bold text-warning">{coinResult.remaining_balance} koin</span></p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
