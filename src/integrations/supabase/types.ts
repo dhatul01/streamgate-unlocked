@@ -102,6 +102,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_packages: {
+        Row: {
+          coin_amount: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          qris_image_url: string | null
+          sort_order: number
+        }
+        Insert: {
+          coin_amount: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          qris_image_url?: string | null
+          sort_order?: number
+        }
+        Update: {
+          coin_amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          qris_image_url?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       landing_descriptions: {
         Row: {
           content: string
