@@ -123,6 +123,47 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_orders: {
+        Row: {
+          coin_amount: number
+          created_at: string
+          id: string
+          package_id: string
+          payment_proof_url: string
+          price: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          coin_amount: number
+          created_at?: string
+          id?: string
+          package_id: string
+          payment_proof_url?: string
+          price: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          coin_amount?: number
+          created_at?: string
+          id?: string
+          package_id?: string
+          payment_proof_url?: string
+          price?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coin_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "coin_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coin_packages: {
         Row: {
           coin_amount: number
@@ -153,6 +194,36 @@ export type Database = {
           price?: number
           qris_image_url?: string | null
           sort_order?: number
+        }
+        Relationships: []
+      }
+      coin_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }
