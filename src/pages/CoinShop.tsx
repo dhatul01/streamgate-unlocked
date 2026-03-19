@@ -117,10 +117,10 @@ const CoinShop = () => {
             <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5">
+            <button onClick={() => navigate("/profile")} className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 hover:bg-secondary/80 transition-colors">
               <User className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-medium text-foreground">{username}</span>
-            </div>
+            </button>
             <div className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5">
               <Coins className="h-4 w-4 text-warning" />
               <span className="text-sm font-bold text-warning">{balance}</span>
