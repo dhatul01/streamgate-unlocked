@@ -190,15 +190,19 @@ const ShowManager = () => {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Show list */}
         <div className="space-y-2">
-          {shows.map((show) => (
+          {shows.map((show, index) => (
             <button
               key={show.id}
+              draggable
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index); }}
+              onDragEnd={handleDragEnd}
               onClick={() => setEditing(show)}
               className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
                 editing?.id === show.id ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50"
-              }`}
+              } ${dragOverIndex === index && dragIndex !== index ? "border-primary/70 bg-primary/5" : ""}`}
             >
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground truncate">{show.title}</p>
