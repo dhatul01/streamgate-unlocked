@@ -158,6 +158,28 @@ const ShowManager = () => {
     setShowGallery(false);
   };
 
+  const handleDragEnd = async () => {
+    if (dragIndex === null || dragOverIndex === null || dragIndex === dragOverIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const reordered = [...shows];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(dragOverIndex, 0, moved);
+    setShows(reordered);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    // Update sort_order in DB
+    await Promise.all(
+      reordered.map((s, i) =>
+        supabase.from("shows").update({ sort_order: i }).eq("id", s.id)
+      )
+    );
+    toast({ title: "Urutan show diperbarui" });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
