@@ -5,35 +5,65 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Coins, Mail, Lock, ArrowLeft } from "lucide-react";
+import { Coins, Mail, Lock, ArrowLeft, Phone } from "lucide-react";
+
+type AuthMethod = "phone" | "email";
 
 const ViewerAuth = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [method, setMethod] = useState<AuthMethod>("phone");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
+
+  const deriveEmail = (phoneNum: string) => {
+    const clean = normalizePhone(phoneNum);
+    return `${clean}@rt48.user`;
+  };
+
+  const getAuthEmail = () => {
+    if (method === "email") return email.trim();
+    return deriveEmail(phone);
+  };
+
+  const isFormValid = () => {
+    if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
+    return email.trim().includes("@") && password.length >= 6;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid()) return;
     setLoading(true);
+
+    const authEmail = getAuthEmail();
 
     if (mode === "signup") {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: authEmail,
         password,
-        options: { emailRedirectTo: window.location.origin + "/coins" },
       });
       if (error) {
-        toast({ title: "Gagal daftar", description: error.message, variant: "destructive" });
+        const msg = error.message.includes("already registered")
+          ? "Nomor/email ini sudah terdaftar. Silakan masuk."
+          : error.message;
+        toast({ title: "Gagal daftar", description: msg, variant: "destructive" });
       } else {
-        toast({ title: "Berhasil!", description: "Cek email kamu untuk verifikasi akun." });
+        toast({ title: "Berhasil!" });
+        navigate("/coins");
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password,
+      });
       if (error) {
-        toast({ title: "Login gagal", description: error.message, variant: "destructive" });
+        toast({ title: "Login gagal", description: "Nomor/email atau password salah.", variant: "destructive" });
       } else {
         navigate("/coins");
       }
@@ -60,20 +90,60 @@ const ViewerAuth = () => {
             {mode === "login" ? "Masuk ke Akun" : "Buat Akun Baru"}
           </h2>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@contoh.com"
-                required
-                className="bg-background pl-10"
-              />
-            </div>
+          {/* Method toggle */}
+          <div className="flex rounded-lg bg-secondary p-1">
+            <button
+              type="button"
+              onClick={() => setMethod("phone")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                method === "phone" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Phone className="h-3.5 w-3.5" /> No. HP
+            </button>
+            <button
+              type="button"
+              onClick={() => setMethod("email")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                method === "email" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Mail className="h-3.5 w-3.5" /> Email
+            </button>
           </div>
+
+          {method === "phone" ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="08xxxxxxxxxx"
+                  required
+                  className="bg-background pl-10"
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@contoh.com"
+                  required
+                  className="bg-background pl-10"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Password</label>
             <div className="relative">
@@ -82,7 +152,7 @@ const ViewerAuth = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Min. 6 karakter"
                 required
                 minLength={6}
                 className="bg-background pl-10"
@@ -90,7 +160,7 @@ const ViewerAuth = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
             {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
           </Button>
 
