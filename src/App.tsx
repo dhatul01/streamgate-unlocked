@@ -29,6 +29,7 @@ const App = () => (
           <Route path="/membership" element={<MembershipPage />} />
           <Route path="/auth" element={<ViewerAuth />} />
           <Route path="/coins" element={<CoinShop />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
