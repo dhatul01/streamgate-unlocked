@@ -644,13 +644,13 @@ const Index = () => {
                         <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
                       </button>
                       {show.coin_price > 0 && (
-                        <a
-                          href="/coins"
+                        <button
+                          onClick={() => handleCoinBuy(show)}
                           className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
                           title={`Beli dengan ${show.coin_price} koin`}
                         >
                           <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price}
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
