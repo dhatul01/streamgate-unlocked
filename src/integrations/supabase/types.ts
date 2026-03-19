@@ -771,9 +771,10 @@ export type Database = {
       get_public_shows: {
         Args: never
         Returns: {
-          background_image_url: string
+          background_image_url: string | null
           category: string
           category_member: string
+          coin_price: number
           created_at: string
           group_link: string
           id: string
@@ -783,13 +784,19 @@ export type Database = {
           lineup: string
           max_subscribers: number
           price: string
-          qris_image_url: string
+          qris_image_url: string | null
           schedule_date: string
           schedule_time: string
           sort_order: number
           subscription_benefits: string
           title: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "shows"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       has_role: {
         Args: {
