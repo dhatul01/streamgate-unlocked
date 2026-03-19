@@ -579,12 +579,22 @@ const Index = () => {
                         <span className="line-clamp-2">{show.lineup}</span>
                       </div>
                     )}
-                    <button
-                      onClick={() => handleBuy(show)}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
-                    >
-                      <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
-                    </button>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => handleBuy(show)}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
+                      >
+                        <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
+                      </button>
+                      {(show as any).coin_price > 0 && (
+                        <a
+                          href="/coins"
+                          className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
+                        >
+                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {(show as any).coin_price}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               ))}
