@@ -11,6 +11,7 @@ import MembershipPage from "./pages/MembershipPage";
 import ViewerAuth from "./pages/ViewerAuth";
 import CoinShop from "./pages/CoinShop";
 import ResetPassword from "./pages/ResetPassword";
+import ViewerProfile from "./pages/ViewerProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/auth" element={<ViewerAuth />} />
           <Route path="/coins" element={<CoinShop />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<ViewerProfile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
