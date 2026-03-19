@@ -25,6 +25,7 @@ interface Show {
   is_order_closed: boolean;
   category: string;
   category_member: string;
+  coin_price: number;
 }
 
 const CATEGORY_OPTIONS = [
@@ -97,6 +98,7 @@ const ShowManager = () => {
         is_order_closed: show.is_order_closed,
         category: show.category,
         category_member: show.category_member,
+        coin_price: show.coin_price,
       })
       .eq("id", show.id);
     await fetchShows();
@@ -295,6 +297,10 @@ const ShowManager = () => {
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Jam</label>
                 <Input value={editing.schedule_time} onChange={(e) => setEditing({ ...editing, schedule_time: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="19:00 WIB" />
               </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Harga Koin (0 = tidak dijual via koin)</label>
+              <Input type="number" value={editing.coin_price} onChange={(e) => setEditing({ ...editing, coin_price: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="0" />
             </div>
 
             {/* Subscription-specific fields */}
