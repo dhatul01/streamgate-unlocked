@@ -157,6 +157,29 @@ const Index = () => {
     setEmail("");
   };
 
+  const handleCoinBuy = (show: Show) => {
+    if (!coinUser) {
+      toast({ title: "Login terlebih dahulu", description: "Silakan login di halaman /auth untuk membeli dengan koin.", variant: "destructive" });
+      return;
+    }
+    setCoinShowTarget(show);
+    setCoinResult(null);
+  };
+
+  const handleCoinRedeem = async () => {
+    if (!coinShowTarget) return;
+    setCoinRedeeming(true);
+    const { data, error } = await (supabase.rpc as any)("redeem_coins_for_token", { _show_id: coinShowTarget.id });
+    setCoinRedeeming(false);
+    if (error || !data?.success) {
+      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+      return;
+    }
+    setCoinResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
+    setCoinBalance(data.remaining_balance);
+  };
+
+
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedShow) return;
