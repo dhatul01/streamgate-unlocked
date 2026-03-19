@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LiveControl from "@/components/admin/LiveControl";
