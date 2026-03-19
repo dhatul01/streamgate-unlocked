@@ -127,6 +127,17 @@ const Index = () => {
   useEffect(() => {
     fetchData();
 
+    // Fetch coin user & balance
+    const fetchCoinUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCoinUser(user);
+        const { data: bal } = await (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
+        setCoinBalance(bal?.balance || 0);
+      }
+    };
+    fetchCoinUser();
+
     // Realtime for shows and orders
     const showCh = supabase.channel("idx-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
