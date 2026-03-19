@@ -23,15 +23,15 @@ const CoinPackageManager = () => {
   const { toast } = useToast();
 
   const fetchPackages = async () => {
-    const { data } = await supabase.from("coin_packages").select("*").order("sort_order");
-    setPackages((data as CoinPackage[]) || []);
+    const { data } = await (supabase.from as any)("coin_packages").select("*").order("sort_order");
+    setPackages(data || []);
   };
 
   useEffect(() => { fetchPackages(); }, []);
 
   const createPackage = async () => {
     if (!newPkg.name.trim()) return;
-    await supabase.from("coin_packages").insert({
+    await (supabase.from as any)("coin_packages").insert({
       name: newPkg.name,
       coin_amount: newPkg.coin_amount,
       price: newPkg.price,
@@ -44,12 +44,9 @@ const CoinPackageManager = () => {
   };
 
   const updatePackage = async (pkg: CoinPackage) => {
-    await supabase.from("coin_packages").update({
-      name: pkg.name,
-      coin_amount: pkg.coin_amount,
-      price: pkg.price,
-      qris_image_url: pkg.qris_image_url,
-      is_active: pkg.is_active,
+    await (supabase.from as any)("coin_packages").update({
+      name: pkg.name, coin_amount: pkg.coin_amount, price: pkg.price,
+      qris_image_url: pkg.qris_image_url, is_active: pkg.is_active,
     }).eq("id", pkg.id);
     await fetchPackages();
     setEditing(null);
@@ -57,13 +54,13 @@ const CoinPackageManager = () => {
   };
 
   const deletePackage = async (id: string) => {
-    await supabase.from("coin_packages").delete().eq("id", id);
+    await (supabase.from as any)("coin_packages").delete().eq("id", id);
     await fetchPackages();
     toast({ title: "Paket dihapus" });
   };
 
   const toggleActive = async (pkg: CoinPackage) => {
-    await supabase.from("coin_packages").update({ is_active: !pkg.is_active }).eq("id", pkg.id);
+    await (supabase.from as any)("coin_packages").update({ is_active: !pkg.is_active }).eq("id", pkg.id);
     await fetchPackages();
   };
 
@@ -72,44 +69,16 @@ const CoinPackageManager = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">🪙 Paket Koin</h2>
-
-      {/* Create new */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Tambah Paket Baru</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            placeholder="Nama paket (cth: Paket Hemat)"
-            value={newPkg.name}
-            onChange={(e) => setNewPkg({ ...newPkg, name: e.target.value })}
-            className="bg-background"
-          />
-          <Input
-            type="number"
-            placeholder="Jumlah koin"
-            value={newPkg.coin_amount}
-            onChange={(e) => setNewPkg({ ...newPkg, coin_amount: parseInt(e.target.value) || 0 })}
-            className="bg-background"
-          />
-          <Input
-            type="number"
-            placeholder="Harga (Rp)"
-            value={newPkg.price}
-            onChange={(e) => setNewPkg({ ...newPkg, price: parseInt(e.target.value) || 0 })}
-            className="bg-background"
-          />
-          <Input
-            placeholder="URL QRIS (opsional)"
-            value={newPkg.qris_image_url}
-            onChange={(e) => setNewPkg({ ...newPkg, qris_image_url: e.target.value })}
-            className="bg-background"
-          />
+          <Input placeholder="Nama paket" value={newPkg.name} onChange={(e) => setNewPkg({ ...newPkg, name: e.target.value })} className="bg-background" />
+          <Input type="number" placeholder="Jumlah koin" value={newPkg.coin_amount} onChange={(e) => setNewPkg({ ...newPkg, coin_amount: parseInt(e.target.value) || 0 })} className="bg-background" />
+          <Input type="number" placeholder="Harga (Rp)" value={newPkg.price} onChange={(e) => setNewPkg({ ...newPkg, price: parseInt(e.target.value) || 0 })} className="bg-background" />
+          <Input placeholder="URL QRIS (opsional)" value={newPkg.qris_image_url} onChange={(e) => setNewPkg({ ...newPkg, qris_image_url: e.target.value })} className="bg-background" />
         </div>
-        <Button onClick={createPackage} disabled={!newPkg.name.trim()} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Tambah
-        </Button>
+        <Button onClick={createPackage} disabled={!newPkg.name.trim()} className="gap-1.5"><Plus className="h-4 w-4" /> Tambah</Button>
       </div>
-
-      {/* List */}
       <div className="space-y-2">
         {packages.map((pkg) => (
           <div key={pkg.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
@@ -139,16 +108,12 @@ const CoinPackageManager = () => {
                 </div>
                 <Switch checked={pkg.is_active} onCheckedChange={() => toggleActive(pkg)} />
                 <Button size="sm" variant="outline" onClick={() => setEditing(pkg)}>Edit</Button>
-                <button onClick={() => deletePackage(pkg.id)} className="text-destructive hover:text-destructive/80">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <button onClick={() => deletePackage(pkg.id)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></button>
               </>
             )}
           </div>
         ))}
-        {packages.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">Belum ada paket koin</p>
-        )}
+        {packages.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Belum ada paket koin</p>}
       </div>
     </div>
   );
