@@ -255,7 +255,11 @@ const Index = () => {
             <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
-          <Sheet>
+          <div className="flex items-center gap-2">
+            <a href="/coins" className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs font-semibold text-warning transition hover:bg-warning/20 tv:text-sm tv:px-4 tv:py-2.5">
+              <Coins className="h-4 w-4 tv:h-5 tv:w-5" /> Coin Shop
+            </a>
+            <Sheet>
             <SheetTrigger asChild>
               <button className="rounded-lg bg-secondary p-2 tv:p-3 text-secondary-foreground transition hover:bg-secondary/80">
                 <Menu className="h-5 w-5 tv:h-7 tv:w-7" />
