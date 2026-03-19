@@ -78,12 +78,25 @@ const CoinShop = () => {
     setUploading(false);
     setPurchaseStep("done");
 
-    await (supabase.from as any)("coin_orders").insert({
+    const { data: orderData } = await (supabase.from as any)("coin_orders").insert({
       user_id: user.id, package_id: selectedPkg!.id,
       coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
       payment_proof_url: data.path, status: "pending",
-    });
+    }).select("id").single();
     toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
+
+    // Send WhatsApp notification to admin
+    if (orderData?.id) {
+      supabase.functions.invoke("notify-coin-order", {
+        body: {
+          order_id: orderData.id,
+          username: username || "User",
+          package_name: selectedPkg!.name,
+          coin_amount: selectedPkg!.coin_amount,
+          price: selectedPkg!.price,
+        },
+      }).catch(() => {});
+    }
   };
 
   const handleRedeem = async (showId: string) => {
