@@ -452,6 +452,7 @@ export type Database = {
           background_image_url: string | null
           category: string
           category_member: string
+          coin_price: number
           created_at: string
           group_link: string
           id: string
@@ -472,6 +473,7 @@ export type Database = {
           background_image_url?: string | null
           category?: string
           category_member?: string
+          coin_price?: number
           created_at?: string
           group_link?: string
           id?: string
@@ -492,6 +494,7 @@ export type Database = {
           background_image_url?: string | null
           category?: string
           category_member?: string
+          coin_price?: number
           created_at?: string
           group_link?: string
           id?: string
@@ -686,6 +689,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
       create_token_session: {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
@@ -785,6 +789,7 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_coins_for_token: { Args: { _show_id: string }; Returns: Json }
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: undefined
