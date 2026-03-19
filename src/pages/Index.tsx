@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -232,6 +232,12 @@ const Index = () => {
       action: () => { window.location.href = "/membership"; },
     },
     {
+      icon: <Coins className="h-5 w-5 tv:h-7 tv:w-7 text-warning" />,
+      label: "Coin Shop",
+      description: "Beli koin untuk akses nonton show",
+      action: () => { window.location.href = "/coins"; },
+    },
+    {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Data Show",
       description: `${regularShows.length} show tersedia`,
@@ -249,7 +255,11 @@ const Index = () => {
             <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-12 tv:w-12 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
-          <Sheet>
+          <div className="flex items-center gap-2">
+            <a href="/coins" className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs font-semibold text-warning transition hover:bg-warning/20 tv:text-sm tv:px-4 tv:py-2.5">
+              <Coins className="h-4 w-4 tv:h-5 tv:w-5" /> Coin Shop
+            </a>
+            <Sheet>
             <SheetTrigger asChild>
               <button className="rounded-lg bg-secondary p-2 tv:p-3 text-secondary-foreground transition hover:bg-secondary/80">
                 <Menu className="h-5 w-5 tv:h-7 tv:w-7" />
@@ -278,6 +288,7 @@ const Index = () => {
               </div>
             </SheetContent>
           </Sheet>
+          </div>
         </div>
       </nav>
 
@@ -573,12 +584,22 @@ const Index = () => {
                         <span className="line-clamp-2">{show.lineup}</span>
                       </div>
                     )}
-                    <button
-                      onClick={() => handleBuy(show)}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
-                    >
-                      <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
-                    </button>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => handleBuy(show)}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
+                      >
+                        <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
+                      </button>
+                      {(show as any).coin_price > 0 && (
+                        <a
+                          href="/coins"
+                          className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
+                        >
+                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {(show as any).coin_price}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               ))}

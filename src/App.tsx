@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import MembershipPage from "./pages/MembershipPage";
 import ViewerAuth from "./pages/ViewerAuth";
 import CoinShop from "./pages/CoinShop";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/membership" element={<MembershipPage />} />
           <Route path="/auth" element={<ViewerAuth />} />
           <Route path="/coins" element={<CoinShop />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
