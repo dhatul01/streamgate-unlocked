@@ -5,33 +5,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
-    if (!FONNTE_TOKEN) throw new Error('FONNTE_API_TOKEN is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const ADMIN_WA = Deno.env.get('ADMIN_WHATSAPP_NUMBER');
-    if (!ADMIN_WA) throw new Error('ADMIN_WHATSAPP_NUMBER is not configured');
+    const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
+    if (!TELEGRAM_API_KEY) throw new Error('TELEGRAM_API_KEY is not configured');
+
+    const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
+    if (!ADMIN_CHAT_ID) throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured');
 
     const { order_id, username, package_name, coin_amount, price } = await req.json();
 
-    const message = `🪙 *Order Koin Baru!*\n\n👤 User: ${username}\n📦 Paket: ${package_name}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${Number(price).toLocaleString('id-ID')}\n🆔 Order ID: ${order_id}\n\n✅ Balas *YA ${order_id}* untuk approve\n❌ Balas *TIDAK ${order_id}* untuk reject`;
+    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${Number(price).toLocaleString('id-ID')}\n🆔 Order ID: \`${order_id}\`\n\n✅ Balas *YA ${order_id}* untuk approve\n❌ Balas *TIDAK ${order_id}* untuk reject`;
 
-    await fetch('https://api.fonnte.com/send', {
+    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
       method: 'POST',
-      headers: { 'Authorization': FONNTE_TOKEN },
-      body: new URLSearchParams({ target: ADMIN_WA, message }),
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'X-Connection-Api-Key': TELEGRAM_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: ADMIN_CHAT_ID,
+        text: message,
+        parse_mode: 'MarkdownV2',
+      }),
     });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(`Telegram API call failed [${response.status}]: ${JSON.stringify(data)}`);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('notify-coin-order error:', msg);
     return new Response(JSON.stringify({ success: false, error: msg }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
+function escapeMarkdown(text: string): string {
+  return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
