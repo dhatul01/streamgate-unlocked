@@ -43,7 +43,7 @@ const InstallPage = () => {
       <div className="min-h-screen bg-background">
         <SharedNavbar />
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+          <CheckCircle className="h-16 w-16 text-emerald-400 mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Sudah Ter-install!</h1>
           <p className="mt-2 text-muted-foreground">Kamu sudah menggunakan RealTime48 sebagai aplikasi.</p>
         </div>
