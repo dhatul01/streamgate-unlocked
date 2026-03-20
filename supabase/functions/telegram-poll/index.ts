@@ -179,7 +179,7 @@ async function processAnyOrder(
   // Try coin_orders first
   const { data: coinOrder } = await supabase
     .from('coin_orders')
-    .select('id, user_id, coin_amount, status, package_id')
+    .select('id, user_id, coin_amount, status, package_id, phone')
     .eq('id', orderId)
     .eq('status', 'pending')
     .maybeSingle();
