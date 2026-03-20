@@ -362,8 +362,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const youtubeEmbedUrl = useMemo(() => {
     if (playlist.type !== "youtube") return "";
-    const videoId = deobfuscate(obfuscate(extractYTId(playlist.url)));
-    return `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
+    const videoId = extractYTId(playlist.url);
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
   }, [playlist.type, playlist.url]);
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
