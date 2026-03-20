@@ -730,6 +730,35 @@ export type Database = {
         }
         Relationships: []
       }
+      show_reminders_sent: {
+        Row: {
+          id: string
+          reminder_type: string
+          sent_at: string
+          show_id: string
+        }
+        Insert: {
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          show_id: string
+        }
+        Update: {
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+          show_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_reminders_sent_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shows: {
         Row: {
           access_password: string
