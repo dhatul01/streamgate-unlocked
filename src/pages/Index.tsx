@@ -772,12 +772,17 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    {show.coin_price > 0 && (
+                    {isShowPast2Hours(show) && show.replay_coin_price > 0 ? (
+                      <div className="flex items-center gap-1.5 text-sm text-accent tv:text-base">
+                        <Film className="h-4 w-4 tv:h-5 tv:w-5" />
+                        <span className="font-semibold">Replay: {show.replay_coin_price} Koin</span>
+                      </div>
+                    ) : show.coin_price > 0 ? (
                       <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
                         <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
                         <span className="font-semibold">{show.coin_price} Koin</span>
                       </div>
-                    )}
+                    ) : null}
                     <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold text-muted-foreground tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
                     {show.schedule_date && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
