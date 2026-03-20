@@ -9,8 +9,6 @@ const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
-const GiftOverlay = lazy(() => import("@/components/viewer/GiftOverlay"));
-const GiftButton = lazy(() => import("@/components/viewer/GiftButton"));
 const LivePoll = lazy(() => import("@/components/viewer/LivePoll"));
 const PipButton = lazy(() => import("@/components/viewer/PipButton"));
 
