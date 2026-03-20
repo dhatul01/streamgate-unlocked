@@ -136,13 +136,26 @@ const Index = () => {
   const isShowPast2Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
     try {
-      // Parse "DD Month YYYY" or similar date format + time like "15:00 WIB"
       const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
       const dateTimeStr = `${show.schedule_date} ${timeStr}`;
       const showDate = new Date(dateTimeStr);
       if (isNaN(showDate.getTime())) return false;
       const twoHoursAfter = new Date(showDate.getTime() + 2 * 60 * 60 * 1000);
       return new Date() > twoHoursAfter;
+    } catch {
+      return false;
+    }
+  };
+
+  // Helper: check if show is past 4 hours (move to replay)
+  const isShowPast4Hours = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      return new Date() > new Date(showDate.getTime() + 4 * 60 * 60 * 1000);
     } catch {
       return false;
     }
