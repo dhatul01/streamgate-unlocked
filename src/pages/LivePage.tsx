@@ -56,8 +56,12 @@ const LivePage = () => {
           setAuthChecked(true);
           return;
         }
+        // Authenticated but no username in profile - show modal
+        setShowUsernameModal(true);
+        setAuthChecked(true);
+        return;
       }
-      // Not authenticated or no username - show modal if no stored username
+      // Not authenticated - show modal if no stored username
       if (!localStorage.getItem("rt48_username")) {
         setShowUsernameModal(true);
       }
