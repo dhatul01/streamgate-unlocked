@@ -213,6 +213,7 @@ const ShowManager = () => {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground truncate">{show.title}</p>
                   {show.is_subscription && <Crown className="h-3 w-3 text-yellow-500" />}
+                  {show.is_replay && <Film className="h-3 w-3 text-accent" />}
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-muted-foreground">{show.price} · {show.schedule_date}</p>
