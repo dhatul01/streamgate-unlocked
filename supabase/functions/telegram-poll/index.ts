@@ -277,22 +277,23 @@ async function processCoinOrder(
       });
 
       const { data: profile } = await supabase.from('profiles').select('username').eq('id', order.user_id).single();
+      const { data: balanceData } = await supabase.from('coin_balances').select('balance').eq('user_id', order.user_id).maybeSingle();
+      const newBalance = balanceData?.balance ?? order.coin_amount;
 
       await supabase.from('admin_notifications').insert({
         title: '✅ Order Koin Dikonfirmasi via Telegram',
-        message: `Order ${sid} untuk ${profile?.username || 'User'} (${order.coin_amount} koin) telah dikonfirmasi.`,
+        message: `Order ${sid} untuk ${profile?.username || 'User'} (${order.coin_amount} koin) telah dikonfirmasi. Saldo baru: ${newBalance} koin.`,
         type: 'coin_order',
       });
 
       if (order.phone) {
-        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
+        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\nSaldo saat ini: ${newBalance} koin.\n\nTerima kasih! 🎉`;
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      if (!isBulk) {
-        await sendTelegramMessage(botToken, chatId,
-          `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
-      }
+      const username = escapeMarkdown(profile?.username || 'User');
+      await sendTelegramMessage(botToken, chatId,
+        `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${username}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
     } else {
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
