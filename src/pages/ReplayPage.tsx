@@ -268,8 +268,14 @@ const ReplayPage = () => {
                     {hasPassword ? (
                       <button
                         onClick={() => {
-                          setReplayModal({ showId: show.id, password: replayPasswords[show.id] });
-                          setReplayCopied(false);
+                          const pw = replayPasswords[show.id];
+                          if (pw && pw !== "__purchased__") {
+                            setReplayModal({ showId: show.id, password: pw });
+                            setReplayCopied(false);
+                          } else {
+                            // Purchased but password lost - go directly to replay site
+                            window.open("https://replaytime.lovable.app", "_blank");
+                          }
                         }}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-foreground transition-all hover:bg-accent/90"
                       >
