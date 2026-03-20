@@ -775,6 +775,13 @@ const Index = () => {
                       </div>
                     )}
                     <div className="mt-2 flex flex-col gap-2">
+                      {/* Access password display */}
+                      {accessPasswords[show.id] && (
+                        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Akses Show</p>
+                          <p className="font-mono text-lg font-bold text-warning">{accessPasswords[show.id]}</p>
+                        </div>
+                      )}
                       {redeemedTokens[show.id] ? (
                         isShowPast2Hours(show) ? (
                           <>
