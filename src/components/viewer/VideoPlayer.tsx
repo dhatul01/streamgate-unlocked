@@ -338,8 +338,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             },
             onStateChange: (e: any) => {
               if (destroyed) return;
-              setIsPlaying(e.data === 1);
-              setIsLoading(e.data === 3);
+              const state = e.data;
+              // 1 = playing, 2 = paused, 3 = buffering
+              setIsPlaying(state === 1);
+              // Only hide loading when video is actually playing — this keeps
+              // the overlay visible during the brief YouTube title/channel card
+              if (state === 1 || state === 2) {
+                setIsLoading(false);
+              } else if (state === 3) {
+                // Don't show loading for brief buffering if already loaded once
+                // (prevents flicker during quality changes)
+              }
             },
             onError: (e: any) => {
               if (destroyed) return;
