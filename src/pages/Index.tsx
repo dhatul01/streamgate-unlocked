@@ -248,17 +248,25 @@ const Index = () => {
     };
     const cleanupBalance = fetchCoinUser();
 
-    // Realtime for shows and orders
+    // Realtime for shows, orders, and stream status
     const showCh = supabase.channel("idx-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
       .subscribe();
     const orderCh = supabase.channel("idx-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
+    const streamCh = supabase.channel("idx-streams")
+      .on("postgres_changes", { event: "*", schema: "public", table: "streams" }, (payload: any) => {
+        if (payload.new?.is_live !== undefined) {
+          setIsStreamLive(payload.new.is_live);
+        }
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(showCh);
       supabase.removeChannel(orderCh);
+      supabase.removeChannel(streamCh);
       cleanupBalance.then((cleanup) => cleanup?.());
     };
   }, []);
