@@ -327,10 +327,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 if (iframe) {
                   iframe.removeAttribute("title");
                   iframe.setAttribute("referrerpolicy", "no-referrer");
+                  // Remove allow attribute to prevent link navigation
+                  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
                 }
               } catch {}
 
-              setIsLoading(false);
+              // Keep loading overlay visible until video actually starts playing
+              // This hides the channel name / title card that YouTube shows briefly
               if (autoPlay) e.target.playVideo();
             },
             onStateChange: (e: any) => {
