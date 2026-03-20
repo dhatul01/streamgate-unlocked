@@ -1022,6 +1022,13 @@ const Index = () => {
               <div className="rounded-lg bg-secondary p-4">
                 <p className="font-mono text-lg font-bold text-primary">{coinResult.token_code}</p>
               </div>
+              {coinResult.replay_password && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                  <p className="font-mono text-lg font-bold text-warning">{coinResult.replay_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   className="flex-1 gap-2"
@@ -1041,6 +1048,47 @@ const Index = () => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">Sisa saldo: <span className="font-bold text-warning">{coinResult.remaining_balance} koin</span></p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Replay Password Modal - must copy before navigating */}
+      <Dialog open={!!replayModal} onOpenChange={() => setReplayModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-warning" /> Sandi Replay</DialogTitle>
+            <DialogDescription>Salin sandi ini sebelum menuju halaman replay</DialogDescription>
+          </DialogHeader>
+          {replayModal && (
+            <div className="space-y-4 text-center">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <p className="font-mono text-2xl font-bold text-warning">{replayModal.password}</p>
+              </div>
+              <Button
+                className="w-full gap-2"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(replayModal.password);
+                  setReplayCopied(true);
+                  toast({ title: "Sandi disalin!" });
+                }}
+              >
+                <Copy className="h-4 w-4" /> {replayCopied ? "✓ Sandi Disalin" : "Salin Sandi"}
+              </Button>
+              <Button
+                className="w-full gap-2"
+                disabled={!replayCopied}
+                onClick={() => {
+                  window.open("https://replaytime.lovable.app", "_blank");
+                  setReplayModal(null);
+                }}
+              >
+                <Play className="h-4 w-4" /> Tonton Replay
+              </Button>
+              {!replayCopied && (
+                <p className="text-xs text-destructive">⚠️ Salin sandi terlebih dahulu sebelum menuju replay</p>
+              )}
             </div>
           )}
         </DialogContent>
