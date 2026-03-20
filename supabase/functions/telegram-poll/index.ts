@@ -91,7 +91,7 @@ serve(async () => {
           totalProcessed += ids.length;
         }
       } else if (tidakMatch) {
-        const ids = tidakMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
+        const ids = tidakMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
         if (ids.length > 10) {
           await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk tolak\\. Silakan bagi menjadi beberapa perintah\\.');
         } else {
