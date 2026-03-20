@@ -150,6 +150,36 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_gifts: {
+        Row: {
+          amount: number
+          created_at: string
+          gift_type: string
+          id: string
+          message: string
+          sender_user_id: string | null
+          sender_username: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          gift_type?: string
+          id?: string
+          message?: string
+          sender_user_id?: string | null
+          sender_username: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          gift_type?: string
+          id?: string
+          message?: string
+          sender_user_id?: string | null
+          sender_username?: string
+        }
+        Relationships: []
+      }
       coin_orders: {
         Row: {
           coin_amount: number
@@ -293,6 +323,33 @@ export type Database = {
           sort_order?: number
           text_align?: string
           title?: string
+        }
+        Relationships: []
+      }
+      live_polls: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          is_active: boolean
+          options: Json
+          question: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          question: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          question?: string
         }
         Relationships: []
       }
@@ -468,6 +525,38 @@ export type Database = {
           },
         ]
       }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "live_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -501,6 +590,62 @@ export type Database = {
           key?: string
           request_count?: number
           window_start?: string
+        }
+        Relationships: []
+      }
+      referral_claims: {
+        Row: {
+          claimer_user_id: string
+          created_at: string
+          id: string
+          referral_id: string
+        }
+        Insert: {
+          claimer_user_id: string
+          created_at?: string
+          id?: string
+          referral_id: string
+        }
+        Update: {
+          claimer_user_id?: string
+          created_at?: string
+          id?: string
+          referral_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_claims_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          reward_coins: number
+          user_id: string
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          reward_coins?: number
+          user_id: string
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          reward_coins?: number
+          user_id?: string
+          uses?: number
         }
         Relationships: []
       }
@@ -826,6 +971,7 @@ export type Database = {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
         Returns: boolean
       }
+      claim_referral: { Args: { _code: string }; Returns: Json }
       cleanup_old_otp_codes: { Args: never; Returns: undefined }
       cleanup_rate_limits: { Args: never; Returns: undefined }
       confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
@@ -853,6 +999,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_or_create_referral_code: { Args: never; Returns: Json }
       get_order_count: { Args: { _show_id: string }; Returns: number }
       get_playlists_for_channel: {
         Args: { _moderator_username: string }
@@ -949,6 +1096,10 @@ export type Database = {
       }
       self_reset_token_session: {
         Args: { _fingerprint: string; _token_code: string }
+        Returns: Json
+      }
+      send_coin_gift: {
+        Args: { _amount: number; _gift_type: string; _message: string }
         Returns: Json
       }
       validate_token: { Args: { _code: string }; Returns: Json }

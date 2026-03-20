@@ -8,6 +8,11 @@ import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
+const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
+const GiftOverlay = lazy(() => import("@/components/viewer/GiftOverlay"));
+const GiftButton = lazy(() => import("@/components/viewer/GiftButton"));
+const LivePoll = lazy(() => import("@/components/viewer/LivePoll"));
+const PipButton = lazy(() => import("@/components/viewer/PipButton"));
 
 type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
@@ -595,8 +600,13 @@ const LivePage = () => {
 
   const isLive = stream?.is_live || false;
 
+  const isAuthenticated = !!tokenData;
+
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
+      <Suspense fallback={null}>
+        <ConnectionStatus />
+      </Suspense>
       <Suspense fallback={null}>
         <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
       </Suspense>
@@ -629,17 +639,22 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist && signedStreamUrl ? (
-            <VideoPlayer
-              key={playerKey}
-              ref={playerRef}
-              playlist={{
-                ...activePlaylist,
-                url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
-              }}
-              autoPlay
-              watermarkUrl={watermarkUrl}
-              tokenCode={tokenData?.code}
-            />
+            <>
+              <VideoPlayer
+                key={playerKey}
+                ref={playerRef}
+                playlist={{
+                  ...activePlaylist,
+                  url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
+                }}
+                autoPlay
+                watermarkUrl={watermarkUrl}
+                tokenCode={tokenData?.code}
+              />
+              <Suspense fallback={null}>
+                <GiftOverlay />
+              </Suspense>
+            </>
           ) : isLive && activePlaylist && signedUrlLoading ? (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <div className="flex flex-col items-center gap-3 tv:gap-5">
@@ -678,6 +693,19 @@ const LivePage = () => {
           )}
         </div>
 
+        {/* Gift & PiP buttons below player when live */}
+        {isLive && (
+          <div className="flex items-center gap-2 border-t border-border px-4 py-2 tv:px-8 tv:py-3">
+            <Suspense fallback={null}>
+              <GiftButton isAuthenticated={!!tokenData} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <PipButton />
+            </Suspense>
+            <div className="flex-1" />
+          </div>
+        )}
+
         {isLive && playlists.length > 1 && (
           <div className="flex gap-2 tv:gap-3 overflow-x-auto border-t border-border px-4 py-2 tv:px-8 tv:py-4">
             {playlists.map((p) => (
@@ -706,6 +734,12 @@ const LivePage = () => {
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
+        {/* Live Poll above chat */}
+        {isLive && (
+          <Suspense fallback={null}>
+            <LivePoll voterId={tokenData?.id || username} />
+          </Suspense>
+        )}
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">
             <p className="text-xs text-muted-foreground">Memuat chat...</p>
