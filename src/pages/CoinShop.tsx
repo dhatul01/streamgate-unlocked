@@ -72,7 +72,7 @@ const CoinShop = () => {
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("show_id", selectedPkg!.id);
+    formData.append("type", "coin");
 
     const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
     if (error || !data?.path) { toast({ title: "Upload gagal", variant: "destructive" }); setUploading(false); return; }
