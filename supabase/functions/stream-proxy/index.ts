@@ -20,13 +20,13 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 function edgeRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(key);
-  // Cleanup expired entries more aggressively with per-IP keys
-  if (rateLimitMap.size > 500) {
+  // Cleanup expired entries — higher threshold for 1000+ concurrent viewers
+  if (rateLimitMap.size > 2000) {
     for (const [k, v] of rateLimitMap) {
       if (now > v.resetAt) rateLimitMap.delete(k);
     }
     // Hard cap: if still too large after cleanup, evict oldest entries
-    if (rateLimitMap.size > 2000) {
+    if (rateLimitMap.size > 5000) {
       const entries = [...rateLimitMap.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt);
       for (let i = 0; i < entries.length - 1000; i++) {
         rateLimitMap.delete(entries[i][0]);
