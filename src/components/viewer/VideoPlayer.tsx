@@ -382,6 +382,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
               if (state === 1 || state === 2) {
                 setIsLoading(false);
+                // Re-populate qualities when playback starts (may have more options now)
+                if (state === 1) {
+                  try {
+                    const ytQuals = e.target.getAvailableQualityLevels?.() || [];
+                    if (ytQuals.length > 0) {
+                      const ytLabelMap: Record<string, string> = {
+                        hd2160: "4K", hd1440: "1440p", hd1080: "1080p", hd720: "720p",
+                        large: "480p", medium: "360p", small: "240p", tiny: "144p",
+                      };
+                      const mapped = ytQuals
+                        .filter((q: string) => q !== "auto" && ytLabelMap[q])
+                        .map((q: string, i: number) => ({ label: ytLabelMap[q] || q, index: i, ytKey: q }));
+                      setQualities(prev => {
+                        if (prev.length <= 1) return [{ label: "Auto", index: -1, ytKey: "auto" }, ...mapped];
+                        return prev;
+                      });
+                    }
+                  } catch {}
+                }
               }
 
               // If buffering lasts >4s, release quality lock early
