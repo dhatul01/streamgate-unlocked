@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
 import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 
 interface CoinPackage { id: string; name: string; coin_amount: number; price: number; qris_image_url: string | null; }
