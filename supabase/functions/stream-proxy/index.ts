@@ -50,11 +50,11 @@ function getRateLimitResponse(): Response {
 }
 
 // --- In-memory cache ---
-// m3u8 content cache: 4 second TTL (fresh enough for live HLS)
-// With 1000 viewers refreshing every 6s, this reduces origin fetches from
-// ~167/sec to ~1 every 4 seconds — a 99.4% reduction
-const M3U8_CACHE_TTL_MS = 4000;
-const PLAYLIST_URL_CACHE_TTL_MS = 30000; // DB URL lookup cache: 30 seconds
+// m3u8 content cache: 6 second TTL (fresh enough for live HLS, ~2 segment intervals)
+// With 1000+ viewers refreshing every 6s, this reduces origin fetches from
+// ~167/sec to ~1 every 6 seconds — a 99.4% reduction
+const M3U8_CACHE_TTL_MS = 6000;
+const PLAYLIST_URL_CACHE_TTL_MS = 60000; // DB URL lookup cache: 60 seconds (URLs rarely change)
 
 interface CacheEntry { content: string; cachedAt: number }
 const m3u8Cache = new Map<string, CacheEntry>();
