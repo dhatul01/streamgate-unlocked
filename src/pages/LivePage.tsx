@@ -439,10 +439,15 @@ const LivePage = () => {
     setActivePlaylist(playlist);
   };
 
-  const handleUsernameSet = (name: string) => {
+  const handleUsernameSet = async (name: string) => {
     setUsername(name);
     localStorage.setItem("rt48_username", name);
     setShowUsernameModal(false);
+    // Save username to profile if authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").upsert({ id: user.id, username: name }, { onConflict: "id" });
+    }
   };
 
   if (loading) {
