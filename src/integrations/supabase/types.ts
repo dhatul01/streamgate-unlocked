@@ -979,6 +979,7 @@ export type Database = {
           is_public: boolean
           max_devices: number
           replay_password: string | null
+          show_id: string | null
           status: string
         }
         Insert: {
@@ -991,6 +992,7 @@ export type Database = {
           is_public?: boolean
           max_devices?: number
           replay_password?: string | null
+          show_id?: string | null
           status?: string
         }
         Update: {
@@ -1003,9 +1005,18 @@ export type Database = {
           is_public?: boolean
           max_devices?: number
           replay_password?: string | null
+          show_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tokens_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1151,6 +1162,10 @@ export type Database = {
         Returns: Json
       }
       obfuscate_url: { Args: { _url: string }; Returns: string }
+      parse_show_datetime: {
+        Args: { _date: string; _time: string }
+        Returns: string
+      }
       redeem_coins_for_replay: { Args: { _show_id: string }; Returns: Json }
       redeem_coins_for_token: { Args: { _show_id: string }; Returns: Json }
       release_token_session: {
