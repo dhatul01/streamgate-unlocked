@@ -127,10 +127,10 @@ const ViewerAuth = () => {
           {mode === "forgot" ? (
             forgotSubmitted ? (
               <div className="space-y-4 text-center">
-                <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+                <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
                 <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
                 <p className="text-xs text-muted-foreground">
-                  Admin akan mengecek permintaan reset password kamu. Jika disetujui, password baru akan dikirim via WhatsApp.
+                  Admin akan mengecek permintaan reset password kamu. Jika disetujui, kamu akan menerima link via WhatsApp untuk membuat password baru.
                 </p>
                 <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
