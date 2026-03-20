@@ -97,10 +97,11 @@ const Index = () => {
   const [coinUsername, setCoinUsername] = useState("");
   const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
   const [coinRedeeming, setCoinRedeeming] = useState(false);
-  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number; replay_password?: string } | null>(null);
+  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number; replay_password?: string; access_password?: string } | null>(null);
   // Map of show_id -> { token_code, replay_password } for shows redeemed by this user
   const [redeemedTokens, setRedeemedTokens] = useState<Record<string, string>>({});
   const [replayPasswords, setReplayPasswords] = useState<Record<string, string>>({});
+  const [accessPasswords, setAccessPasswords] = useState<Record<string, string>>({});
   const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
   const [replayCopied, setReplayCopied] = useState(false);
 
@@ -181,6 +182,12 @@ const Index = () => {
           setReplayPasswords(storedPw);
         } catch {}
 
+        // Load access passwords from localStorage
+        try {
+          const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${user.id}`) || "{}");
+          setAccessPasswords(storedAp);
+        } catch {}
+
         // Subscribe to balance changes for toast notification
         const balCh = supabase
           .channel(`idx-balance-${user.id}`)
@@ -243,10 +250,10 @@ const Index = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password, access_password: result.access_password });
     setCoinBalance(result.remaining_balance);
 
-    // Save redeemed token + replay password to localStorage
+    // Save redeemed token + replay password + access password to localStorage
     if (coinUser) {
       const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
       stored[coinShowTarget.id] = result.token_code;
@@ -258,6 +265,13 @@ const Index = () => {
         storedPw[coinShowTarget.id] = result.replay_password;
         localStorage.setItem(`replay_passwords_${coinUser.id}`, JSON.stringify(storedPw));
         setReplayPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.replay_password }));
+      }
+
+      if (result.access_password) {
+        const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${coinUser.id}`) || "{}");
+        storedAp[coinShowTarget.id] = result.access_password;
+        localStorage.setItem(`access_passwords_${coinUser.id}`, JSON.stringify(storedAp));
+        setAccessPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.access_password }));
       }
     }
   };
@@ -761,6 +775,13 @@ const Index = () => {
                       </div>
                     )}
                     <div className="mt-2 flex flex-col gap-2">
+                      {/* Access password display */}
+                      {accessPasswords[show.id] && (
+                        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Akses Show</p>
+                          <p className="font-mono text-lg font-bold text-warning">{accessPasswords[show.id]}</p>
+                        </div>
+                      )}
                       {redeemedTokens[show.id] ? (
                         isShowPast2Hours(show) ? (
                           <>
@@ -1027,6 +1048,13 @@ const Index = () => {
                   <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
                   <p className="font-mono text-lg font-bold text-warning">{coinResult.replay_password}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
+                </div>
+              )}
+              {coinResult.access_password && (
+                <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Akses Show</p>
+                  <p className="font-mono text-lg font-bold text-primary">{coinResult.access_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Sandi ini akan ditampilkan di kartu show Anda</p>
                 </div>
               )}
               <div className="flex gap-2">

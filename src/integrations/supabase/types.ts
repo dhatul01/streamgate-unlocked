@@ -527,6 +527,7 @@ export type Database = {
       }
       shows: {
         Row: {
+          access_password: string
           background_image_url: string | null
           category: string
           category_member: string
@@ -548,6 +549,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          access_password?: string
           background_image_url?: string | null
           category?: string
           category_member?: string
@@ -569,6 +571,7 @@ export type Database = {
           title: string
         }
         Update: {
+          access_password?: string
           background_image_url?: string | null
           category?: string
           category_member?: string
@@ -824,6 +827,7 @@ export type Database = {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
       }
+      expire_old_coin_orders: { Args: never; Returns: undefined }
       get_confirmed_order_count: { Args: { _show_id: string }; Returns: number }
       get_moderator_playlists: {
         Args: { _moderator_username: string }
@@ -883,6 +887,7 @@ export type Database = {
       get_public_shows: {
         Args: never
         Returns: {
+          access_password: string
           background_image_url: string | null
           category: string
           category_member: string

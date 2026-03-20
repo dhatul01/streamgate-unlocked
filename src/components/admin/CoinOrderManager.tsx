@@ -14,7 +14,7 @@ interface CoinOrder {
 const CoinOrderManager = () => {
   const [orders, setOrders] = useState<CoinOrder[]>([]);
   const [packages, setPackages] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "all">("pending");
+  const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "expired" | "all">("pending");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -88,10 +88,10 @@ const CoinOrderManager = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">🪙 Order Koin</h2>
-      <div className="flex gap-2">
-        {(["pending", "confirmed", "rejected", "all"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${filter === f ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>
-            {f === "pending" ? "Menunggu" : f === "confirmed" ? "Dikonfirmasi" : f === "rejected" ? "Ditolak" : "Semua"}
+      <div className="flex gap-2 flex-wrap">
+        {(["pending", "confirmed", "rejected", "expired", "all"] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f as any)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${filter === f ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>
+            {f === "pending" ? "Menunggu" : f === "confirmed" ? "Dikonfirmasi" : f === "rejected" ? "Ditolak" : f === "expired" ? "Kedaluwarsa" : "Semua"}
             {f !== "all" && ` (${orders.filter((o) => o.status === f).length})`}
           </button>
         ))}
@@ -105,7 +105,7 @@ const CoinOrderManager = () => {
                   <Coins className="h-4 w-4 text-warning" />
                   <p className="font-semibold text-foreground">{order.coin_amount} Koin</p>
                   <span className="text-xs text-muted-foreground">— {packages[order.package_id] || "Paket"}</span>
-                  <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${order.status === "pending" ? "bg-warning/20 text-warning" : order.status === "confirmed" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+                   <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${order.status === "pending" ? "bg-warning/20 text-warning" : order.status === "confirmed" ? "bg-success/20 text-success" : order.status === "expired" ? "bg-muted text-muted-foreground" : "bg-destructive/20 text-destructive"}`}>
                     {order.status === "pending" ? <Clock className="h-2.5 w-2.5" /> : order.status === "confirmed" ? <CheckCircle className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
                     {order.status.toUpperCase()}
                   </span>
