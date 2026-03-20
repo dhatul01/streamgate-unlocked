@@ -105,7 +105,7 @@ const CoinOrderManager = () => {
                   <Coins className="h-4 w-4 text-warning" />
                   <p className="font-semibold text-foreground">{order.coin_amount} Koin</p>
                   <span className="text-xs text-muted-foreground">— {packages[order.package_id] || "Paket"}</span>
-                  <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${order.status === "pending" ? "bg-warning/20 text-warning" : order.status === "confirmed" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+                   <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${order.status === "pending" ? "bg-warning/20 text-warning" : order.status === "confirmed" ? "bg-success/20 text-success" : order.status === "expired" ? "bg-muted text-muted-foreground" : "bg-destructive/20 text-destructive"}`}>
                     {order.status === "pending" ? <Clock className="h-2.5 w-2.5" /> : order.status === "confirmed" ? <CheckCircle className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
                     {order.status.toUpperCase()}
                   </span>
