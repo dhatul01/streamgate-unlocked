@@ -101,6 +101,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const obfuscate = (str: string) => btoa(unescape(encodeURIComponent(str)));
   const deobfuscate = (str: string) => decodeURIComponent(escape(atob(str)));
 
+  // XOR decrypt for server-encrypted YouTube URLs
+  const decryptUrl = (encoded: string): string => {
+    if (!encoded.startsWith("enc:")) return encoded;
+    const b64 = encoded.slice(4);
+    const _k = [82,84,52,56,120,75,57,109,81,50,118,76,55,110,80,52]; // key bytes
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const result = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i] ^ _k[i % _k.length];
+    }
+    return new TextDecoder().decode(result);
+  };
+
   // Init HLS for m3u8
   useEffect(() => {
     if (playlist.type !== "m3u8" || !videoRef.current) return;
