@@ -48,9 +48,9 @@ const CoinShop = () => {
 
   const fetchData = async (userId: string) => {
     const [balRes, pkgRes, txRes] = await Promise.all([
-      (supabase.from as any)("coin_balances").select("balance").eq("user_id", userId).maybeSingle(),
-      (supabase.from as any)("coin_packages").select("*").eq("is_active", true).order("sort_order"),
-      (supabase.from as any)("coin_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+      supabase.from("coin_balances").select("balance").eq("user_id", userId).maybeSingle(),
+      supabase.from("coin_packages").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("coin_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
     ]);
     setBalance(balRes.data?.balance || 0);
     setPackages(pkgRes.data || []);
