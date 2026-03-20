@@ -174,39 +174,6 @@ const ViewerAuth = () => {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Password Baru</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={forgotNewPassword}
-                      onChange={(e) => setForgotNewPassword(e.target.value)}
-                      placeholder="Min. 6 karakter"
-                      required
-                      minLength={6}
-                      className="bg-background pl-10"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Konfirmasi Password Baru</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={forgotConfirmPassword}
-                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                      placeholder="Ulangi password baru"
-                      required
-                      minLength={6}
-                      className="bg-background pl-10"
-                    />
-                  </div>
-                  {forgotConfirmPassword && forgotNewPassword !== forgotConfirmPassword && (
-                    <p className="mt-1 text-xs text-destructive">Password tidak cocok</p>
-                  )}
-                </div>
                 <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
                   {loading ? "Mengirim..." : "Kirim Permintaan Reset"}
                 </Button>
