@@ -285,7 +285,7 @@ async function processSubscriptionOrder(
   try {
     const { data: show } = await supabase
       .from('shows')
-      .select('title')
+      .select('title, group_link')
       .eq('id', order.show_id)
       .single();
 
@@ -300,6 +300,15 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
+      // Send WhatsApp notification to user
+      if (order.phone) {
+        let waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
+        if (show?.group_link) {
+          waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
+        }
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
+
       await sendTelegramMessage(botToken, chatId,
         `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil dikonfirmasi\\!`);
     } else {
@@ -310,6 +319,12 @@ async function processSubscriptionOrder(
         message: `Order ${order.id} untuk "${showTitle}" telah ditolak.`,
         type: 'subscription_order',
       });
+
+      // Send WhatsApp notification to user
+      if (order.phone) {
+        const waMsg = `❌ Maaf, pembayaran kamu untuk *${showTitle}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
 
       await sendTelegramMessage(botToken, chatId,
         `❌ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" telah ditolak\\.`);
@@ -323,6 +338,26 @@ async function processSubscriptionOrder(
 
 function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+async function sendFonnteWhatsApp(phone: string, message: string) {
+  const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
+  if (!FONNTE_TOKEN) {
+    console.error('FONNTE_API_TOKEN not configured, skipping WA notification');
+    return;
+  }
+  const cleanPhone = phone.replace(/^0/, '62').replace(/[^0-9]/g, '');
+  try {
+    const res = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: { 'Authorization': FONNTE_TOKEN },
+      body: new URLSearchParams({ target: cleanPhone, message }),
+    });
+    const data = await res.json();
+    console.log('Fonnte WA sent:', JSON.stringify(data));
+  } catch (e) {
+    console.error('sendFonnteWhatsApp error:', e);
+  }
 }
 
 async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
