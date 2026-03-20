@@ -260,16 +260,23 @@ const CoinShop = () => {
                 onChange={(e) => setBuyerPhone(e.target.value)}
                 className="bg-background"
               />
-              <Button className="w-full" disabled={!buyerPhone.trim() || buyerPhone.trim().length < 10} onClick={() => setPurchaseStep(selectedPkg?.qris_image_url ? "qris" : "upload")}>
+              <Button className="w-full" disabled={!buyerPhone.trim() || buyerPhone.trim().length < 10} onClick={() => setPurchaseStep("qris")}>
                 Lanjut →
               </Button>
             </div>
           )}
-          {purchaseStep === "qris" && selectedPkg?.qris_image_url && (
+          {purchaseStep === "qris" && (
             <div className="space-y-3">
-              <img src={selectedPkg.qris_image_url} alt="QRIS" className="mx-auto w-64 rounded-lg" />
-              <p className="text-center text-xs text-muted-foreground">Scan QRIS lalu upload bukti bayar</p>
-              <Button className="w-full" onClick={() => setPurchaseStep("upload")}>Sudah Bayar → Upload Bukti</Button>
+              {selectedPkg?.qris_image_url ? (
+                <img src={selectedPkg.qris_image_url} alt="QRIS" className="mx-auto w-64 rounded-lg" />
+              ) : (
+                <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-xl border-2 border-dashed border-border">
+                  <p className="text-sm text-muted-foreground text-center px-4">QRIS belum tersedia untuk paket ini. Hubungi admin.</p>
+                </div>
+              )}
+              <p className="text-center text-sm font-medium text-foreground">Scan QRIS di atas untuk melakukan pembayaran</p>
+              <p className="text-center text-xs text-muted-foreground">Setelah pembayaran berhasil, klik tombol di bawah untuk upload bukti transfer</p>
+              <Button className="w-full" onClick={() => setPurchaseStep("upload")} disabled={!selectedPkg?.qris_image_url}>✅ Sudah Bayar → Upload Bukti</Button>
             </div>
           )}
           {purchaseStep === "upload" && (
