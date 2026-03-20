@@ -258,8 +258,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
       container.appendChild(playerDiv);
 
-      // Obfuscate video ID: decode only at runtime to prevent static inspection
-      const _raw = extractYTId(playlist.url);
+      // Decrypt server-encrypted URL, then extract video ID at runtime only
+      const _decrypted = decryptUrl(playlist.url);
+      const _raw = extractYTId(_decrypted);
       const _enc = obfuscate(_raw);
       const videoId = deobfuscate(_enc);
 
