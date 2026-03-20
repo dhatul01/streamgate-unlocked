@@ -186,8 +186,6 @@ const Index = () => {
     if (!isStreamLive && isShowPastSchedule(show)) return true;
     return false;
   };
-    }
-  };
 
   useEffect(() => {
     fetchData();
