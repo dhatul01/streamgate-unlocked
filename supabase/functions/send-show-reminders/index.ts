@@ -75,14 +75,10 @@ serve(async (req) => {
     const results: string[] = [];
 
     for (const show of shows) {
-      // Parse schedule_date (e.g. "2026-03-21") and schedule_time (e.g. "19:00")
       if (!show.schedule_date || !show.schedule_time) continue;
 
-      const [year, month, day] = show.schedule_date.split('-').map(Number);
-      const [hour, minute] = show.schedule_time.split(':').map(Number);
-      if (!year || !hour === undefined) continue;
-
-      const showTime = new Date(year, month - 1, day, hour, minute || 0);
+      const showTime = parseShowDateTime(show.schedule_date, show.schedule_time);
+      if (!showTime) continue;
 
       // Check if show starts within the 55-65 minute window
       if (showTime < minTime || showTime > maxTime) continue;
