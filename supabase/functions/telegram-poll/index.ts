@@ -248,7 +248,24 @@ async function handleStatusCommand(supabase: any, botToken: string, chatId: stri
       message += '🎬 *Subscription:* Tidak ada order pending\n';
     }
 
-    message += '\n📌 *Commands:*\n`YA <id>` \\- Konfirmasi order\n`YA id1,id2,id3` \\- Bulk konfirmasi\n`TIDAK <id>` \\- Tolak order\n`/status` \\- Cek order pending';
+    // Check pending password resets
+    const { data: resetRequests } = await supabase
+      .from('password_reset_requests')
+      .select('short_id, identifier, created_at, user_id')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (resetRequests && resetRequests.length > 0) {
+      message += `\n🔑 *Reset Password Pending \\(${resetRequests.length}\\):*\n`;
+      for (const r of resetRequests) {
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', r.user_id).single();
+        const time = new Date(r.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+        message += `• \`${escapeMarkdown(r.short_id)}\` ${escapeMarkdown(profile?.username || 'User')} \\(${escapeMarkdown(r.identifier)}\\) \\| ${escapeMarkdown(time)}\n`;
+      }
+    }
+
+    message += '\n📌 *Commands:*\n`YA <id>` \\- Konfirmasi order\n`YA id1,id2,id3` \\- Bulk konfirmasi\n`TIDAK <id>` \\- Tolak order\n`RESET <id>` \\- Setujui reset password\n`TOLAK\\_RESET <id>` \\- Tolak reset password\n`/status` \\- Cek order pending';
 
     await sendTelegramMessage(botToken, chatId, message);
   } catch (e) {
