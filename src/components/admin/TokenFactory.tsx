@@ -189,7 +189,7 @@ const TokenFactory = () => {
     };
   };
 
-  const renderTokenList = (dur: DurationKey) => {
+  const renderTokenList = (dur: TabKey) => {
     const filtered = getFilteredTokens(dur);
     const sel = selected[dur];
     const counts = getCountByStatus(dur);
