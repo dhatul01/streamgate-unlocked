@@ -223,9 +223,17 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     }
   }, [messages]);
 
+  // Chat throttle: limit to 1 message per 2 seconds
+  const lastSentRef = useRef(0);
+
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !username) return;
+
+    const now = Date.now();
+    if (now - lastSentRef.current < 2000) return; // 2s throttle
+    lastSentRef.current = now;
+
     setSending(true);
 
     const insertData: any = {
