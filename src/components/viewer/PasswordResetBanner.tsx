@@ -20,6 +20,10 @@ const PasswordResetBanner = () => {
       if (result.has_reset) {
         setStatus(result.status);
         setVisible(true);
+        setTimeout(() => {
+          setVisible(false);
+          sessionStorage.setItem("pw_reset_dismissed", "1");
+        }, 2000);
       }
     };
     check();
