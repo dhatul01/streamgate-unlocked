@@ -122,12 +122,13 @@ const CoinShop = () => {
   const handleRedeem = async (showId: string) => {
     setRedeemingShow(showId);
     const { data, error } = await supabase.rpc("redeem_coins_for_token", { _show_id: showId });
-    if (error || !data?.success) {
-      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       setRedeemingShow(null); return;
     }
-    setRedeemResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
-    setBalance(data.remaining_balance);
+    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setBalance(result.remaining_balance);
     setRedeemingShow(null);
   };
 
