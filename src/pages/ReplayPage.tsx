@@ -108,16 +108,16 @@ const ReplayPage = () => {
         // Also check coin_transactions for past replay purchases not in localStorage
         const { data: txns } = await supabase
           .from("coin_transactions")
-          .select("reference_id, description")
+          .select("reference_id")
           .eq("user_id", user.id)
-          .in("type", ["replay_redeem", "redeem"])
+          .eq("type", "replay_redeem")
           .order("created_at", { ascending: false });
 
         if (txns) {
           for (const tx of txns) {
             if (tx.reference_id && !storedPw[tx.reference_id]) {
-              // Mark as purchased (password unknown but purchased)
-              storedPw[tx.reference_id] = storedPw[tx.reference_id] || "__purchased__";
+              // Purchased but password lost
+              storedPw[tx.reference_id] = "__purchased__";
             }
           }
           localStorage.setItem(`replay_passwords_${user.id}`, JSON.stringify(storedPw));
@@ -215,7 +215,8 @@ const ReplayPage = () => {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredShows.map((show, i) => {
-              const hasPassword = !!replayPasswords[show.id];
+              const hasRealPassword = replayPasswords[show.id] && replayPasswords[show.id] !== "__purchased__";
+              const hasPurchased = !!replayPasswords[show.id];
               return (
                 <motion.div
                   key={show.id}
@@ -265,7 +266,7 @@ const ReplayPage = () => {
                       <span className="font-semibold">{show.replay_coin_price} Koin</span>
                     </div>
 
-                    {hasPassword && replayPasswords[show.id] && replayPasswords[show.id] !== "__purchased__" ? (
+                    {hasRealPassword ? (
                       <div className="space-y-2">
                         <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
                           <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
@@ -284,13 +285,15 @@ const ReplayPage = () => {
                           <Copy className="h-4 w-4" /> Salin Sandi & Tonton Replay
                         </button>
                       </div>
-                    ) : hasPassword ? (
-                      <button
-                        onClick={() => window.open("https://replaytime.lovable.app", "_blank")}
+                    ) : hasPurchased ? (
+                      <a
+                        href="https://replaytime.lovable.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-foreground transition-all hover:bg-accent/90"
                       >
                         <Play className="h-4 w-4" /> Tonton Replay
-                      </button>
+                      </a>
                     ) : (
                       <button
                         onClick={() => {
