@@ -108,11 +108,15 @@ const Index = () => {
   const [replayCopied, setReplayCopied] = useState(false);
 
   const fetchData = async () => {
-    const [showsRes, settingsRes, descRes] = await Promise.all([
+    const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
       supabase.rpc("get_public_shows"),
       supabase.from("site_settings").select("*"),
       supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("streams").select("is_live").limit(1).single(),
     ]);
+    if (streamRes.data) {
+      setIsStreamLive(streamRes.data.is_live);
+    }
     if (showsRes.data) {
       setShows(showsRes.data as Show[]);
       const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
