@@ -86,13 +86,18 @@ serve(async () => {
     );
 
     for (const msg of adminMessages) {
-      const text = (msg.text as string).trim().toUpperCase();
+      const rawText = (msg.text as string).trim();
+      const text = rawText.toUpperCase();
       const yaMatch = text.match(/^YA\s+(.+)$/);
       const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
       const approveMatch = text.match(/^APPROVE\s+(.+)$/);
       const rejectMatch = text.match(/^REJECT\s+(.+)$/);
+      const isStatus = rawText === '/status' || text === '/STATUS';
 
-      if (yaMatch) {
+      if (isStatus) {
+        await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
+        totalProcessed++;
+      } else if (yaMatch) {
         await processCoinOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, yaMatch[1].trim(), 'approve');
         totalProcessed++;
       } else if (tidakMatch) {
