@@ -145,25 +145,7 @@ const CoinShop = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="RealTime48" className="h-8 w-8" />
-            <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/profile")} className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 hover:bg-secondary/80 transition-colors">
-              <User className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-medium text-foreground">{username}</span>
-            </button>
-            <div className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5">
-              <Coins className="h-4 w-4 text-warning" />
-              <span className="text-sm font-bold text-warning">{balance}</span>
-            </div>
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground"><LogOut className="h-4 w-4" /></button>
-          </div>
-        </div>
-      </header>
+      <SharedNavbar activePage="coins" />
 
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-6 flex gap-2">

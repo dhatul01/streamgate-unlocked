@@ -132,16 +132,7 @@ const MembershipPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-center px-4 py-4">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="RealTime48" className="h-8 w-8" />
-            <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
-            <span className="ml-2 rounded-full bg-yellow-500/15 px-3 py-0.5 text-xs font-bold text-yellow-500">MEMBERSHIP</span>
-          </div>
-        </div>
-      </nav>
+      <SharedNavbar activePage="membership" />
 
       {/* Hero */}
       <section className="px-4 py-12 text-center">
