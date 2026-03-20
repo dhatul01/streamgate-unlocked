@@ -78,13 +78,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      const supabase = createClient(
+      const sb = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
       // Verify show exists and is active
-      const { data: show, error: showError } = await supabase
+      const { data: show, error: showError } = await sb
         .from("shows")
         .select("id")
         .eq("id", showId)
