@@ -26,9 +26,9 @@ const ViewerProfile = () => {
       setUser(user);
 
       const [profileRes, balRes, txRes] = await Promise.all([
-        (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle(),
-        (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
-        (supabase.from as any)("coin_transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
+        supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
+        supabase.from("coin_transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
       ]);
 
       const name = profileRes.data?.username || user.user_metadata?.username || "";
@@ -44,7 +44,7 @@ const ViewerProfile = () => {
   const handleSave = async () => {
     if (!user || !username.trim()) return;
     setSaving(true);
-    const { error } = await (supabase.from as any)("profiles").update({ username: username.trim() }).eq("id", user.id);
+    const { error } = await supabase.from("profiles").update({ username: username.trim() }).eq("id", user.id);
     setSaving(false);
     if (error) {
       toast({ title: "Gagal menyimpan", description: error.message, variant: "destructive" });

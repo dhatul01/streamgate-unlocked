@@ -285,7 +285,10 @@ const CoinShop = () => {
           {redeemResult && (
             <div className="space-y-4 text-center">
               <div className="rounded-lg bg-secondary p-4"><p className="font-mono text-lg font-bold text-primary">{redeemResult.token_code}</p></div>
-              <Button className="w-full gap-2" onClick={() => copyToken(redeemResult.token_code)}><Copy className="h-4 w-4" /> Salin Link Nonton</Button>
+              <div className="flex gap-2">
+                <Button className="flex-1 gap-2" variant="outline" onClick={() => copyToken(redeemResult.token_code)}><Copy className="h-4 w-4" /> Salin Link</Button>
+                <Button className="flex-1 gap-2" onClick={() => navigate(`/live?t=${redeemResult.token_code}`)}><Sparkles className="h-4 w-4" /> Tonton Live</Button>
+              </div>
               <p className="text-xs text-muted-foreground">Sisa saldo: <span className="font-bold text-warning">{redeemResult.remaining_balance} koin</span></p>
             </div>
           )}
