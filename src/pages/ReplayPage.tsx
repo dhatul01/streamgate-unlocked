@@ -215,7 +215,8 @@ const ReplayPage = () => {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredShows.map((show, i) => {
-              const hasPassword = !!replayPasswords[show.id];
+              const hasRealPassword = replayPasswords[show.id] && replayPasswords[show.id] !== "__purchased__";
+              const hasPurchased = !!replayPasswords[show.id];
               return (
                 <motion.div
                   key={show.id}
