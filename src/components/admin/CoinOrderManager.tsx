@@ -14,7 +14,7 @@ interface CoinOrder {
 const CoinOrderManager = () => {
   const [orders, setOrders] = useState<CoinOrder[]>([]);
   const [packages, setPackages] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "all">("pending");
+  const [filter, setFilter] = useState<"pending" | "confirmed" | "rejected" | "expired" | "all">("pending");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast } = useToast();
 
