@@ -37,6 +37,7 @@ const App = () => (
           <Route path="/profile" element={<ViewerProfile />} />
           <Route path="/replay" element={<ReplayPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/install" element={<InstallPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -75,6 +75,7 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
     { icon: <Radio className="h-5 w-5 text-primary" />, label: "Jadwal Show", description: "Lihat jadwal & countdown show", href: "/schedule", active: false },
     { icon: <CreditCard className="h-5 w-5 text-primary" />, label: "Coin Shop", description: "Beli & tukar koin", href: "/coins", active: activePage === "coins" },
     { icon: <Crown className="h-5 w-5 text-yellow-500" />, label: "Membership", description: "Paket langganan eksklusif", href: "/membership", active: activePage === "membership" },
+    { icon: <Download className="h-5 w-5 text-primary" />, label: "Install App", description: "Pasang aplikasi ke HP kamu", href: "/install", active: false },
   ];
 
   return (
