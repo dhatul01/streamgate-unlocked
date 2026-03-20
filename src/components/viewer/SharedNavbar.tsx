@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 
 interface SharedNavbarProps {
-  activePage?: "home" | "coins" | "membership";
+  activePage?: "home" | "coins" | "membership" | "replay";
 }
 
 const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
