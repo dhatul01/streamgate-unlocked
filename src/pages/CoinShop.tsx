@@ -84,6 +84,7 @@ const CoinShop = () => {
       user_id: user.id, package_id: selectedPkg!.id,
       coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
       payment_proof_url: data.path, status: "pending",
+      phone: buyerPhone.trim(),
     }).select("id").single();
     toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
 
