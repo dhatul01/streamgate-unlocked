@@ -665,22 +665,17 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist && signedStreamUrl ? (
-            <>
-              <VideoPlayer
-                key={playerKey}
-                ref={playerRef}
-                playlist={{
-                  ...activePlaylist,
-                  url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
-                }}
-                autoPlay
-                watermarkUrl={watermarkUrl}
-                tokenCode={tokenData?.code}
-              />
-              <Suspense fallback={null}>
-                <GiftOverlay />
-              </Suspense>
-            </>
+            <VideoPlayer
+              key={playerKey}
+              ref={playerRef}
+              playlist={{
+                ...activePlaylist,
+                url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
+              }}
+              autoPlay
+              watermarkUrl={watermarkUrl}
+              tokenCode={tokenData?.code}
+            />
           ) : isLive && activePlaylist && signedUrlLoading ? (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <div className="flex flex-col items-center gap-3 tv:gap-5">
