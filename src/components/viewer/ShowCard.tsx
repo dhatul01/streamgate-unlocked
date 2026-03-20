@@ -19,14 +19,39 @@ interface ShowCardProps {
   showCountdown?: boolean;
 }
 
+const INDONESIAN_MONTHS: Record<string, number> = {
+  januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+  juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+};
+
+function parseShowDateTime(dateStr: string, timeStr: string): number | null {
+  if (!dateStr || !timeStr) return null;
+  const cleanTime = timeStr.replace(/\s*WIB\s*/i, "").trim().replace(/\./g, ":");
+  const [hour, minute] = cleanTime.split(":").map(Number);
+
+  // Try ISO format first (2026-03-20)
+  let d = new Date(`${dateStr}T${cleanTime.padStart(5, "0")}:00`);
+  if (!isNaN(d.getTime())) return d.getTime();
+
+  // Try Indonesian format (20 maret 2026)
+  const parts = dateStr.toLowerCase().trim().split(/\s+/);
+  if (parts.length === 3) {
+    const day = parseInt(parts[0]);
+    const month = INDONESIAN_MONTHS[parts[1]];
+    const year = parseInt(parts[2]);
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      return new Date(year, month, day, hour || 0, minute || 0).getTime();
+    }
+  }
+  return null;
+}
+
 function useCountdown(dateStr: string, timeStr: string) {
   const [text, setText] = useState("");
 
   useEffect(() => {
-    if (!dateStr || !timeStr) return;
-    const clean = timeStr.replace(/\s*WIB\s*/i, "").trim();
-    const target = new Date(`${dateStr} ${clean}`).getTime();
-    if (isNaN(target)) return;
+    const target = parseShowDateTime(dateStr, timeStr);
+    if (!target) return;
 
     const update = () => {
       const diff = target - Date.now();
