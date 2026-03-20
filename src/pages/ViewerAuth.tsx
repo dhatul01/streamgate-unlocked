@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Coins, Mail, Lock, ArrowLeft, Phone, User } from "lucide-react";
+import { Coins, Mail, Lock, ArrowLeft, Phone, User, KeyRound, CheckCircle2 } from "lucide-react";
 
 type AuthMethod = "phone" | "email";
 
@@ -17,6 +17,8 @@ const ViewerAuth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState("");
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -24,7 +26,6 @@ const ViewerAuth = () => {
   const { toast } = useToast();
 
   const getRedirectPath = () => redirectTo || "/coins";
-
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
 
@@ -34,7 +35,7 @@ const ViewerAuth = () => {
   };
 
   const isFormValid = () => {
-    if (mode === "forgot") return email.trim().includes("@");
+    if (mode === "forgot") return forgotIdentifier.trim().length >= 5;
     if (mode === "signup" && !username.trim()) return false;
     if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
     return email.trim().includes("@") && password.length >= 6;
@@ -43,13 +44,29 @@ const ViewerAuth = () => {
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Email terkirim!", description: "Cek email kamu untuk reset password." });
+    try {
+      const { data, error } = await supabase.rpc("request_password_reset", {
+        _identifier: forgotIdentifier.trim(),
+      });
+      const result = data as any;
+      if (error || !result?.success) {
+        toast({ title: "Gagal", description: result?.error || error?.message || "Terjadi kesalahan", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      // Notify admin via Telegram
+      await supabase.functions.invoke("notify-password-reset", {
+        body: {
+          short_id: result.short_id,
+          identifier: forgotIdentifier.trim(),
+          username: result.username,
+        },
+      });
+
+      setForgotSubmitted(true);
+    } catch {
+      toast({ title: "Gagal", description: "Terjadi kesalahan", variant: "destructive" });
     }
     setLoading(false);
   };
@@ -108,24 +125,46 @@ const ViewerAuth = () => {
           </h2>
 
           {mode === "forgot" ? (
-            <>
-              <p className="text-center text-xs text-muted-foreground">
-                Masukkan email yang terdaftar untuk reset password.
-              </p>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" required className="bg-background pl-10" />
-                </div>
+            forgotSubmitted ? (
+              <div className="space-y-4 text-center">
+                <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+                <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
+                <p className="text-xs text-muted-foreground">
+                  Admin akan mengecek permintaan reset password kamu. Jika disetujui, password baru akan dikirim via WhatsApp.
+                </p>
+                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
+                </Button>
               </div>
-              <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
-                {loading ? "Mengirim..." : "Kirim Link Reset"}
-              </Button>
-              <button type="button" onClick={() => setMode("login")} className="w-full text-center text-xs text-primary hover:underline">
-                Kembali ke Login
-              </button>
-            </>
+            ) : (
+              <>
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <KeyRound className="mx-auto mb-2 h-8 w-8 text-primary" />
+                  <p className="text-xs text-muted-foreground">
+                    Masukkan nomor HP atau email yang terdaftar. Admin akan mereview dan mengirim password baru via WhatsApp.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP / Email</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={forgotIdentifier}
+                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      placeholder="08xxxxxxxxxx atau email@contoh.com"
+                      required
+                      className="bg-background pl-10"
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
+                  {loading ? "Mengirim..." : "Kirim Permintaan Reset"}
+                </Button>
+                <button type="button" onClick={() => setMode("login")} className="w-full text-center text-xs text-primary hover:underline">
+                  Kembali ke Login
+                </button>
+              </>
+            )
           ) : (
             <>
               {/* Method toggle */}
@@ -138,7 +177,6 @@ const ViewerAuth = () => {
                 </button>
               </div>
 
-              {/* Username (signup only) */}
               {mode === "signup" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Username</label>
@@ -149,7 +187,6 @@ const ViewerAuth = () => {
                 </div>
               )}
 
-              {/* Phone field */}
               {method === "phone" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>
@@ -160,7 +197,6 @@ const ViewerAuth = () => {
                 </div>
               )}
 
-              {/* Email field */}
               {method === "email" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
@@ -183,11 +219,9 @@ const ViewerAuth = () => {
                 {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
               </Button>
 
-              {mode === "login" && method === "email" && (
-                <button type="button" onClick={() => setMode("forgot")} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
-                  Lupa password?
-                </button>
-              )}
+              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
+                Lupa password?
+              </button>
 
               <p className="text-center text-xs text-muted-foreground">
                 {mode === "login" ? "Belum punya akun?" : "Sudah punya akun?"}
