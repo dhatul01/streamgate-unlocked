@@ -542,6 +542,7 @@ export type Database = {
           max_subscribers: number
           price: string
           qris_image_url: string | null
+          replay_coin_price: number
           schedule_date: string
           schedule_time: string
           sort_order: number
@@ -564,6 +565,7 @@ export type Database = {
           max_subscribers?: number
           price?: string
           qris_image_url?: string | null
+          replay_coin_price?: number
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
@@ -586,6 +588,7 @@ export type Database = {
           max_subscribers?: number
           price?: string
           qris_image_url?: string | null
+          replay_coin_price?: number
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
@@ -902,6 +905,7 @@ export type Database = {
           max_subscribers: number
           price: string
           qris_image_url: string | null
+          replay_coin_price: number
           schedule_date: string
           schedule_time: string
           sort_order: number
@@ -932,6 +936,7 @@ export type Database = {
         Returns: Json
       }
       obfuscate_url: { Args: { _url: string }; Returns: string }
+      redeem_coins_for_replay: { Args: { _show_id: string }; Returns: Json }
       redeem_coins_for_token: { Args: { _show_id: string }; Returns: Json }
       release_token_session: {
         Args: { _fingerprint: string; _token_code: string }
