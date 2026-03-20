@@ -104,12 +104,13 @@ const TokenFactory = () => {
     toast({ title: "Link disalin!" });
   };
 
-  const bulkCopyUncopied = (dur: DurationKey) => {
-    const uncopied = tokens.filter(
-      (t) => t.duration_type === dur && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
+  const bulkCopyUncopied = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens;
+    const uncopied = source.filter(
+      (t) => (dur === "coin" || t.duration_type === dur) && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
     );
     if (uncopied.length === 0) {
-      toast({ title: `Tidak ada token ${DURATION_TABS.find(d => d.key === dur)?.label.toLowerCase()} baru untuk disalin` });
+      toast({ title: `Tidak ada token baru untuk disalin` });
       return;
     }
     const links = uncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
