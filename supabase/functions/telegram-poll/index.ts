@@ -117,7 +117,7 @@ serve(async () => {
   return new Response(JSON.stringify({ ok: true, processed: totalProcessed, finalOffset: currentOffset }));
 });
 
-async function processOrder(
+async function processCoinOrder(
   supabase: any,
   botToken: string,
   chatId: string,
@@ -125,7 +125,6 @@ async function processOrder(
   action: 'approve' | 'reject'
 ) {
   try {
-    // Find the order
     const { data: order, error: orderErr } = await supabase
       .from('coin_orders')
       .select('id, user_id, coin_amount, status, package_id')
@@ -135,16 +134,13 @@ async function processOrder(
 
     if (orderErr || !order) {
       await sendTelegramMessage(botToken, chatId,
-        `❌ Order \`${orderId}\` tidak ditemukan atau sudah diproses.`);
+        `❌ Order koin \`${orderId}\` tidak ditemukan atau sudah diproses.`);
       return;
     }
 
     if (action === 'approve') {
-      // Use the confirm_coin_order RPC (runs as service role via direct update)
-      // Update order status
       await supabase.from('coin_orders').update({ status: 'confirmed' }).eq('id', order.id);
 
-      // Add coin balance
       const { data: existingBalance } = await supabase
         .from('coin_balances')
         .select('balance')
@@ -162,7 +158,6 @@ async function processOrder(
           .insert({ user_id: order.user_id, balance: order.coin_amount });
       }
 
-      // Log transaction
       await supabase.from('coin_transactions').insert({
         user_id: order.user_id,
         amount: order.coin_amount,
@@ -171,14 +166,12 @@ async function processOrder(
         description: `Pembelian ${order.coin_amount} koin`,
       });
 
-      // Get username for notification
       const { data: profile } = await supabase
         .from('profiles')
         .select('username')
         .eq('id', order.user_id)
         .single();
 
-      // Add admin notification
       await supabase.from('admin_notifications').insert({
         title: '✅ Order Koin Dikonfirmasi via Telegram',
         message: `Order ${order.id} untuk ${profile?.username || 'User'} (${order.coin_amount} koin) telah dikonfirmasi.`,
@@ -186,9 +179,8 @@ async function processOrder(
       });
 
       await sendTelegramMessage(botToken, chatId,
-        `✅ Order \`${order.id}\` berhasil di\\-approve\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun user\\.`);
+        `✅ Order koin \`${order.id}\` berhasil di\\-approve\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun user\\.`);
     } else {
-      // Reject
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
       await supabase.from('admin_notifications').insert({
@@ -198,13 +190,77 @@ async function processOrder(
       });
 
       await sendTelegramMessage(botToken, chatId,
-        `❌ Order \`${order.id}\` telah ditolak\\.`);
+        `❌ Order koin \`${order.id}\` telah ditolak\\.`);
     }
   } catch (e) {
-    console.error('processOrder error:', e);
+    console.error('processCoinOrder error:', e);
     await sendTelegramMessage(botToken, chatId,
-      `⚠️ Error memproses order: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      `⚠️ Error memproses order koin: ${e instanceof Error ? e.message : 'Unknown error'}`);
   }
+}
+
+async function processSubscriptionOrder(
+  supabase: any,
+  botToken: string,
+  chatId: string,
+  orderId: string,
+  action: 'approve' | 'reject'
+) {
+  try {
+    const { data: order, error: orderErr } = await supabase
+      .from('subscription_orders')
+      .select('id, show_id, phone, email, status')
+      .or(`id.eq.${orderId}`)
+      .eq('status', 'pending')
+      .single();
+
+    if (orderErr || !order) {
+      await sendTelegramMessage(botToken, chatId,
+        `❌ Order subscription \`${orderId}\` tidak ditemukan atau sudah diproses.`);
+      return;
+    }
+
+    // Get show title
+    const { data: show } = await supabase
+      .from('shows')
+      .select('title')
+      .eq('id', order.show_id)
+      .single();
+
+    const showTitle = show?.title || 'Unknown Show';
+
+    if (action === 'approve') {
+      await supabase.from('subscription_orders').update({ status: 'confirmed' }).eq('id', order.id);
+
+      await supabase.from('admin_notifications').insert({
+        title: '✅ Subscription Dikonfirmasi via Telegram',
+        message: `Order ${order.id} untuk "${showTitle}" (${order.email}) telah dikonfirmasi.`,
+        type: 'subscription_order',
+      });
+
+      await sendTelegramMessage(botToken, chatId,
+        `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil di\\-approve\\!`);
+    } else {
+      await supabase.from('subscription_orders').update({ status: 'rejected' }).eq('id', order.id);
+
+      await supabase.from('admin_notifications').insert({
+        title: '❌ Subscription Ditolak via Telegram',
+        message: `Order ${order.id} untuk "${showTitle}" telah ditolak.`,
+        type: 'subscription_order',
+      });
+
+      await sendTelegramMessage(botToken, chatId,
+        `❌ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" telah ditolak\\.`);
+    }
+  } catch (e) {
+    console.error('processSubscriptionOrder error:', e);
+    await sendTelegramMessage(botToken, chatId,
+      `⚠️ Error memproses subscription: ${e instanceof Error ? e.message : 'Unknown error'}`);
+  }
+}
+
+function escapeMarkdown(text: string): string {
+  return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
@@ -215,7 +271,6 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
   });
   const data = await res.json();
   if (!data.ok) {
-    // Retry without markdown if parse fails
     await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
