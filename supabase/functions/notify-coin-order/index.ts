@@ -18,7 +18,8 @@ serve(async (req) => {
     const { order_id, username, package_name, coin_amount, price } = await req.json();
 
     const priceFormatted = escapeMarkdown(Number(price).toLocaleString('id-ID'));
-    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${order_id}\`\n\n✅ Balas *YA ${order_id}* untuk approve\n❌ Balas *TIDAK ${order_id}* untuk reject`;
+    const escapedOrderId = escapeMarkdown(order_id);
+    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
 
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
