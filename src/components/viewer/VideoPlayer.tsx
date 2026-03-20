@@ -26,6 +26,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ytMuted, setYtMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -299,13 +300,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             autoplay: autoPlay ? 1 : 0,
             mute: 0,
             enablejsapi: 1,
-            controls: 1,
-            disablekb: 0,
-            fs: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
             modestbranding: 1,
             rel: 0,
             iv_load_policy: 3,
             playsinline: 1,
+            showinfo: 0,
             origin: window.location.origin,
           },
           events: {
@@ -326,16 +328,28 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 if (iframe) {
                   iframe.removeAttribute("title");
                   iframe.setAttribute("referrerpolicy", "no-referrer");
+                  // Remove allow attribute to prevent link navigation
+                  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
                 }
               } catch {}
 
-              setIsLoading(false);
+              // Keep loading overlay visible until video actually starts playing
+              // This hides the channel name / title card that YouTube shows briefly
               if (autoPlay) e.target.playVideo();
             },
             onStateChange: (e: any) => {
               if (destroyed) return;
-              setIsPlaying(e.data === 1);
-              setIsLoading(e.data === 3);
+              const state = e.data;
+              // 1 = playing, 2 = paused, 3 = buffering
+              setIsPlaying(state === 1);
+              // Only hide loading when video is actually playing — this keeps
+              // the overlay visible during the brief YouTube title/channel card
+              if (state === 1 || state === 2) {
+                setIsLoading(false);
+              } else if (state === 3) {
+                // Don't show loading for brief buffering if already loaded once
+                // (prevents flicker during quality changes)
+              }
             },
             onError: (e: any) => {
               if (destroyed) return;
@@ -440,6 +454,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     }
   }, []);
 
+  const toggleYtMute = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!isYTReady()) return;
+    const player = ytPlayerRef.current;
+    try {
+      if (player.isMuted()) {
+        player.unMute();
+        setYtMuted(false);
+      } else {
+        player.mute();
+        setYtMuted(true);
+      }
+    } catch {}
+  }, [isYTReady]);
+
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFsChange);
@@ -483,9 +512,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             ref={ytContainerRef}
             className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
-          {/* Transparent overlay only to block right-click, not click events */}
+          {/* Full overlay to block all YouTube UI navigation and links */}
           <div
-            className="absolute inset-0 z-[9] bg-transparent pointer-events-none"
+            className="absolute inset-0 z-10 cursor-pointer"
+            onClick={togglePlay}
             onContextMenu={(e) => e.preventDefault()}
           />
         </>
@@ -544,6 +574,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
           )}
         </button>
+
+        {/* YouTube volume toggle */}
+        {playlist.type === "youtube" && (
+          <button
+            onClick={toggleYtMute}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
+            title={ytMuted ? "Unmute" : "Mute"}
+          >
+            {ytMuted ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            )}
+          </button>
+        )}
 
         <div className="flex-1" />
 
