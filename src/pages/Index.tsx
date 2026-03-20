@@ -16,6 +16,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import type { Show } from "@/types/show";
+import { useShowPurchase } from "@/hooks/useShowPurchase";
+import ShowCard from "@/components/viewer/ShowCard";
+import PurchaseModal from "@/components/viewer/PurchaseModal";
+import CoinDialog from "@/components/viewer/CoinDialog";
 
 interface Show {
   id: string;
