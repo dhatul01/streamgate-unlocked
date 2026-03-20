@@ -110,7 +110,7 @@ const CoinOrderManager = () => {
                     {order.status.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">{formatPrice(order.price)}</p>
+                <p className="text-xs text-muted-foreground">{formatPrice(order.price)}{order.phone ? ` · 📞 ${order.phone}` : ""}</p>
                 <p className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleString("id-ID")}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
