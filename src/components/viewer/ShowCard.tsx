@@ -48,13 +48,16 @@ function parseShowDateTime(dateStr: string, timeStr: string): number | null {
 
 function useCountdown(dateStr: string, timeStr: string) {
   const [text, setText] = useState("");
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const target = parseShowDateTime(dateStr, timeStr);
     if (!target) return;
 
     const update = () => {
-      const diff = target - Date.now();
+      const current = Date.now();
+      setNow(current);
+      const diff = target - current;
       if (diff <= 0) { setText("LIVE!"); return; }
       const d = Math.floor(diff / 86400000);
       const h = Math.floor((diff % 86400000) / 3600000);
@@ -71,7 +74,7 @@ function useCountdown(dateStr: string, timeStr: string) {
     return () => clearInterval(id);
   }, [dateStr, timeStr]);
 
-  return text;
+  return { text, now };
 }
 
 const ShowCard = ({
