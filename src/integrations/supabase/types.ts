@@ -923,6 +923,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_purchased_show_passwords: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
