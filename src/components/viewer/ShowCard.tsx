@@ -82,7 +82,7 @@ const ShowCard = ({
   onBuy, onCoinBuy, showCountdown = true,
 }: ShowCardProps) => {
   const { toast } = useToast();
-  const countdown = useCountdown(show.schedule_date, show.schedule_time);
+  const { text: countdown, now: currentTime } = useCountdown(show.schedule_date, show.schedule_time);
 
   const pw = accessPassword || replayPassword;
   const hasPw = pw && pw !== "__purchased__";
