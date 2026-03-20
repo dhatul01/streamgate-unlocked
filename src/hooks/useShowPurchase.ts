@@ -44,14 +44,18 @@ export function useShowPurchase() {
       setCoinBalance(balRes.data?.balance || 0);
       setCoinUsername(profileRes.data?.username || user.user_metadata?.username || "");
 
-      // Load stored tokens
       try {
         const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${user.id}`) || "{}");
+        const { data: tokenData } = await supabase.rpc("get_my_active_show_tokens");
+        const backendTokens = tokenData && typeof tokenData === "object" ? (tokenData as Record<string, string>) : {};
+        const mergedTokens = { ...stored, ...backendTokens };
         const validMap: Record<string, string> = {};
-        for (const [showId, tokenCode] of Object.entries(stored)) {
+
+        for (const [showId, tokenCode] of Object.entries(mergedTokens)) {
           const { data } = await supabase.rpc("validate_token", { _code: tokenCode as string });
           if ((data as any)?.valid) validMap[showId] = tokenCode as string;
         }
+
         localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
         setRedeemedTokens(validMap);
       } catch {}

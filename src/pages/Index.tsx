@@ -180,33 +180,34 @@ const Index = () => {
         setCoinBalance(balRes.data?.balance || 0);
         setCoinUsername(profileRes.data?.username || user.user_metadata?.username || "");
 
-        // Load redeemed tokens from localStorage and validate them
         try {
           const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${user.id}`) || "{}");
+          const { data: tokenData } = await supabase.rpc("get_my_active_show_tokens");
+          const backendTokens = tokenData && typeof tokenData === "object" ? (tokenData as Record<string, string>) : {};
+          const mergedTokens = { ...stored, ...backendTokens };
           const validMap: Record<string, string> = {};
-          for (const [showId, tokenCode] of Object.entries(stored)) {
+
+          for (const [showId, tokenCode] of Object.entries(mergedTokens)) {
             const { data } = await supabase.rpc("validate_token", { _code: tokenCode as string });
             if ((data as any)?.valid) {
               validMap[showId] = tokenCode as string;
             }
           }
+
           localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
           setRedeemedTokens(validMap);
         } catch {}
 
-        // Load replay passwords from localStorage
         try {
           const storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${user.id}`) || "{}");
           setReplayPasswords(storedPw);
         } catch {}
 
-        // Load access passwords from localStorage, then override with real passwords from DB
         try {
           const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${user.id}`) || "{}");
           setAccessPasswords(storedAp);
         } catch {}
 
-        // Fetch real access passwords from DB for purchased shows
         try {
           const { data: pwData } = await supabase.rpc("get_purchased_show_passwords");
           if (pwData && typeof pwData === "object") {
