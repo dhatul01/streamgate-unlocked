@@ -86,13 +86,18 @@ serve(async () => {
     );
 
     for (const msg of adminMessages) {
-      const text = (msg.text as string).trim().toUpperCase();
+      const rawText = (msg.text as string).trim();
+      const text = rawText.toUpperCase();
       const yaMatch = text.match(/^YA\s+(.+)$/);
       const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
       const approveMatch = text.match(/^APPROVE\s+(.+)$/);
       const rejectMatch = text.match(/^REJECT\s+(.+)$/);
+      const isStatus = rawText === '/status' || text === '/STATUS';
 
-      if (yaMatch) {
+      if (isStatus) {
+        await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
+        totalProcessed++;
+      } else if (yaMatch) {
         await processCoinOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, yaMatch[1].trim(), 'approve');
         totalProcessed++;
       } else if (tidakMatch) {
@@ -116,6 +121,61 @@ serve(async () => {
 
   return new Response(JSON.stringify({ ok: true, processed: totalProcessed, finalOffset: currentOffset }));
 });
+
+async function handleStatusCommand(supabase: any, botToken: string, chatId: string) {
+  try {
+    // Fetch recent pending coin orders
+    const { data: coinOrders } = await supabase
+      .from('coin_orders')
+      .select('id, coin_amount, price, created_at, user_id')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Fetch recent pending subscription orders
+    const { data: subOrders } = await supabase
+      .from('subscription_orders')
+      .select('id, show_id, phone, email, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    let message = '📊 *STATUS ORDER TERBARU*\n\n';
+
+    // Coin orders section
+    if (coinOrders && coinOrders.length > 0) {
+      message += `🪙 *Order Koin Pending (${coinOrders.length}):*\n`;
+      for (const o of coinOrders) {
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', o.user_id).single();
+        const time = new Date(o.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+        message += `• ${escapeMarkdown(profile?.username || 'User')} \\- ${o.coin_amount} koin \\(Rp ${escapeMarkdown(Number(o.price).toLocaleString('id-ID'))}\\)\n  ID: \`${o.id}\` \\| ${escapeMarkdown(time)}\n`;
+      }
+    } else {
+      message += '🪙 *Order Koin:* Tidak ada order pending\n';
+    }
+
+    message += '\n';
+
+    // Subscription orders section
+    if (subOrders && subOrders.length > 0) {
+      message += `🎬 *Subscription Pending (${subOrders.length}):*\n`;
+      for (const o of subOrders) {
+        const { data: show } = await supabase.from('shows').select('title').eq('id', o.show_id).single();
+        const time = new Date(o.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+        message += `• ${escapeMarkdown(show?.title || 'Unknown')} \\- ${escapeMarkdown(o.email)}\n  ID: \`${o.id}\` \\| ${escapeMarkdown(time)}\n`;
+      }
+    } else {
+      message += '🎬 *Subscription:* Tidak ada order pending\n';
+    }
+
+    message += '\n📌 *Commands:*\n`YA <id>` / `TIDAK <id>` \\- Coin order\n`APPROVE <id>` / `REJECT <id>` \\- Subscription';
+
+    await sendTelegramMessage(botToken, chatId, message);
+  } catch (e) {
+    console.error('handleStatusCommand error:', e);
+    await sendTelegramMessage(botToken, chatId, '⚠️ Error mengambil data status');
+  }
+}
 
 async function processCoinOrder(
   supabase: any,

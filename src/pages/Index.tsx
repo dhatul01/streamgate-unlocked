@@ -626,13 +626,13 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
                     {show.coin_price > 0 && (
                       <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
                         <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
                         <span className="font-semibold">{show.coin_price} Koin</span>
                       </div>
                     )}
+                    <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold text-muted-foreground tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
                     {show.schedule_date && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
                         <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_date}
@@ -649,22 +649,25 @@ const Index = () => {
                         <span className="line-clamp-2">{show.lineup}</span>
                       </div>
                     )}
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => handleBuy(show)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 tv:text-lg tv:rounded-2xl"
-                      >
-                        <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Beli Tiket
-                      </button>
+                    <div className="mt-2 flex flex-col gap-2">
                       {show.coin_price > 0 && (
                         <button
                           onClick={() => handleCoinBuy(show)}
-                          className="flex items-center justify-center gap-1.5 rounded-xl bg-warning/10 px-4 py-3 tv:py-4 font-semibold text-warning transition-all hover:bg-warning/20 tv:text-lg tv:rounded-2xl"
-                          title={`Beli dengan ${show.coin_price} koin`}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-warning py-3 tv:py-4 font-semibold text-warning-foreground transition-all hover:bg-warning/90 hover:shadow-lg hover:shadow-warning/25 tv:text-lg tv:rounded-2xl"
                         >
-                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price}
+                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> Beli dengan {show.coin_price} Koin
                         </button>
                       )}
+                      <button
+                        onClick={() => handleBuy(show)}
+                        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-semibold transition-all tv:text-lg tv:rounded-2xl ${
+                          show.coin_price > 0
+                            ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
+                        }`}
+                      >
+                        <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price > 0 ? "Beli via QRIS" : "Beli Tiket"}
+                      </button>
                     </div>
                   </div>
                 </motion.div>
