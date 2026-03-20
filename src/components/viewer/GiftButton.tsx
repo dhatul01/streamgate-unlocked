@@ -38,8 +38,8 @@ const GiftButton = ({ isAuthenticated }: GiftButtonProps) => {
   }, []);
 
   const handleSend = async () => {
-    if (!isAuthenticated) {
-      toast({ title: "Login dulu", description: "Silakan login untuk mengirim gift", variant: "destructive" });
+    if (!isLoggedIn) {
+      toast({ title: "Login dulu", description: "Silakan login di halaman utama untuk mengirim gift. Koin Anda akan dipotong.", variant: "destructive" });
       return;
     }
     if (amount < selectedType.min) {
