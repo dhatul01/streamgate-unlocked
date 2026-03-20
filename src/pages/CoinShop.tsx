@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
-import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles, User } from "lucide-react";
+import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles, User, Lock, Play } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -26,7 +26,7 @@ const CoinShop = () => {
   const [buyerPhone, setBuyerPhone] = useState("");
   const [uploading, setUploading] = useState(false);
   const [redeemingShow, setRedeemingShow] = useState<string | null>(null);
-  const [redeemResult, setRedeemResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+  const [redeemResult, setRedeemResult] = useState<{ token_code: string; remaining_balance: number; replay_password?: string } | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,7 +54,14 @@ const CoinShop = () => {
     const balChannel = supabase
       .channel(`coinshop-balance-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
-        if (payload.new?.balance !== undefined) setBalance(payload.new.balance);
+        if (payload.new?.balance !== undefined) {
+          const oldBal = payload.old?.balance ?? 0;
+          const newBal = payload.new.balance;
+          setBalance(newBal);
+          if (newBal > oldBal) {
+            toast({ title: "💰 Koin Ditambahkan!", description: `+${newBal - oldBal} koin telah masuk ke akunmu. Saldo: ${newBal} koin` });
+          }
+        }
       })
       .subscribe();
 
@@ -152,7 +159,7 @@ const CoinShop = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       setRedeemingShow(null); return;
     }
-    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
     setBalance(result.remaining_balance);
     setRedeemingShow(null);
 
@@ -292,6 +299,13 @@ const CoinShop = () => {
           {redeemResult && (
             <div className="space-y-4 text-center">
               <div className="rounded-lg bg-secondary p-4"><p className="font-mono text-lg font-bold text-primary">{redeemResult.token_code}</p></div>
+              {redeemResult.replay_password && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                  <p className="font-mono text-lg font-bold text-warning">{redeemResult.replay_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2" variant="outline" onClick={() => copyToken(redeemResult.token_code)}><Copy className="h-4 w-4" /> Salin Link</Button>
                 <Button className="flex-1 gap-2" onClick={() => navigate(`/live?t=${redeemResult.token_code}`)}><Sparkles className="h-4 w-4" /> Tonton Live</Button>

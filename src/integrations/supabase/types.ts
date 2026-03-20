@@ -763,6 +763,7 @@ export type Database = {
           id: string
           is_public: boolean
           max_devices: number
+          replay_password: string | null
           status: string
         }
         Insert: {
@@ -773,6 +774,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           max_devices?: number
+          replay_password?: string | null
           status?: string
         }
         Update: {
@@ -783,6 +785,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           max_devices?: number
+          replay_password?: string | null
           status?: string
         }
         Relationships: []

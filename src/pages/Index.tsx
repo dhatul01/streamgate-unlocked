@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -97,9 +97,12 @@ const Index = () => {
   const [coinUsername, setCoinUsername] = useState("");
   const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
   const [coinRedeeming, setCoinRedeeming] = useState(false);
-  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
-  // Map of show_id -> token_code for shows redeemed by this user
+  const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number; replay_password?: string } | null>(null);
+  // Map of show_id -> { token_code, replay_password } for shows redeemed by this user
   const [redeemedTokens, setRedeemedTokens] = useState<Record<string, string>>({});
+  const [replayPasswords, setReplayPasswords] = useState<Record<string, string>>({});
+  const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
+  const [replayCopied, setReplayCopied] = useState(false);
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
@@ -127,6 +130,22 @@ const Index = () => {
     if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
   };
 
+  // Helper: check if show is past 2 hours from schedule
+  const isShowPast2Hours = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      // Parse "DD Month YYYY" or similar date format + time like "15:00 WIB"
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      const twoHoursAfter = new Date(showDate.getTime() + 2 * 60 * 60 * 1000);
+      return new Date() > twoHoursAfter;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchData();
 
@@ -152,13 +171,35 @@ const Index = () => {
               validMap[showId] = tokenCode as string;
             }
           }
-          // Update localStorage with only valid tokens
           localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
           setRedeemedTokens(validMap);
         } catch {}
+
+        // Load replay passwords from localStorage
+        try {
+          const storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${user.id}`) || "{}");
+          setReplayPasswords(storedPw);
+        } catch {}
+
+        // Subscribe to balance changes for toast notification
+        const balCh = supabase
+          .channel(`idx-balance-${user.id}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
+            if (payload.new?.balance !== undefined) {
+              const oldBal = payload.old?.balance ?? 0;
+              const newBal = payload.new.balance;
+              setCoinBalance(newBal);
+              if (newBal > oldBal) {
+                toast({ title: "💰 Koin Ditambahkan!", description: `+${newBal - oldBal} koin telah masuk ke akunmu. Saldo: ${newBal} koin` });
+              }
+            }
+          })
+          .subscribe();
+
+        return () => { supabase.removeChannel(balCh); };
       }
     };
-    fetchCoinUser();
+    const cleanupBalance = fetchCoinUser();
 
     // Realtime for shows and orders
     const showCh = supabase.channel("idx-shows")
@@ -168,7 +209,11 @@ const Index = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
 
-    return () => { supabase.removeChannel(showCh); supabase.removeChannel(orderCh); };
+    return () => {
+      supabase.removeChannel(showCh);
+      supabase.removeChannel(orderCh);
+      cleanupBalance.then((cleanup) => cleanup?.());
+    };
   }, []);
 
   const handleBuy = (show: Show) => {
@@ -198,15 +243,22 @@ const Index = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
     setCoinBalance(result.remaining_balance);
 
-    // Save redeemed token to localStorage for persistent "Tonton Live" on show card
+    // Save redeemed token + replay password to localStorage
     if (coinUser) {
       const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
       stored[coinShowTarget.id] = result.token_code;
       localStorage.setItem(`redeemed_tokens_${coinUser.id}`, JSON.stringify(stored));
       setRedeemedTokens((prev) => ({ ...prev, [coinShowTarget.id]: result.token_code }));
+
+      if (result.replay_password) {
+        const storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${coinUser.id}`) || "{}");
+        storedPw[coinShowTarget.id] = result.replay_password;
+        localStorage.setItem(`replay_passwords_${coinUser.id}`, JSON.stringify(storedPw));
+        setReplayPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.replay_password }));
+      }
     }
   };
 
@@ -710,23 +762,51 @@ const Index = () => {
                     )}
                     <div className="mt-2 flex flex-col gap-2">
                       {redeemedTokens[show.id] ? (
-                        <>
-                          <a
-                            href={`/live?t=${redeemedTokens[show.id]}`}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
-                          >
-                            <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
-                          </a>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
-                              toast({ title: "Link disalin!" });
-                            }}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
-                          >
-                            <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
-                          </button>
-                        </>
+                        isShowPast2Hours(show) ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                const pw = replayPasswords[show.id];
+                                if (pw) {
+                                  setReplayModal({ showId: show.id, password: pw });
+                                  setReplayCopied(false);
+                                } else {
+                                  window.open("https://replaytime.lovable.app", "_blank");
+                                }
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 tv:py-4 font-semibold text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/25 tv:text-lg tv:rounded-2xl"
+                            >
+                              <Play className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Replay
+                            </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
+                                toast({ title: "Link disalin!" });
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                            >
+                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <a
+                              href={`/live?t=${redeemedTokens[show.id]}`}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
+                            >
+                              <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
+                            </a>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
+                                toast({ title: "Link disalin!" });
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                            >
+                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                            </button>
+                          </>
+                        )
                       ) : (
                         <>
                           {show.coin_price > 0 && (
@@ -942,6 +1022,13 @@ const Index = () => {
               <div className="rounded-lg bg-secondary p-4">
                 <p className="font-mono text-lg font-bold text-primary">{coinResult.token_code}</p>
               </div>
+              {coinResult.replay_password && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                  <p className="font-mono text-lg font-bold text-warning">{coinResult.replay_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   className="flex-1 gap-2"
@@ -961,6 +1048,47 @@ const Index = () => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">Sisa saldo: <span className="font-bold text-warning">{coinResult.remaining_balance} koin</span></p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Replay Password Modal - must copy before navigating */}
+      <Dialog open={!!replayModal} onOpenChange={() => setReplayModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-warning" /> Sandi Replay</DialogTitle>
+            <DialogDescription>Salin sandi ini sebelum menuju halaman replay</DialogDescription>
+          </DialogHeader>
+          {replayModal && (
+            <div className="space-y-4 text-center">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <p className="font-mono text-2xl font-bold text-warning">{replayModal.password}</p>
+              </div>
+              <Button
+                className="w-full gap-2"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(replayModal.password);
+                  setReplayCopied(true);
+                  toast({ title: "Sandi disalin!" });
+                }}
+              >
+                <Copy className="h-4 w-4" /> {replayCopied ? "✓ Sandi Disalin" : "Salin Sandi"}
+              </Button>
+              <Button
+                className="w-full gap-2"
+                disabled={!replayCopied}
+                onClick={() => {
+                  window.open("https://replaytime.lovable.app", "_blank");
+                  setReplayModal(null);
+                }}
+              >
+                <Play className="h-4 w-4" /> Tonton Replay
+              </Button>
+              {!replayCopied && (
+                <p className="text-xs text-destructive">⚠️ Salin sandi terlebih dahulu sebelum menuju replay</p>
+              )}
             </div>
           )}
         </DialogContent>
