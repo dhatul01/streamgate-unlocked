@@ -26,6 +26,7 @@ interface Show {
   category: string;
   category_member: string;
   coin_price: number;
+  replay_coin_price: number;
   access_password: string;
 }
 
