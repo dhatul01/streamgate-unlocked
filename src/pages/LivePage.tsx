@@ -600,8 +600,13 @@ const LivePage = () => {
 
   const isLive = stream?.is_live || false;
 
+  const isAuthenticated = !!tokenData;
+
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
+      <Suspense fallback={null}>
+        <ConnectionStatus />
+      </Suspense>
       <Suspense fallback={null}>
         <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
       </Suspense>
