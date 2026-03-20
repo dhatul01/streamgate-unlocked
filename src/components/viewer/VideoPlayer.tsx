@@ -260,7 +260,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       // Decrypt server-encrypted URL, then extract video ID at runtime only
       const _decrypted = decryptUrl(playlist.url);
-      const _raw = extractYTId(_decrypted);
+      const _raw = (() => {
+        const match = _decrypted.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : _decrypted;
+      })();
       const _enc = obfuscate(_raw);
       const videoId = deobfuscate(_enc);
 
@@ -269,7 +272,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           width: "100%",
           height: "100%",
           videoId,
-          host: "https://www.youtube-nocookie.com",
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
             mute: 1, // Required for autoplay in all browsers
@@ -297,15 +299,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 }
               } catch {}
 
-              // Hide iframe src to prevent source inspection
+              // Protect iframe: remove title attribute and sandbox src visibility
               try {
                 const iframe = container.querySelector("iframe");
                 if (iframe) {
-                  Object.defineProperty(iframe, 'src', {
-                    get: () => '',
-                    set: function(v) { this.setAttribute('src', v); },
-                    configurable: true,
-                  });
+                  iframe.removeAttribute("title");
+                  iframe.setAttribute("referrerpolicy", "no-referrer");
                 }
               } catch {}
 
@@ -363,8 +362,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const youtubeEmbedUrl = useMemo(() => {
     if (playlist.type !== "youtube") return "";
-    const videoId = deobfuscate(obfuscate(extractYTId(playlist.url)));
-    return `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
+    const videoId = extractYTId(playlist.url);
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
   }, [playlist.type, playlist.url]);
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
