@@ -762,23 +762,51 @@ const Index = () => {
                     )}
                     <div className="mt-2 flex flex-col gap-2">
                       {redeemedTokens[show.id] ? (
-                        <>
-                          <a
-                            href={`/live?t=${redeemedTokens[show.id]}`}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
-                          >
-                            <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
-                          </a>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
-                              toast({ title: "Link disalin!" });
-                            }}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
-                          >
-                            <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
-                          </button>
-                        </>
+                        isShowPast2Hours(show) ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                const pw = replayPasswords[show.id];
+                                if (pw) {
+                                  setReplayModal({ showId: show.id, password: pw });
+                                  setReplayCopied(false);
+                                } else {
+                                  window.open("https://replaytime.lovable.app", "_blank");
+                                }
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 tv:py-4 font-semibold text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/25 tv:text-lg tv:rounded-2xl"
+                            >
+                              <Play className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Replay
+                            </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
+                                toast({ title: "Link disalin!" });
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                            >
+                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <a
+                              href={`/live?t=${redeemedTokens[show.id]}`}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
+                            >
+                              <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
+                            </a>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
+                                toast({ title: "Link disalin!" });
+                              }}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                            >
+                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                            </button>
+                          </>
+                        )
                       ) : (
                         <>
                           {show.coin_price > 0 && (
