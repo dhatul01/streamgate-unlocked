@@ -401,6 +401,94 @@ async function processSubscriptionOrder(
   }
 }
 
+// ─── Password Reset Processing ───
+
+async function processPasswordReset(
+  supabase: any, botToken: string, chatId: string,
+  shortId: string, action: 'approve' | 'reject'
+) {
+  try {
+    const { data: request } = await supabase
+      .from('password_reset_requests')
+      .select('id, user_id, identifier, phone, short_id')
+      .eq('short_id', shortId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (!request) {
+      await sendTelegramMessage(botToken, chatId,
+        `⚠️ Reset request \`${escapeMarkdown(shortId)}\` tidak ditemukan atau sudah diproses\\.`);
+      return;
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', request.user_id).single();
+    const username = profile?.username || 'User';
+
+    if (action === 'approve') {
+      // Generate random password
+      const newPassword = 'RT' + Math.random().toString(36).substring(2, 10);
+
+      // Update user password via admin API
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+      const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+      const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${request.user_id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'apikey': SERVICE_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      if (!updateRes.ok) {
+        const err = await updateRes.text();
+        console.error('Failed to update password:', err);
+        await sendTelegramMessage(botToken, chatId,
+          `⚠️ Gagal reset password untuk \`${escapeMarkdown(shortId)}\`: ${escapeMarkdown(err)}`);
+        return;
+      }
+
+      // Update request status
+      await supabase.from('password_reset_requests')
+        .update({ status: 'approved', new_password: newPassword, processed_at: new Date().toISOString() })
+        .eq('id', request.id);
+
+      // Send new password via WhatsApp
+      if (request.phone) {
+        const waMsg = `🔑 Password kamu telah direset oleh admin.\n\nPassword baru: *${newPassword}*\n\nSegera login dan ganti password kamu.\n\nhttps://realstream48.lovable.app/auth`;
+        await sendFonnteWhatsApp(request.phone, waMsg);
+      }
+
+      await supabase.from('admin_notifications').insert({
+        title: '🔑 Password Reset Disetujui',
+        message: `Reset password untuk ${username} (${request.identifier}) telah disetujui.`,
+        type: 'password_reset',
+      });
+
+      await sendTelegramMessage(botToken, chatId,
+        `✅ Password \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} berhasil direset\\!\n🔑 Password baru: \`${escapeMarkdown(newPassword)}\`${request.phone ? '\n📱 Dikirim via WhatsApp' : ''}`);
+    } else {
+      await supabase.from('password_reset_requests')
+        .update({ status: 'rejected', processed_at: new Date().toISOString() })
+        .eq('id', request.id);
+
+      if (request.phone) {
+        const waMsg = `❌ Maaf, permintaan reset password kamu tidak disetujui.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+        await sendFonnteWhatsApp(request.phone, waMsg);
+      }
+
+      await sendTelegramMessage(botToken, chatId,
+        `❌ Reset password \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} ditolak\\.`);
+    }
+  } catch (e) {
+    console.error('processPasswordReset error:', e);
+    await sendTelegramMessage(botToken, chatId,
+      `⚠️ Error memproses reset password: ${e instanceof Error ? e.message : 'Unknown error'}`);
+  }
+}
+
 // ─── Helpers ───
 
 function escapeMarkdown(text: string): string {
