@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.show_reminders_sent;
