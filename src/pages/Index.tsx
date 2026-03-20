@@ -417,6 +417,12 @@ const Index = () => {
   const subscriptionShows = shows.filter((s) => s.is_subscription);
 
   const menuItems = [
+    {
+      icon: <Film className="h-5 w-5 tv:h-7 tv:w-7 text-accent" />,
+      label: "Replay Show",
+      description: "Tonton ulang show yang sudah berlalu",
+      action: () => { window.location.href = "/replay"; },
+    },
     ...(settings.whatsapp_channel ? [{
       icon: <Radio className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Saluran WhatsApp",
@@ -440,12 +446,6 @@ const Index = () => {
       label: "Coin Shop",
       description: "Beli koin untuk akses nonton show",
       action: () => { window.location.href = "/coins"; },
-    },
-    {
-      icon: <Film className="h-5 w-5 tv:h-7 tv:w-7 text-accent" />,
-      label: "Replay Show",
-      description: "Tonton ulang show yang sudah berlalu",
-      action: () => { window.location.href = "/replay"; },
     },
     {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
