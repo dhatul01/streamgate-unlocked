@@ -74,18 +74,34 @@ const CoinShop = () => {
     formData.append("file", file);
     formData.append("type", "coin");
 
+    console.log("Uploading payment proof for coin order...");
     const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
-    if (error || !data?.path) { toast({ title: "Upload gagal", variant: "destructive" }); setUploading(false); return; }
+    console.log("Upload result:", { data, error });
+    if (error || !data?.path) { 
+      console.error("Upload failed:", error, data);
+      toast({ title: "Upload gagal", description: error?.message || "Coba lagi", variant: "destructive" }); 
+      setUploading(false); 
+      return; 
+    }
 
     setUploading(false);
     setPurchaseStep("done");
 
-    const { data: orderData } = await (supabase.from as any)("coin_orders").insert({
+    console.log("Inserting coin order...");
+    const { data: orderData, error: insertError } = await supabase.from("coin_orders").insert({
       user_id: user.id, package_id: selectedPkg!.id,
       coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
       payment_proof_url: data.path, status: "pending",
       phone: buyerPhone.trim(),
     }).select("id").single();
+    console.log("Insert result:", { orderData, insertError });
+    
+    if (insertError) {
+      console.error("Insert coin order failed:", insertError);
+      toast({ title: "Order gagal disimpan", description: insertError.message, variant: "destructive" });
+      return;
+    }
+    
     toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
 
     // Send WhatsApp notification to admin
