@@ -9,8 +9,6 @@ const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
-const GiftOverlay = lazy(() => import("@/components/viewer/GiftOverlay"));
-const GiftButton = lazy(() => import("@/components/viewer/GiftButton"));
 const LivePoll = lazy(() => import("@/components/viewer/LivePoll"));
 const PipButton = lazy(() => import("@/components/viewer/PipButton"));
 
@@ -33,8 +31,6 @@ const LivePage = () => {
   const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
-  const [coinBalance, setCoinBalance] = useState<number>(0);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
@@ -43,32 +39,23 @@ const LivePage = () => {
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
-  // Auto-detect authenticated user and set their profile username + coin balance
+  // Auto-detect authenticated user and set their profile username
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setLoggedInUser(user);
-        const [{ data: profile }, { data: balanceData }] = await Promise.all([
-          supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
-          supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
-        ]);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
         if (profile?.username) {
           setUsername(profile.username);
           localStorage.setItem("rt48_username", profile.username);
           setShowUsernameModal(false);
+          setAuthChecked(true);
+          return;
         }
-        setCoinBalance(balanceData?.balance || 0);
-        setAuthChecked(true);
-
-        // Subscribe to coin balance changes
-        const balanceChannel = supabase
-          .channel('live-coin-balance')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'coin_balances', filter: `user_id=eq.${user.id}` },
-            (payload: any) => { if (payload.new?.balance !== undefined) setCoinBalance(payload.new.balance); }
-          ).subscribe();
-
-        return () => { supabase.removeChannel(balanceChannel); };
       }
       // Not authenticated or no username - show modal if no stored username
       if (!localStorage.getItem("rt48_username")) {
@@ -664,25 +651,6 @@ const LivePage = () => {
             </h1>
             <p className="text-xs text-muted-foreground tv:text-base truncate">{stream?.description}</p>
           </div>
-          {/* User info */}
-          {loggedInUser ? (
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-1 tv:px-4 tv:py-2">
-                <span className="text-xs tv:text-sm">🪙</span>
-                <span className="text-xs font-bold text-warning tv:text-sm">{coinBalance}</span>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 tv:px-4 tv:py-2">
-                <span className="text-xs font-medium text-foreground tv:text-sm truncate max-w-[80px]">{username}</span>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate(`/auth?redirect=/live?t=${encodeURIComponent(tokenCode)}`)}
-              className="shrink-0 rounded-full bg-primary px-3 py-1.5 tv:px-5 tv:py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-sm"
-            >
-              Login
-            </button>
-          )}
           {isLive ? (
             <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base shrink-0">
               <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
@@ -697,22 +665,17 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist && signedStreamUrl ? (
-            <>
-              <VideoPlayer
-                key={playerKey}
-                ref={playerRef}
-                playlist={{
-                  ...activePlaylist,
-                  url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
-                }}
-                autoPlay
-                watermarkUrl={watermarkUrl}
-                tokenCode={tokenData?.code}
-              />
-              <Suspense fallback={null}>
-                <GiftOverlay />
-              </Suspense>
-            </>
+            <VideoPlayer
+              key={playerKey}
+              ref={playerRef}
+              playlist={{
+                ...activePlaylist,
+                url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
+              }}
+              autoPlay
+              watermarkUrl={watermarkUrl}
+              tokenCode={tokenData?.code}
+            />
           ) : isLive && activePlaylist && signedUrlLoading ? (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <div className="flex flex-col items-center gap-3 tv:gap-5">
@@ -751,12 +714,9 @@ const LivePage = () => {
           )}
         </div>
 
-        {/* Gift & PiP buttons below player when live */}
+        {/* PiP button below player when live */}
         {isLive && (
           <div className="flex items-center gap-2 border-t border-border px-4 py-2 tv:px-8 tv:py-3">
-            <Suspense fallback={null}>
-              <GiftButton isAuthenticated={!!tokenData} />
-            </Suspense>
             <Suspense fallback={null}>
               <PipButton />
             </Suspense>
