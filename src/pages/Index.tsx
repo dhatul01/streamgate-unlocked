@@ -846,20 +846,29 @@ const Index = () => {
                       )}
                       {redeemedTokens[show.id] ? (
                         isShowReplayMode(show) ? (
-                          <>
+                          <div className="space-y-2">
+                            {replayPasswords[show.id] && (
+                              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
+                                <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                                <p className="font-mono text-lg font-bold text-warning">{replayPasswords[show.id]}</p>
+                              </div>
+                            )}
                             <button
                               onClick={() => {
                                 const pw = replayPasswords[show.id];
                                 if (pw) {
-                                  setReplayModal({ showId: show.id, password: pw });
-                                  setReplayCopied(false);
+                                  navigator.clipboard.writeText(pw);
+                                  toast({ title: "Sandi disalin! Membuka halaman replay..." });
+                                  setTimeout(() => {
+                                    window.open("https://replaytime.lovable.app", "_blank");
+                                  }, 500);
                                 } else {
                                   window.open("https://replaytime.lovable.app", "_blank");
                                 }
                               }}
                               className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 tv:py-4 font-semibold text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/25 tv:text-lg tv:rounded-2xl"
                             >
-                              <Play className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Replay
+                              <Copy className="h-4 w-4 tv:h-6 tv:w-6" /> {replayPasswords[show.id] ? "Salin Sandi & Tonton Replay" : "Tonton Replay"}
                             </button>
                             <button
                               onClick={() => {
@@ -870,7 +879,7 @@ const Index = () => {
                             >
                               <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
                             </button>
-                          </>
+                          </div>
                         ) : (
                           <>
                             <a
