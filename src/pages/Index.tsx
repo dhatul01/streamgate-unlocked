@@ -406,6 +406,12 @@ const Index = () => {
       action: () => { window.location.href = "/coins"; },
     },
     {
+      icon: <Film className="h-5 w-5 tv:h-7 tv:w-7 text-accent" />,
+      label: "Replay Show",
+      description: "Tonton ulang show yang sudah berlalu",
+      action: () => { window.location.href = "/replay"; },
+    },
+    {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
       label: "Data Show",
       description: `${regularShows.length} show tersedia`,
