@@ -56,8 +56,12 @@ const LivePage = () => {
           setAuthChecked(true);
           return;
         }
+        // Authenticated but no username in profile - show modal
+        setShowUsernameModal(true);
+        setAuthChecked(true);
+        return;
       }
-      // Not authenticated or no username - show modal if no stored username
+      // Not authenticated - show modal if no stored username
       if (!localStorage.getItem("rt48_username")) {
         setShowUsernameModal(true);
       }
@@ -435,10 +439,15 @@ const LivePage = () => {
     setActivePlaylist(playlist);
   };
 
-  const handleUsernameSet = (name: string) => {
+  const handleUsernameSet = async (name: string) => {
     setUsername(name);
     localStorage.setItem("rt48_username", name);
     setShowUsernameModal(false);
+    // Save username to profile if authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("profiles").upsert({ id: user.id, username: name }, { onConflict: "id" });
+    }
   };
 
   if (loading) {
@@ -752,12 +761,10 @@ const LivePage = () => {
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
-        {/* Live Poll above chat */}
-        {isLive && (
-          <Suspense fallback={null}>
-            <LivePoll voterId={tokenData?.id || username} />
-          </Suspense>
-        )}
+        {/* Live Poll - always visible when poll is active */}
+        <Suspense fallback={null}>
+          <LivePoll voterId={tokenData?.id || username} />
+        </Suspense>
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">
             <p className="text-xs text-muted-foreground">Memuat chat...</p>
