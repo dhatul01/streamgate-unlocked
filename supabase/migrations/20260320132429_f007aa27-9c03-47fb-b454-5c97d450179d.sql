@@ -1,0 +1,2 @@
+ALTER TABLE public.tokens DROP CONSTRAINT tokens_duration_type_check;
+ALTER TABLE public.tokens ADD CONSTRAINT tokens_duration_type_check CHECK (duration_type IN ('daily', 'weekly', 'monthly', 'show'));
