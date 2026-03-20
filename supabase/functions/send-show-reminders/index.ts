@@ -6,6 +6,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const INDONESIAN_MONTHS: Record<string, number> = {
+  januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+  juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+};
+
+function parseShowDateTime(dateStr: string, timeStr: string): Date | null {
+  if (!dateStr || !timeStr) return null;
+  const cleanTime = timeStr.replace(/\s*WIB\s*/i, '').trim().replace(/\./g, ':');
+  const [hour, minute] = cleanTime.split(':').map(Number);
+
+  // Try ISO format (2026-03-20)
+  const parts = dateStr.split('-');
+  if (parts.length === 3 && !isNaN(Number(parts[0])) && parts[0].length === 4) {
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), hour || 0, minute || 0);
+  }
+
+  // Try Indonesian format (20 maret 2026)
+  const words = dateStr.toLowerCase().trim().split(/\s+/);
+  if (words.length === 3) {
+    const day = parseInt(words[0]);
+    const month = INDONESIAN_MONTHS[words[1]];
+    const year = parseInt(words[2]);
+    if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+      return new Date(year, month, day, hour || 0, minute || 0);
+    }
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
