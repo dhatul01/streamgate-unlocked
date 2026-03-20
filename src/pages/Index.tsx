@@ -127,6 +127,22 @@ const Index = () => {
     if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
   };
 
+  // Helper: check if show is past 2 hours from schedule
+  const isShowPast2Hours = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      // Parse "DD Month YYYY" or similar date format + time like "15:00 WIB"
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      const twoHoursAfter = new Date(showDate.getTime() + 2 * 60 * 60 * 1000);
+      return new Date() > twoHoursAfter;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchData();
 
@@ -152,13 +168,29 @@ const Index = () => {
               validMap[showId] = tokenCode as string;
             }
           }
-          // Update localStorage with only valid tokens
           localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
           setRedeemedTokens(validMap);
         } catch {}
+
+        // Subscribe to balance changes for toast notification
+        const balCh = supabase
+          .channel(`idx-balance-${user.id}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
+            if (payload.new?.balance !== undefined) {
+              const oldBal = payload.old?.balance ?? 0;
+              const newBal = payload.new.balance;
+              setCoinBalance(newBal);
+              if (newBal > oldBal) {
+                toast({ title: "💰 Koin Ditambahkan!", description: `+${newBal - oldBal} koin telah masuk ke akunmu. Saldo: ${newBal} koin` });
+              }
+            }
+          })
+          .subscribe();
+
+        return () => { supabase.removeChannel(balCh); };
       }
     };
-    fetchCoinUser();
+    const cleanupBalance = fetchCoinUser();
 
     // Realtime for shows and orders
     const showCh = supabase.channel("idx-shows")
@@ -168,7 +200,11 @@ const Index = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
 
-    return () => { supabase.removeChannel(showCh); supabase.removeChannel(orderCh); };
+    return () => {
+      supabase.removeChannel(showCh);
+      supabase.removeChannel(orderCh);
+      cleanupBalance.then((cleanup) => cleanup?.());
+    };
   }, []);
 
   const handleBuy = (show: Show) => {
