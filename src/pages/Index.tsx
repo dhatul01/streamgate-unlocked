@@ -806,7 +806,7 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    {isShowPast2Hours(show) && show.replay_coin_price > 0 ? (
+                    {isShowReplayMode(show) && show.replay_coin_price > 0 ? (
                       <div className="flex items-center gap-1.5 text-sm text-accent tv:text-base">
                         <Film className="h-4 w-4 tv:h-5 tv:w-5" />
                         <span className="font-semibold">Replay: {show.replay_coin_price} Koin</span>
