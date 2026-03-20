@@ -847,16 +847,16 @@ const Index = () => {
                       {redeemedTokens[show.id] ? (
                         isShowReplayMode(show) ? (
                           <div className="space-y-2">
-                            {replayPasswords[show.id] && (
+                            {(accessPasswords[show.id] || replayPasswords[show.id]) && (accessPasswords[show.id] || replayPasswords[show.id]) !== "__purchased__" && (
                               <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
-                                <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
-                                <p className="font-mono text-lg font-bold text-warning">{replayPasswords[show.id]}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay — salin sebelum menonton</p>
+                                <p className="font-mono text-lg font-bold text-warning">{accessPasswords[show.id] || replayPasswords[show.id]}</p>
                               </div>
                             )}
                             <button
                               onClick={() => {
-                                const pw = replayPasswords[show.id];
-                                if (pw) {
+                                const pw = accessPasswords[show.id] || replayPasswords[show.id];
+                                if (pw && pw !== "__purchased__") {
                                   navigator.clipboard.writeText(pw);
                                   toast({ title: "Sandi disalin! Membuka halaman replay..." });
                                   setTimeout(() => {
@@ -868,7 +868,7 @@ const Index = () => {
                               }}
                               className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 tv:py-4 font-semibold text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/25 tv:text-lg tv:rounded-2xl"
                             >
-                              <Copy className="h-4 w-4 tv:h-6 tv:w-6" /> {replayPasswords[show.id] ? "Salin Sandi & Tonton Replay" : "Tonton Replay"}
+                              <Copy className="h-4 w-4 tv:h-6 tv:w-6" /> {(accessPasswords[show.id] || replayPasswords[show.id]) && (accessPasswords[show.id] || replayPasswords[show.id]) !== "__purchased__" ? "Salin Sandi & Tonton Replay" : "Tonton Replay"}
                             </button>
                             <button
                               onClick={() => {
