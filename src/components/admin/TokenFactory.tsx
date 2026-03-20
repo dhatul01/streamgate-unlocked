@@ -27,13 +27,14 @@ const TokenFactory = () => {
   const [bulkCount, setBulkCount] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Record<DurationKey, Set<string>>>({
+  const [selected, setSelected] = useState<Record<TabKey, Set<string>>>({
     daily: new Set(),
     weekly: new Set(),
     monthly: new Set(),
+    coin: new Set(),
   });
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked" | "expired">("all");
-  const [activeTab, setActiveTab] = useState<DurationKey>("daily");
+  const [activeTab, setActiveTab] = useState<TabKey>("daily");
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
