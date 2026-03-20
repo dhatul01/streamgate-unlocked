@@ -9,7 +9,7 @@ const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
 
-type AnimationType = "none" | "snow" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
+type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
 import logo from "@/assets/logo.png";
 
