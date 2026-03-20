@@ -28,6 +28,10 @@ const ViewerAuth = () => {
   const redirectTo = searchParams.get("redirect");
   const { toast } = useToast();
 
+  useEffect(() => {
+    supabase.from("site_settings").select("value").eq("key", "whatsapp_number").single()
+      .then(({ data }) => { if (data?.value) setAdminWaNumber(data.value); });
+  }, []);
   const getRedirectPath = () => redirectTo || "/coins";
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
