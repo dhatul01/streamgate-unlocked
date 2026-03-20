@@ -182,6 +182,12 @@ const Index = () => {
           setReplayPasswords(storedPw);
         } catch {}
 
+        // Load access passwords from localStorage
+        try {
+          const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${user.id}`) || "{}");
+          setAccessPasswords(storedAp);
+        } catch {}
+
         // Subscribe to balance changes for toast notification
         const balCh = supabase
           .channel(`idx-balance-${user.id}`)
