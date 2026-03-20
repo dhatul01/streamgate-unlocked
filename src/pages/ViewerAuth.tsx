@@ -41,11 +41,7 @@ const ViewerAuth = () => {
 
   const isFormValid = () => {
     if (mode === "forgot") {
-      return (
-        forgotIdentifier.trim().length >= 5 &&
-        forgotNewPassword.length >= 6 &&
-        forgotNewPassword === forgotConfirmPassword
-      );
+      return forgotIdentifier.trim().length >= 5;
     }
     if (mode === "signup" && !username.trim()) return false;
     if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
