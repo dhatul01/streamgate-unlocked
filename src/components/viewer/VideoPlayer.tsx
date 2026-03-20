@@ -16,6 +16,8 @@ interface VideoPlayerProps {
 export interface VideoPlayerHandle {
   play: () => void;
   pause: () => void;
+  seekTo?: (time: number) => void;
+  getCurrentTime?: () => number;
 }
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
