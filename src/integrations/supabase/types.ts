@@ -157,6 +157,7 @@ export type Database = {
           id: string
           package_id: string
           payment_proof_url: string
+          phone: string
           price: number
           status: string
           user_id: string
@@ -167,6 +168,7 @@ export type Database = {
           id?: string
           package_id: string
           payment_proof_url?: string
+          phone?: string
           price: number
           status?: string
           user_id: string
@@ -177,6 +179,7 @@ export type Database = {
           id?: string
           package_id?: string
           payment_proof_url?: string
+          phone?: string
           price?: number
           status?: string
           user_id?: string
