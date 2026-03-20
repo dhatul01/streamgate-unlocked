@@ -714,12 +714,9 @@ const LivePage = () => {
           )}
         </div>
 
-        {/* Gift & PiP buttons below player when live */}
+        {/* PiP button below player when live */}
         {isLive && (
           <div className="flex items-center gap-2 border-t border-border px-4 py-2 tv:px-8 tv:py-3">
-            <Suspense fallback={null}>
-              <GiftButton isAuthenticated={!!tokenData} />
-            </Suspense>
             <Suspense fallback={null}>
               <PipButton />
             </Suspense>
