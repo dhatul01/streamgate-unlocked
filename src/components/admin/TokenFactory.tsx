@@ -16,6 +16,7 @@ const DURATION_TABS = [
 ] as const;
 
 type DurationKey = "daily" | "weekly" | "monthly";
+type TabKey = DurationKey | "coin";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
