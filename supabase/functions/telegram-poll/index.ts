@@ -160,7 +160,7 @@ async function handleStatusCommand(supabase: any, botToken: string, chatId: stri
       message += '🎬 *Subscription:* Tidak ada order pending\n';
     }
 
-    message += '\n📌 *Commands:*\n`YA <id>` / `TIDAK <id>` \\- Coin order\n`APPROVE <id>` / `REJECT <id>` \\- Subscription';
+    message += '\n📌 *Commands:*\n`YA <id>` \\- Konfirmasi order\n`TIDAK <id>` \\- Tolak order\n`/status` \\- Cek order pending';
 
     await sendTelegramMessage(botToken, chatId, message);
   } catch (e) {
@@ -169,27 +169,51 @@ async function handleStatusCommand(supabase: any, botToken: string, chatId: stri
   }
 }
 
-async function processCoinOrder(
+async function processAnyOrder(
   supabase: any,
   botToken: string,
   chatId: string,
   orderId: string,
   action: 'approve' | 'reject'
 ) {
+  // Try coin_orders first
+  const { data: coinOrder } = await supabase
+    .from('coin_orders')
+    .select('id, user_id, coin_amount, status, package_id')
+    .eq('id', orderId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (coinOrder) {
+    await processCoinOrder(supabase, botToken, chatId, coinOrder, action);
+    return;
+  }
+
+  // Try subscription_orders
+  const { data: subOrder } = await supabase
+    .from('subscription_orders')
+    .select('id, show_id, phone, email, status')
+    .eq('id', orderId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (subOrder) {
+    await processSubscriptionOrder(supabase, botToken, chatId, subOrder, action);
+    return;
+  }
+
+  await sendTelegramMessage(botToken, chatId,
+    `❌ Order \`${orderId}\` tidak ditemukan atau sudah diproses\\.`);
+}
+
+async function processCoinOrder(
+  supabase: any,
+  botToken: string,
+  chatId: string,
+  order: any,
+  action: 'approve' | 'reject'
+) {
   try {
-    const { data: order, error: orderErr } = await supabase
-      .from('coin_orders')
-      .select('id, user_id, coin_amount, status, package_id')
-      .or(`id.eq.${orderId}`)
-      .eq('status', 'pending')
-      .single();
-
-    if (orderErr || !order) {
-      await sendTelegramMessage(botToken, chatId,
-        `❌ Order koin \`${orderId}\` tidak ditemukan atau sudah diproses.`);
-      return;
-    }
-
     if (action === 'approve') {
       await supabase.from('coin_orders').update({ status: 'confirmed' }).eq('id', order.id);
 
@@ -197,7 +221,7 @@ async function processCoinOrder(
         .from('coin_balances')
         .select('balance')
         .eq('user_id', order.user_id)
-        .single();
+        .maybeSingle();
 
       if (existingBalance) {
         await supabase
@@ -231,7 +255,7 @@ async function processCoinOrder(
       });
 
       await sendTelegramMessage(botToken, chatId,
-        `✅ Order koin \`${order.id}\` berhasil di\\-approve\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun user\\.`);
+        `✅ Order koin \`${order.id}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
     } else {
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
@@ -255,24 +279,10 @@ async function processSubscriptionOrder(
   supabase: any,
   botToken: string,
   chatId: string,
-  orderId: string,
+  order: any,
   action: 'approve' | 'reject'
 ) {
   try {
-    const { data: order, error: orderErr } = await supabase
-      .from('subscription_orders')
-      .select('id, show_id, phone, email, status')
-      .or(`id.eq.${orderId}`)
-      .eq('status', 'pending')
-      .single();
-
-    if (orderErr || !order) {
-      await sendTelegramMessage(botToken, chatId,
-        `❌ Order subscription \`${orderId}\` tidak ditemukan atau sudah diproses.`);
-      return;
-    }
-
-    // Get show title
     const { data: show } = await supabase
       .from('shows')
       .select('title')
@@ -291,7 +301,7 @@ async function processSubscriptionOrder(
       });
 
       await sendTelegramMessage(botToken, chatId,
-        `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil di\\-approve\\!`);
+        `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil dikonfirmasi\\!`);
     } else {
       await supabase.from('subscription_orders').update({ status: 'rejected' }).eq('id', order.id);
 
