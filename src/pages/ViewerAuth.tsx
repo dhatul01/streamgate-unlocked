@@ -82,7 +82,7 @@ const ViewerAuth = () => {
       if (error) {
         toast({ title: "Login gagal", description: "Nomor/email atau password salah.", variant: "destructive" });
       } else {
-        navigate("/coins");
+        navigate(getRedirectPath());
       }
     }
     setLoading(false);
