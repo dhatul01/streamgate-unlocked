@@ -94,6 +94,7 @@ const Index = () => {
   // Coin purchase state
   const [coinUser, setCoinUser] = useState<any>(null);
   const [coinBalance, setCoinBalance] = useState(0);
+  const [coinUsername, setCoinUsername] = useState("");
   const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
   const [coinRedeeming, setCoinRedeeming] = useState(false);
   const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
