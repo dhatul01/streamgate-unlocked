@@ -207,16 +207,23 @@ const ShowCard = ({
               <>
                 {(() => {
                   const showStart = parseShowDateTime(show.schedule_date, show.schedule_time);
-                  const accessOpens = showStart ? showStart - 30 * 60 * 1000 : null;
+                  const accessOpens = showStart ? showStart - 2 * 60 * 60 * 1000 : null;
                   const isTooEarly = accessOpens ? Date.now() < accessOpens : false;
 
-                  if (isTooEarly && accessOpens) {
+                  if (isTooEarly && showStart) {
                     return (
-                      <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center">
-                        <p className="text-xs text-muted-foreground mb-1">🎟️ Token aktif — akses dibuka 30 menit sebelum show</p>
-                        <p className="font-mono text-sm font-bold text-primary">
-                          {show.schedule_date} • {show.schedule_time}
-                        </p>
+                      <div className="space-y-2">
+                        <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center space-y-1">
+                          <p className="text-xs text-muted-foreground">⏳ Menunggu Live Streaming</p>
+                          <p className="font-mono text-lg font-bold text-primary">{countdown}</p>
+                          <p className="text-[10px] text-muted-foreground">Akses dibuka 2 jam sebelum show</p>
+                        </div>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedToken}`); toast({ title: "Link disalin!" }); }}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                        >
+                          <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                        </button>
                       </div>
                     );
                   }
