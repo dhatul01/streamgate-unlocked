@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,6 @@ import logo from "@/assets/logo.png";
 import { Coins, Mail, Lock, ArrowLeft, Phone, User, KeyRound, CheckCircle2, MessageCircle } from "lucide-react";
 
 type AuthMethod = "phone" | "email";
-
-const ADMIN_WA_NUMBER = "6285123456789"; // Replace with actual admin number
 
 const ViewerAuth = () => {
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
