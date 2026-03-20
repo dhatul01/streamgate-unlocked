@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
+import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 
 interface CoinPackage { id: string; name: string; coin_amount: number; price: number; qris_image_url: string | null; }
 interface Show { id: string; title: string; coin_price: number; schedule_date: string; schedule_time: string; background_image_url: string | null; is_active: boolean; }
@@ -186,6 +187,7 @@ const CoinShop = () => {
       <SharedNavbar activePage="coins" />
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        <PasswordResetBanner />
         <div className="mb-6 flex gap-2">
           {([{ key: "buy" as const, label: "Beli Koin", icon: Coins }, { key: "redeem" as const, label: "Tukar Koin", icon: Ticket }, { key: "history" as const, label: "Riwayat", icon: Sparkles }]).map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all ${tab === t.key ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>

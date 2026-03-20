@@ -21,7 +21,7 @@ import { useShowPurchase } from "@/hooks/useShowPurchase";
 import ShowCard from "@/components/viewer/ShowCard";
 import PurchaseModal from "@/components/viewer/PurchaseModal";
 import { SHOW_CATEGORIES } from "@/types/show";
-
+import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 
 
 
@@ -520,6 +520,11 @@ const Index = () => {
           </div>
         </div>
       </nav>
+
+      {/* Password Reset Notification */}
+      <div className="relative z-30 mx-auto max-w-6xl px-4 pt-20">
+        <PasswordResetBanner />
+      </div>
 
       {/* Hero Section */}
       <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden pt-16 tv:pt-24">
