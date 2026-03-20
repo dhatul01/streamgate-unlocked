@@ -37,7 +37,7 @@ const CoinShop = () => {
       setUser(user);
 
       // Get username from profiles
-      const { data: profile } = await (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
       setUsername(profile?.username || user.user_metadata?.username || "User");
 
       await fetchData(user.id);
