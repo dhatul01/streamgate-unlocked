@@ -84,9 +84,9 @@ const LivePage = () => {
 
   const playerKey = useMemo(() => {
     if (!stream?.is_live || !activePlaylist) return "offline";
-    // Use signedStreamUrl in key so player reloads when URL changes
-    return `${stream.id}-${stream.updated_at}-${activePlaylist.id}-${activePlaylist.type}-${signedStreamUrl || activePlaylist.url}`;
-  }, [stream?.id, stream?.is_live, stream?.updated_at, activePlaylist, signedStreamUrl]);
+    // Stable key: only change when stream or playlist identity changes, NOT on signed URL refresh
+    return `${stream.id}-${activePlaylist.id}-${activePlaylist.type}`;
+  }, [stream?.id, stream?.is_live, activePlaylist?.id, activePlaylist?.type]);
 
   // Validate token via secure RPC
   useEffect(() => {

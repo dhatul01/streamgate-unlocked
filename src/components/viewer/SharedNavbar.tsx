@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
-import { Menu, User, Coins, Crown, Radio, CreditCard, Ticket, Home } from "lucide-react";
+import { Menu, User, Coins, Crown, Radio, CreditCard, Ticket, Home, Play } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 
 interface SharedNavbarProps {
-  activePage?: "home" | "coins" | "membership";
+  activePage?: "home" | "coins" | "membership" | "replay";
 }
 
 const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
@@ -70,6 +70,7 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
   }, [coinUser]);
 
   const menuItems = [
+    { icon: <Play className="h-5 w-5 text-primary" />, label: "Replay Show", description: "Tonton ulang show yang telah berlalu", href: "/replay", active: activePage === "replay" },
     { icon: <Home className="h-5 w-5 text-primary" />, label: "Beranda", description: "Halaman utama", href: "/", active: activePage === "home" },
     { icon: <CreditCard className="h-5 w-5 text-primary" />, label: "Coin Shop", description: "Beli & tukar koin", href: "/coins", active: activePage === "coins" },
     { icon: <Crown className="h-5 w-5 text-yellow-500" />, label: "Membership", description: "Paket langganan eksklusif", href: "/membership", active: activePage === "membership" },

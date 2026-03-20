@@ -297,11 +297,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
-            mute: 1,
+            mute: 0,
             enablejsapi: 1,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
+            controls: 1,
+            disablekb: 0,
+            fs: 1,
             modestbranding: 1,
             rel: 0,
             iv_load_policy: 3,
@@ -483,11 +483,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             ref={ytContainerRef}
             className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
-          <div
-            className="absolute inset-0 z-10 cursor-pointer"
-            onClick={togglePlay}
-            onContextMenu={(e) => e.preventDefault()}
-          />
+          {/* Transparent overlay only to block right-click, not click events */}
           <div
             className="absolute inset-0 z-[9] bg-transparent pointer-events-none"
             onContextMenu={(e) => e.preventDefault()}
