@@ -273,8 +273,13 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
   };
 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
   return (
-    <div className="flex h-full flex-col bg-card/50">
+    <div className="relative flex h-full flex-col bg-card/50">
+      {/* Leaderboard overlay */}
+      <ChatLeaderboard isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4">
         <div className="flex items-center gap-2 tv:gap-3">
@@ -288,9 +293,18 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 tv:px-4 tv:py-1.5">
-          <Users className="h-3 w-3 tv:h-4 tv:w-4 text-success" />
-          <span className="text-xs font-bold text-success tv:text-sm">{onlineCount}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLeaderboard(!showLeaderboard)}
+            className={`flex items-center justify-center rounded-full p-1.5 transition ${showLeaderboard ? "bg-warning/20 text-warning" : "text-muted-foreground hover:text-warning hover:bg-warning/10"}`}
+            title="Leaderboard"
+          >
+            <Trophy className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 tv:px-4 tv:py-1.5">
+            <Users className="h-3 w-3 tv:h-4 tv:w-4 text-success" />
+            <span className="text-xs font-bold text-success tv:text-sm">{onlineCount}</span>
+          </div>
         </div>
       </div>
 
