@@ -5,32 +5,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
-
-    const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
-    if (!TELEGRAM_API_KEY) throw new Error('TELEGRAM_API_KEY is not configured');
+    const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+    if (!BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not configured');
 
     const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
     if (!ADMIN_CHAT_ID) throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured');
 
     const { order_id, username, package_name, coin_amount, price } = await req.json();
 
-    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${Number(price).toLocaleString('id-ID')}\n🆔 Order ID: \`${order_id}\`\n\n✅ Balas *YA ${order_id}* untuk approve\n❌ Balas *TIDAK ${order_id}* untuk reject`;
+    const priceFormatted = escapeMarkdown(Number(price).toLocaleString('id-ID'));
+    const escapedOrderId = escapeMarkdown(order_id);
+    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
 
-    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': TELEGRAM_API_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: ADMIN_CHAT_ID,
         text: message,
@@ -40,7 +33,7 @@ serve(async (req) => {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(`Telegram API call failed [${response.status}]: ${JSON.stringify(data)}`);
+      throw new Error(`Telegram API error [${response.status}]: ${JSON.stringify(data)}`);
     }
 
     return new Response(JSON.stringify({ success: true }), {
