@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const showId = formData.get("show_id") as string | null;
+    const uploadType = formData.get("type") as string | null;
 
     if (!file) {
       return new Response(JSON.stringify({ error: "No file provided" }), {
@@ -51,15 +52,54 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Require a valid show_id to prevent anonymous abuse
-    if (!showId) {
-      return new Response(
-        JSON.stringify({ error: "show_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    // For coin orders, skip show validation
+    if (uploadType !== "coin") {
+      // Require a valid show_id to prevent anonymous abuse
+      if (!showId) {
+        return new Response(
+          JSON.stringify({ error: "show_id is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validate file type
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validate file size
+      if (file.size > MAX_SIZE) {
+        return new Response(
+          JSON.stringify({ error: "File too large. Maximum size is 5 MB." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
+
+      // Verify show exists and is active
+      const { data: show, error: showError } = await supabase
+        .from("shows")
+        .select("id")
+        .eq("id", showId)
+        .eq("is_active", true)
+        .single();
+
+      if (showError || !show) {
+        return new Response(
+          JSON.stringify({ error: "Show tidak ditemukan atau tidak aktif." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // Validate file type
+    // Validate file type (for all uploads)
     if (!ALLOWED_TYPES.includes(file.type)) {
       return new Response(
         JSON.stringify({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }),
@@ -67,30 +107,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate file size
+    // Validate file size (for all uploads)
     if (file.size > MAX_SIZE) {
       return new Response(
         JSON.stringify({ error: "File too large. Maximum size is 5 MB." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Verify show exists and is active
-    const { data: show, error: showError } = await supabase
-      .from("shows")
-      .select("id")
-      .eq("id", showId)
-      .eq("is_active", true)
-      .single();
-
-    if (showError || !show) {
-      return new Response(
-        JSON.stringify({ error: "Show tidak ditemukan atau tidak aktif." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
