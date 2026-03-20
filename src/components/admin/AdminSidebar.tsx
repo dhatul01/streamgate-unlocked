@@ -12,8 +12,7 @@ interface AdminSidebarProps {
 }
 
 const allSections = [
-  { id: "live", label: "Live Control", icon: Radio, adminOnly: false },
-  { id: "playlist", label: "Playlist", icon: List, adminOnly: false },
+  { id: "live", label: "Live & Playlist", icon: Radio, adminOnly: false },
   { id: "tokens", label: "Token Factory", icon: Key, adminOnly: false },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },
