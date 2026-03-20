@@ -5,8 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import logo from "@/assets/logo.png";
-import { ArrowLeft, Coins, Save, User, History } from "lucide-react";
+import { ArrowLeft, Coins, Save, User, History, BarChart3, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
+import ReferralSection from "@/components/viewer/ReferralSection";
 
 const ViewerProfile = () => {
   const [user, setUser] = useState<any>(null);
@@ -14,6 +15,9 @@ const ViewerProfile = () => {
   const [originalUsername, setOriginalUsername] = useState("");
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [showAllTx, setShowAllTx] = useState(false);
+  const [stats, setStats] = useState({ totalSpent: 0, totalEarned: 0, showsBought: 0, replaysBought: 0 });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -28,14 +32,28 @@ const ViewerProfile = () => {
       const [profileRes, balRes, txRes] = await Promise.all([
         supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
         supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
-        supabase.from("coin_transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("coin_transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
 
       const name = profileRes.data?.username || user.user_metadata?.username || "";
       setUsername(name);
       setOriginalUsername(name);
       setBalance(balRes.data?.balance || 0);
-      setTransactions(txRes.data || []);
+      
+      const allTx = txRes.data || [];
+      setAllTransactions(allTx);
+      setTransactions(allTx.slice(0, 10));
+
+      // Calculate stats
+      let totalSpent = 0, totalEarned = 0, showsBought = 0, replaysBought = 0;
+      allTx.forEach((tx: any) => {
+        if (tx.amount < 0) totalSpent += Math.abs(tx.amount);
+        else totalEarned += tx.amount;
+        if (tx.type === "redeem") showsBought++;
+        if (tx.type === "replay_redeem") replaysBought++;
+      });
+      setStats({ totalSpent, totalEarned, showsBought, replaysBought });
+
       setLoading(false);
     };
     init();
@@ -52,6 +70,11 @@ const ViewerProfile = () => {
       setOriginalUsername(username.trim());
       toast({ title: "Username diperbarui!" });
     }
+  };
+
+  const loadAllTransactions = () => {
+    setShowAllTx(true);
+    setTransactions(allTransactions);
   };
 
   const hasChanges = username.trim() !== originalUsername;
@@ -109,6 +132,37 @@ const ViewerProfile = () => {
           </div>
         </motion.div>
 
+        {/* Stats dashboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-xl border border-border bg-card p-5"
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Statistik</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-background p-3 text-center">
+              <p className="text-lg font-bold text-warning">{balance}</p>
+              <p className="text-[10px] text-muted-foreground">Saldo Koin</p>
+            </div>
+            <div className="rounded-lg bg-background p-3 text-center">
+              <p className="text-lg font-bold text-success">{stats.totalEarned}</p>
+              <p className="text-[10px] text-muted-foreground">Total Diterima</p>
+            </div>
+            <div className="rounded-lg bg-background p-3 text-center">
+              <p className="text-lg font-bold text-destructive">{stats.totalSpent}</p>
+              <p className="text-[10px] text-muted-foreground">Total Dibelanjakan</p>
+            </div>
+            <div className="rounded-lg bg-background p-3 text-center">
+              <p className="text-lg font-bold text-primary">{stats.showsBought + stats.replaysBought}</p>
+              <p className="text-[10px] text-muted-foreground">Show Ditonton</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Balance card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -130,7 +184,10 @@ const ViewerProfile = () => {
           </div>
         </motion.div>
 
-        {/* Recent transactions */}
+        {/* Referral section */}
+        <ReferralSection />
+
+        {/* Full transaction history */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,7 +196,8 @@ const ViewerProfile = () => {
         >
           <div className="mb-3 flex items-center gap-2">
             <History className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Transaksi Terakhir</h3>
+            <h3 className="text-sm font-semibold text-foreground">Riwayat Transaksi</h3>
+            <span className="ml-auto text-[10px] text-muted-foreground">{allTransactions.length} total</span>
           </div>
           {transactions.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">Belum ada transaksi</p>
@@ -147,16 +205,42 @@ const ViewerProfile = () => {
             <div className="space-y-2">
               {transactions.map((tx: any) => (
                 <div key={tx.id} className="flex items-center justify-between rounded-lg bg-background p-3">
-                  <div>
-                    <p className="text-xs font-medium text-foreground">{tx.description}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString("id-ID")}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{tx.description}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[9px] rounded px-1.5 py-0.5 font-medium ${
+                        tx.type === "purchase" ? "bg-success/10 text-success" :
+                        tx.type === "redeem" ? "bg-primary/10 text-primary" :
+                        tx.type === "replay_redeem" ? "bg-purple-500/10 text-purple-400" :
+                        tx.type === "gift" ? "bg-warning/10 text-warning" :
+                        tx.type === "referral_bonus" || tx.type === "referral_reward" ? "bg-pink-500/10 text-pink-400" :
+                        "bg-secondary text-muted-foreground"
+                      }`}>
+                        {tx.type === "purchase" ? "Pembelian" :
+                         tx.type === "redeem" ? "Show" :
+                         tx.type === "replay_redeem" ? "Replay" :
+                         tx.type === "gift" ? "Gift" :
+                         tx.type === "referral_bonus" ? "Referral" :
+                         tx.type === "referral_reward" ? "Reward" :
+                         tx.type}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString("id-ID")}</p>
+                    </div>
                   </div>
-                  <span className={`text-sm font-bold ${tx.amount > 0 ? "text-success" : "text-destructive"}`}>
+                  <span className={`text-sm font-bold ml-2 ${tx.amount > 0 ? "text-success" : "text-destructive"}`}>
                     {tx.amount > 0 ? "+" : ""}{tx.amount}
                   </span>
                 </div>
               ))}
             </div>
+          )}
+          {!showAllTx && allTransactions.length > 10 && (
+            <button
+              onClick={loadAllTransactions}
+              className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg bg-secondary py-2 text-xs font-medium text-foreground hover:bg-secondary/80"
+            >
+              <ChevronDown className="h-3 w-3" /> Tampilkan semua ({allTransactions.length})
+            </button>
           )}
         </motion.div>
       </div>
