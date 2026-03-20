@@ -43,23 +43,32 @@ const LivePage = () => {
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
-  // Auto-detect authenticated user and set their profile username
+  // Auto-detect authenticated user and set their profile username + coin balance
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .maybeSingle();
+        setLoggedInUser(user);
+        const [{ data: profile }, { data: balanceData }] = await Promise.all([
+          supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
+          supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
+        ]);
         if (profile?.username) {
           setUsername(profile.username);
           localStorage.setItem("rt48_username", profile.username);
           setShowUsernameModal(false);
-          setAuthChecked(true);
-          return;
         }
+        setCoinBalance(balanceData?.balance || 0);
+        setAuthChecked(true);
+
+        // Subscribe to coin balance changes
+        const balanceChannel = supabase
+          .channel('live-coin-balance')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'coin_balances', filter: `user_id=eq.${user.id}` },
+            (payload: any) => { if (payload.new?.balance !== undefined) setCoinBalance(payload.new.balance); }
+          ).subscribe();
+
+        return () => { supabase.removeChannel(balanceChannel); };
       }
       // Not authenticated or no username - show modal if no stored username
       if (!localStorage.getItem("rt48_username")) {
