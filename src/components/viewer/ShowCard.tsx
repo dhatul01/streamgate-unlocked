@@ -211,7 +211,7 @@ const ShowCard = ({
                 {(() => {
                   const showStart = parseShowDateTime(show.schedule_date, show.schedule_time);
                   const accessOpens = showStart ? showStart - 2 * 60 * 60 * 1000 : null;
-                  const isTooEarly = accessOpens ? Date.now() < accessOpens : false;
+                  const isTooEarly = accessOpens ? currentTime < accessOpens : false;
 
                   if (isTooEarly && showStart) {
                     return (
