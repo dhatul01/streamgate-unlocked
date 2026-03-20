@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 interface CoinOrder {
   id: string; user_id: string; package_id: string; coin_amount: number;
   price: number; payment_proof_url: string; status: string; created_at: string;
+  phone: string;
 }
 
 const CoinOrderManager = () => {
