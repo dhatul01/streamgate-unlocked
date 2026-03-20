@@ -160,9 +160,10 @@ const TokenFactory = () => {
 
   const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
-  const getFilteredTokens = (dur: DurationKey) => {
-    return tokens.filter((t) => {
-      if (t.duration_type !== dur) return false;
+  const getFilteredTokens = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens;
+    return source.filter((t) => {
+      if (dur !== "coin" && t.duration_type !== dur) return false;
       const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
       if (!matchSearch) return false;
       if (statusFilter === "all") return true;
@@ -173,15 +174,18 @@ const TokenFactory = () => {
     });
   };
 
-  const getCountByDuration = (dur: DurationKey) => tokens.filter(t => t.duration_type === dur).length;
+  const getCountByDuration = (dur: TabKey) => {
+    if (dur === "coin") return coinTokens.length;
+    return tokens.filter(t => t.duration_type === dur).length;
+  };
 
-  const getCountByStatus = (dur: DurationKey) => {
-    const durTokens = tokens.filter(t => t.duration_type === dur);
+  const getCountByStatus = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens.filter(t => t.duration_type === dur);
     return {
-      all: durTokens.length,
-      active: durTokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
-      blocked: durTokens.filter(t => t.status === "blocked").length,
-      expired: durTokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+      all: source.length,
+      active: source.filter(t => t.status !== "blocked" && !isExpired(t)).length,
+      blocked: source.filter(t => t.status === "blocked").length,
+      expired: source.filter(t => t.status !== "blocked" && isExpired(t)).length,
     };
   };
 
