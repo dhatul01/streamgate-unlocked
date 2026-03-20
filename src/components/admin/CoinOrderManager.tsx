@@ -88,10 +88,10 @@ const CoinOrderManager = () => {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-foreground">🪙 Order Koin</h2>
-      <div className="flex gap-2">
-        {(["pending", "confirmed", "rejected", "all"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${filter === f ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>
-            {f === "pending" ? "Menunggu" : f === "confirmed" ? "Dikonfirmasi" : f === "rejected" ? "Ditolak" : "Semua"}
+      <div className="flex gap-2 flex-wrap">
+        {(["pending", "confirmed", "rejected", "expired", "all"] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f as any)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${filter === f ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>
+            {f === "pending" ? "Menunggu" : f === "confirmed" ? "Dikonfirmasi" : f === "rejected" ? "Ditolak" : f === "expired" ? "Kedaluwarsa" : "Semua"}
             {f !== "all" && ` (${orders.filter((o) => o.status === f).length})`}
           </button>
         ))}
