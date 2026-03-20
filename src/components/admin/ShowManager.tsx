@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image, Crown, Lock, Unlock } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, Eye, EyeOff, Image, Crown, Lock, Unlock, Film } from "lucide-react";
 
 interface Show {
   id: string;
