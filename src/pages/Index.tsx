@@ -133,8 +133,12 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCoinUser(user);
-        const { data: bal } = await (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
-        setCoinBalance(bal?.balance || 0);
+        const [balRes, profileRes] = await Promise.all([
+          (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
+          (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle(),
+        ]);
+        setCoinBalance(balRes.data?.balance || 0);
+        setCoinUsername(profileRes.data?.username || user.user_metadata?.username || "");
       }
     };
     fetchCoinUser();
