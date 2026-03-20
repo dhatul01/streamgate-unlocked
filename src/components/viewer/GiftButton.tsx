@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Gift, Coins } from "lucide-react";
+import { Gift, Coins, LogIn } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,17 +30,30 @@ const GiftButton = ({ isAuthenticated }: GiftButtonProps) => {
   const [sending, setSending] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tokenCode = searchParams.get("t") || "";
 
-  // Check if user is actually logged in with Supabase auth
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setIsLoggedIn(!!user);
     });
   }, []);
 
+  const handleOpenGift = () => {
+    if (!isLoggedIn) {
+      // Redirect to login with return URL
+      const returnUrl = `/live?t=${encodeURIComponent(tokenCode)}`;
+      navigate(`/auth?redirect=${encodeURIComponent(returnUrl)}`);
+      return;
+    }
+    setOpen(true);
+  };
+
   const handleSend = async () => {
     if (!isLoggedIn) {
-      toast({ title: "Login dulu", description: "Silakan login di halaman utama untuk mengirim gift. Koin Anda akan dipotong.", variant: "destructive" });
+      const returnUrl = `/live?t=${encodeURIComponent(tokenCode)}`;
+      navigate(`/auth?redirect=${encodeURIComponent(returnUrl)}`);
       return;
     }
     if (amount < selectedType.min) {
@@ -70,11 +84,15 @@ const GiftButton = ({ isAuthenticated }: GiftButtonProps) => {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={handleOpenGift}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/20 text-warning transition hover:bg-warning/30 tv:h-14 tv:w-14"
-        title="Kirim Gift"
+        title={isLoggedIn ? "Kirim Gift" : "Login untuk kirim Gift"}
       >
-        <Gift className="h-4 w-4 tv:h-5 tv:w-5" />
+        {isLoggedIn ? (
+          <Gift className="h-4 w-4 tv:h-5 tv:w-5" />
+        ) : (
+          <LogIn className="h-4 w-4 tv:h-5 tv:w-5" />
+        )}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, List, Key, Monitor, Settings, LogOut, Theater, Globe, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Wallet } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, Globe, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Wallet } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
@@ -12,8 +12,7 @@ interface AdminSidebarProps {
 }
 
 const allSections = [
-  { id: "live", label: "Live Control", icon: Radio, adminOnly: false },
-  { id: "playlist", label: "Playlist", icon: List, adminOnly: false },
+  { id: "live", label: "Live & Playlist", icon: Radio, adminOnly: false },
   { id: "tokens", label: "Token Factory", icon: Key, adminOnly: false },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },

@@ -33,6 +33,8 @@ const LivePage = () => {
   const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [coinBalance, setCoinBalance] = useState<number>(0);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
@@ -41,23 +43,32 @@ const LivePage = () => {
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
   const playerRef = useRef<VideoPlayerHandle>(null);
 
-  // Auto-detect authenticated user and set their profile username
+  // Auto-detect authenticated user and set their profile username + coin balance
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .maybeSingle();
+        setLoggedInUser(user);
+        const [{ data: profile }, { data: balanceData }] = await Promise.all([
+          supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
+          supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
+        ]);
         if (profile?.username) {
           setUsername(profile.username);
           localStorage.setItem("rt48_username", profile.username);
           setShowUsernameModal(false);
-          setAuthChecked(true);
-          return;
         }
+        setCoinBalance(balanceData?.balance || 0);
+        setAuthChecked(true);
+
+        // Subscribe to coin balance changes
+        const balanceChannel = supabase
+          .channel('live-coin-balance')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'coin_balances', filter: `user_id=eq.${user.id}` },
+            (payload: any) => { if (payload.new?.balance !== undefined) setCoinBalance(payload.new.balance); }
+          ).subscribe();
+
+        return () => { supabase.removeChannel(balanceChannel); };
       }
       // Not authenticated or no username - show modal if no stored username
       if (!localStorage.getItem("rt48_username")) {
@@ -647,19 +658,38 @@ const LivePage = () => {
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
           <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-14 tv:w-14 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
-          <div className="flex-1">
-            <h1 className="text-sm font-bold text-foreground lg:text-base tv:text-2xl">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold text-foreground lg:text-base tv:text-2xl truncate">
               {stream?.title || "RealTime48"}
             </h1>
-            <p className="text-xs text-muted-foreground tv:text-base">{stream?.description}</p>
+            <p className="text-xs text-muted-foreground tv:text-base truncate">{stream?.description}</p>
           </div>
+          {/* User info */}
+          {loggedInUser ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-1 tv:px-4 tv:py-2">
+                <span className="text-xs tv:text-sm">🪙</span>
+                <span className="text-xs font-bold text-warning tv:text-sm">{coinBalance}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 tv:px-4 tv:py-2">
+                <span className="text-xs font-medium text-foreground tv:text-sm truncate max-w-[80px]">{username}</span>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate(`/auth?redirect=/live?t=${encodeURIComponent(tokenCode)}`)}
+              className="shrink-0 rounded-full bg-primary px-3 py-1.5 tv:px-5 tv:py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-sm"
+            >
+              Login
+            </button>
+          )}
           {isLive ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base">
+            <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base shrink-0">
               <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
               LIVE
             </span>
           ) : (
-            <span className="rounded-full bg-muted px-3 py-1 tv:px-5 tv:py-2 text-xs font-medium text-muted-foreground tv:text-base">
+            <span className="rounded-full bg-muted px-3 py-1 tv:px-5 tv:py-2 text-xs font-medium text-muted-foreground tv:text-base shrink-0">
               OFFLINE
             </span>
           )}

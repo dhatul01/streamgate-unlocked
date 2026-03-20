@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,11 @@ const ViewerAuth = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const { toast } = useToast();
+
+  const getRedirectPath = () => redirectTo || "/coins";
 
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
@@ -71,14 +75,14 @@ const ViewerAuth = () => {
         toast({ title: "Gagal daftar", description: msg, variant: "destructive" });
       } else {
         toast({ title: "Berhasil!" });
-        navigate("/coins");
+        navigate(getRedirectPath());
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
       if (error) {
         toast({ title: "Login gagal", description: "Nomor/email atau password salah.", variant: "destructive" });
       } else {
-        navigate("/coins");
+        navigate(getRedirectPath());
       }
     }
     setLoading(false);
