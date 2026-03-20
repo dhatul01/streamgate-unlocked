@@ -54,12 +54,26 @@ const SubscriptionOrderManager = () => {
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
 
-    // Auto-send group link via WhatsApp when confirmed
-    if (status === "confirmed" && order) {
+    // Auto-send WhatsApp notification via Fonnte
+    if (order?.phone) {
       const show = shows[order.show_id];
-      if (show?.group_link) {
-        const msg = `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
-        sendWhatsApp(order.phone, msg);
+      let msg = "";
+      if (status === "confirmed") {
+        msg = show?.group_link
+          ? `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`
+          : `✅ Pembayaran kamu untuk *${show?.title || "show"}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
+      } else if (status === "rejected") {
+        msg = `❌ Maaf, pembayaran kamu untuk *${show?.title || "show"}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+      }
+      if (msg) {
+        try {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
+          });
+          toast({ title: "Notifikasi WA terkirim ke user" });
+        } catch (e) {
+          console.error("Failed to send WA:", e);
+        }
       }
     }
   };
