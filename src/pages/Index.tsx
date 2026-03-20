@@ -175,6 +175,12 @@ const Index = () => {
           setRedeemedTokens(validMap);
         } catch {}
 
+        // Load replay passwords from localStorage
+        try {
+          const storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${user.id}`) || "{}");
+          setReplayPasswords(storedPw);
+        } catch {}
+
         // Subscribe to balance changes for toast notification
         const balCh = supabase
           .channel(`idx-balance-${user.id}`)
