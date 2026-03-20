@@ -26,15 +26,23 @@ const MonitorView = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data: streamData } = await supabase.from("streams").select("*").limit(1).single();
       setStream(streamData);
 
       const { data: playlistData } = await supabase.from("playlists").select("*").order("sort_order");
-      setPlaylists(playlistData || []);
-      if (playlistData && playlistData.length > 0) setActivePlaylist(playlistData[0]);
+      // Sort: m3u8/cloudflare always above youtube
+      const priority: Record<string, number> = { m3u8: 0, cloudflare: 1, youtube: 2 };
+      const sorted = (playlistData || []).sort((a: any, b: any) => {
+        const pa = priority[a.type] ?? 1;
+        const pb = priority[b.type] ?? 1;
+        if (pa !== pb) return pa - pb;
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      });
+      setPlaylists(sorted);
+      if (sorted.length > 0) setActivePlaylist(sorted[0]);
     };
-    fetch();
+    fetchData();
   }, []);
 
   const handleResetChat = async () => {

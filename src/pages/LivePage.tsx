@@ -49,15 +49,28 @@ const LivePage = () => {
     });
   }, []);
 
-  const syncPlaylistsState = useCallback((nextPlaylists: any[]) => {
-    setPlaylists(nextPlaylists || []);
-    setActivePlaylist((prev: any) => {
-      if (!nextPlaylists?.length) return null;
-      if (!prev) return nextPlaylists[0];
-      const matched = nextPlaylists.find((playlist) => playlist.id === prev.id);
-      return matched || nextPlaylists[0];
+  // Sort playlists: m3u8/cloudflare always above youtube
+  const sortPlaylists = useCallback((list: any[]) => {
+    if (!list) return [];
+    const priority: Record<string, number> = { m3u8: 0, cloudflare: 1, youtube: 2 };
+    return [...list].sort((a, b) => {
+      const pa = priority[a.type] ?? 1;
+      const pb = priority[b.type] ?? 1;
+      if (pa !== pb) return pa - pb;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
     });
   }, []);
+
+  const syncPlaylistsState = useCallback((nextPlaylists: any[]) => {
+    const sorted = sortPlaylists(nextPlaylists || []);
+    setPlaylists(sorted);
+    setActivePlaylist((prev: any) => {
+      if (!sorted.length) return null;
+      if (!prev) return sorted[0];
+      const matched = sorted.find((playlist) => playlist.id === prev.id);
+      return matched || sorted[0];
+    });
+  }, [sortPlaylists]);
 
   // Generate signed/tokenized URL for m3u8 playlists
   const { signedUrl: signedStreamUrl, loading: signedUrlLoading } = useSignedStreamUrl(
