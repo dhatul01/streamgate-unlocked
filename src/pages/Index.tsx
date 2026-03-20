@@ -98,6 +98,8 @@ const Index = () => {
   const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
   const [coinRedeeming, setCoinRedeeming] = useState(false);
   const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+  // Map of show_id -> token_code for shows redeemed by this user
+  const [redeemedTokens, setRedeemedTokens] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
