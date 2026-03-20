@@ -187,6 +187,7 @@ const CoinShop = () => {
       <SharedNavbar activePage="coins" />
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        <PasswordResetBanner />
         <div className="mb-6 flex gap-2">
           {([{ key: "buy" as const, label: "Beli Koin", icon: Coins }, { key: "redeem" as const, label: "Tukar Koin", icon: Ticket }, { key: "history" as const, label: "Riwayat", icon: Sparkles }]).map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all ${tab === t.key ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"}`}>
