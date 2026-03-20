@@ -191,14 +191,23 @@ const Index = () => {
   const handleCoinRedeem = async () => {
     if (!coinShowTarget) return;
     setCoinRedeeming(true);
-    const { data, error } = await (supabase.rpc as any)("redeem_coins_for_token", { _show_id: coinShowTarget.id });
+    const { data, error } = await supabase.rpc("redeem_coins_for_token", { _show_id: coinShowTarget.id });
     setCoinRedeeming(false);
-    if (error || !data?.success) {
-      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
-    setCoinBalance(data.remaining_balance);
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setCoinBalance(result.remaining_balance);
+
+    // Save redeemed token to localStorage for persistent "Tonton Live" on show card
+    if (coinUser) {
+      const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
+      stored[coinShowTarget.id] = result.token_code;
+      localStorage.setItem(`redeemed_tokens_${coinUser.id}`, JSON.stringify(stored));
+      setRedeemedTokens((prev) => ({ ...prev, [coinShowTarget.id]: result.token_code }));
+    }
   };
 
 
