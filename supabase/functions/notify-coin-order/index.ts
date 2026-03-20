@@ -15,18 +15,48 @@ serve(async (req) => {
     const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
     if (!ADMIN_CHAT_ID) throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured');
 
-    const { order_id, username, package_name, coin_amount, price } = await req.json();
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+
+    const { order_id, username, package_name, coin_amount, price, payment_proof_url } = await req.json();
 
     const priceFormatted = escapeMarkdown(Number(price).toLocaleString('id-ID'));
     const escapedOrderId = escapeMarkdown(order_id);
-    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
+    const caption = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
 
+    // If payment proof exists, send as photo with caption
+    if (payment_proof_url && SUPABASE_URL) {
+      const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/payment-proofs/${payment_proof_url}`;
+      
+      const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: ADMIN_CHAT_ID,
+          photo: photoUrl,
+          caption,
+          parse_mode: 'MarkdownV2',
+        }),
+      });
+
+      const photoData = await photoResponse.json();
+      
+      if (photoData.ok) {
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // If photo send fails (e.g. private bucket), fall back to text + note
+      console.warn('Photo send failed, falling back to text:', JSON.stringify(photoData));
+    }
+
+    // Fallback: send text message only
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: ADMIN_CHAT_ID,
-        text: message,
+        text: caption,
         parse_mode: 'MarkdownV2',
       }),
     });
