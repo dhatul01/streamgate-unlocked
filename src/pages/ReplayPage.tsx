@@ -108,16 +108,16 @@ const ReplayPage = () => {
         // Also check coin_transactions for past replay purchases not in localStorage
         const { data: txns } = await supabase
           .from("coin_transactions")
-          .select("reference_id, description")
+          .select("reference_id")
           .eq("user_id", user.id)
-          .in("type", ["replay_redeem", "redeem"])
+          .eq("type", "replay_redeem")
           .order("created_at", { ascending: false });
 
         if (txns) {
           for (const tx of txns) {
             if (tx.reference_id && !storedPw[tx.reference_id]) {
-              // Mark as purchased (password unknown but purchased)
-              storedPw[tx.reference_id] = storedPw[tx.reference_id] || "__purchased__";
+              // Purchased but password lost
+              storedPw[tx.reference_id] = "__purchased__";
             }
           }
           localStorage.setItem(`replay_passwords_${user.id}`, JSON.stringify(storedPw));
