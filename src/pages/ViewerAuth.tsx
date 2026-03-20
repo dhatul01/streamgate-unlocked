@@ -158,7 +158,7 @@ const ViewerAuth = () => {
                 <div className="rounded-lg bg-primary/10 p-3 text-center">
                   <KeyRound className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <p className="text-xs text-muted-foreground">
-                    Masukkan nomor HP/email dan password baru yang kamu inginkan. Admin akan mereview dan menyetujui via Telegram.
+                    Masukkan nomor HP atau email yang terdaftar. Admin akan mereview dan mengirim link reset via WhatsApp.
                   </p>
                 </div>
                 <div>
