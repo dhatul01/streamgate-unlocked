@@ -20,6 +20,7 @@ type TabKey = DurationKey | "coin";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
+  const [coinTokens, setCoinTokens] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Record<string, number>>({});
   const [duration, setDuration] = useState<DurationKey>("daily");
   const [maxDevices, setMaxDevices] = useState("1");
