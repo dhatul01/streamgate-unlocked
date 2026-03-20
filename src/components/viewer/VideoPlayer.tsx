@@ -355,8 +355,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   }, [playlist]);
 
   const extractYTId = (url: string) => {
-    const match = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : url;
+    // Decrypt if server-encrypted
+    const decrypted = decryptUrl(url);
+    const match = decrypted.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : decrypted;
   };
 
   const youtubeEmbedUrl = useMemo(() => {
