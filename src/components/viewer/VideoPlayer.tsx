@@ -73,6 +73,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setIsPlaying(false);
       }
     },
+    seekTo: (time: number) => {
+      if (playlist.type === "youtube" && isYTReady()) {
+        ytPlayerRef.current.seekTo(time, true);
+      } else if (videoRef.current) {
+        videoRef.current.currentTime = time;
+      }
+    },
+    getCurrentTime: () => {
+      if (playlist.type === "youtube" && isYTReady()) {
+        try { return ytPlayerRef.current.getCurrentTime() || 0; } catch { return 0; }
+      }
+      return videoRef.current?.currentTime || 0;
+    },
   }), [playlist.type, isYTReady]);
 
   // Hide controls after 3s — passive event listeners for performance
