@@ -15,6 +15,7 @@ import ViewerProfile from "./pages/ViewerProfile";
 import ReplayPage from "./pages/ReplayPage";
 import SchedulePage from "./pages/SchedulePage";
 import NotFound from "./pages/NotFound";
+import InstallPage from "./pages/InstallPage";
 
 const queryClient = new QueryClient();
 
