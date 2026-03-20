@@ -597,8 +597,14 @@ const LivePage = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
-      <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
-      {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
+      <Suspense fallback={null}>
+        <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
+      </Suspense>
+      {showUsernameModal && (
+        <Suspense fallback={null}>
+          <UsernameModal onSubmit={handleUsernameSet} />
+        </Suspense>
+      )}
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
