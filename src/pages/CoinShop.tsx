@@ -61,7 +61,7 @@ const CoinShop = () => {
     setShows(coinShows as any);
   };
 
-  const handleBuyPackage = (pkg: CoinPackage) => { setSelectedPkg(pkg); setPurchaseStep("qris"); };
+  const handleBuyPackage = (pkg: CoinPackage) => { setSelectedPkg(pkg); setPurchaseStep("phone"); setBuyerPhone(""); };
 
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
