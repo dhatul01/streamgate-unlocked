@@ -18,8 +18,6 @@ const ViewerAuth = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState("");
-  const [forgotNewPassword, setForgotNewPassword] = useState("");
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
