@@ -843,7 +843,7 @@ const Index = () => {
                         </div>
                       )}
                       {redeemedTokens[show.id] ? (
-                        isShowPast2Hours(show) ? (
+                        isShowReplayMode(show) ? (
                           <>
                             <button
                               onClick={() => {
