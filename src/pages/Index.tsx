@@ -237,15 +237,22 @@ const Index = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
     setCoinBalance(result.remaining_balance);
 
-    // Save redeemed token to localStorage for persistent "Tonton Live" on show card
+    // Save redeemed token + replay password to localStorage
     if (coinUser) {
       const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
       stored[coinShowTarget.id] = result.token_code;
       localStorage.setItem(`redeemed_tokens_${coinUser.id}`, JSON.stringify(stored));
       setRedeemedTokens((prev) => ({ ...prev, [coinShowTarget.id]: result.token_code }));
+
+      if (result.replay_password) {
+        const storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${coinUser.id}`) || "{}");
+        storedPw[coinShowTarget.id] = result.replay_password;
+        localStorage.setItem(`replay_passwords_${coinUser.id}`, JSON.stringify(storedPw));
+        setReplayPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.replay_password }));
+      }
     }
   };
 
