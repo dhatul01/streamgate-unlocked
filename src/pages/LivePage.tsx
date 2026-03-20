@@ -716,6 +716,12 @@ const LivePage = () => {
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
+        {/* Live Poll above chat */}
+        {isLive && (
+          <Suspense fallback={null}>
+            <LivePoll voterId={tokenData?.id || username} />
+          </Suspense>
+        )}
         <Suspense fallback={
           <div className="flex h-full items-center justify-center">
             <p className="text-xs text-muted-foreground">Memuat chat...</p>

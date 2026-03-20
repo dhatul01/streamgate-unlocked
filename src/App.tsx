@@ -35,6 +35,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/profile" element={<ViewerProfile />} />
           <Route path="/replay" element={<ReplayPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

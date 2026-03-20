@@ -74,6 +74,7 @@ const AdminDashboard = () => {
       case "coin-packages": return userRole === "admin" ? <CoinPackageManager /> : null;
       case "coin-orders": return <CoinOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
+      case "polls": return <PollManager />;
       case "monitor": return <MonitorView />;
       case "site": return (
         <div className="space-y-6">
