@@ -90,24 +90,16 @@ serve(async () => {
       const text = rawText.toUpperCase();
       const yaMatch = text.match(/^YA\s+(.+)$/);
       const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
-      const approveMatch = text.match(/^APPROVE\s+(.+)$/);
-      const rejectMatch = text.match(/^REJECT\s+(.+)$/);
       const isStatus = rawText === '/status' || text === '/STATUS';
 
       if (isStatus) {
         await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
         totalProcessed++;
       } else if (yaMatch) {
-        await processCoinOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, yaMatch[1].trim(), 'approve');
+        await processAnyOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, yaMatch[1].trim(), 'approve');
         totalProcessed++;
       } else if (tidakMatch) {
-        await processCoinOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, tidakMatch[1].trim(), 'reject');
-        totalProcessed++;
-      } else if (approveMatch) {
-        await processSubscriptionOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, approveMatch[1].trim(), 'approve');
-        totalProcessed++;
-      } else if (rejectMatch) {
-        await processSubscriptionOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, rejectMatch[1].trim(), 'reject');
+        await processAnyOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, tidakMatch[1].trim(), 'reject');
         totalProcessed++;
       }
 
