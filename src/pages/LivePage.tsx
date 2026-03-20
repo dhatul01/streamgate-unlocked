@@ -11,6 +11,7 @@ const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
 const LivePoll = lazy(() => import("@/components/viewer/LivePoll"));
 const PipButton = lazy(() => import("@/components/viewer/PipButton"));
+const WatchParty = lazy(() => import("@/components/viewer/WatchParty"));
 
 type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
