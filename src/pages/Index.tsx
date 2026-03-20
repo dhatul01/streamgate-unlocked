@@ -71,6 +71,7 @@ interface SiteSettings {
 const Index = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
+  const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
     whatsapp_number: "",
@@ -107,11 +108,15 @@ const Index = () => {
   const [replayCopied, setReplayCopied] = useState(false);
 
   const fetchData = async () => {
-    const [showsRes, settingsRes, descRes] = await Promise.all([
+    const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
       supabase.rpc("get_public_shows"),
       supabase.from("site_settings").select("*"),
       supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("streams").select("is_live").limit(1).single(),
     ]);
+    if (streamRes.data) {
+      setIsStreamLive(streamRes.data.is_live);
+    }
     if (showsRes.data) {
       setShows(showsRes.data as Show[]);
       const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
@@ -132,6 +137,20 @@ const Index = () => {
     if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
   };
 
+  // Helper: check if show scheduled time has already passed
+  const isShowPastSchedule = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      return new Date() > showDate;
+    } catch {
+      return false;
+    }
+  };
+
   // Helper: check if show is past 2 hours from schedule
   const isShowPast2Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
@@ -147,7 +166,7 @@ const Index = () => {
     }
   };
 
-  // Helper: check if show is past 4 hours (move to replay)
+  // Helper: check if show is past 4 hours (move to replay page)
   const isShowPast4Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
     try {
@@ -159,6 +178,13 @@ const Index = () => {
     } catch {
       return false;
     }
+  };
+
+  // A show is in "replay mode" when: stream is offline AND schedule has passed, OR past 4 hours regardless
+  const isShowReplayMode = (show: Show) => {
+    if (isShowPast4Hours(show)) return true;
+    if (!isStreamLive && isShowPastSchedule(show)) return true;
+    return false;
   };
 
   useEffect(() => {
@@ -222,17 +248,25 @@ const Index = () => {
     };
     const cleanupBalance = fetchCoinUser();
 
-    // Realtime for shows and orders
+    // Realtime for shows, orders, and stream status
     const showCh = supabase.channel("idx-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
       .subscribe();
     const orderCh = supabase.channel("idx-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
+    const streamCh = supabase.channel("idx-streams")
+      .on("postgres_changes", { event: "*", schema: "public", table: "streams" }, (payload: any) => {
+        if (payload.new?.is_live !== undefined) {
+          setIsStreamLive(payload.new.is_live);
+        }
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(showCh);
       supabase.removeChannel(orderCh);
+      supabase.removeChannel(streamCh);
       cleanupBalance.then((cleanup) => cleanup?.());
     };
   }, []);
@@ -376,8 +410,8 @@ const Index = () => {
     setSelectedShow(null);
   };
 
-  const regularShows = shows.filter((s) => !s.is_subscription && !isShowPast4Hours(s));
-  const replayShows = shows.filter((s) => !s.is_subscription && isShowPast4Hours(s) && s.replay_coin_price > 0);
+  const regularShows = shows.filter((s) => !s.is_subscription && !isShowReplayMode(s));
+  const replayShows = shows.filter((s) => !s.is_subscription && isShowReplayMode(s) && s.replay_coin_price > 0);
   const subscriptionShows = shows.filter((s) => s.is_subscription);
 
   const menuItems = [
@@ -772,7 +806,7 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    {isShowPast2Hours(show) && show.replay_coin_price > 0 ? (
+                    {isShowReplayMode(show) && show.replay_coin_price > 0 ? (
                       <div className="flex items-center gap-1.5 text-sm text-accent tv:text-base">
                         <Film className="h-4 w-4 tv:h-5 tv:w-5" />
                         <span className="font-semibold">Replay: {show.replay_coin_price} Koin</span>
@@ -809,7 +843,7 @@ const Index = () => {
                         </div>
                       )}
                       {redeemedTokens[show.id] ? (
-                        isShowPast2Hours(show) ? (
+                        isShowReplayMode(show) ? (
                           <>
                             <button
                               onClick={() => {

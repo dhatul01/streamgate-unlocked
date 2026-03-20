@@ -43,6 +43,19 @@ const isShowPast4Hours = (show: Show) => {
   }
 };
 
+const isShowPastSchedule = (show: Show) => {
+  if (!show.schedule_date || !show.schedule_time) return false;
+  try {
+    const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+    const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+    const showDate = new Date(dateTimeStr);
+    if (isNaN(showDate.getTime())) return false;
+    return new Date() > showDate;
+  } catch {
+    return false;
+  }
+};
+
 const ReplayPage = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
@@ -55,12 +68,23 @@ const ReplayPage = () => {
   const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
   const [replayCopied, setReplayCopied] = useState(false);
   const [replayResult, setReplayResult] = useState<{ replay_password: string; remaining_balance: number } | null>(null);
+  const [isStreamLive, setIsStreamLive] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data } = await supabase.rpc("get_public_shows");
-      if (data) {
-        const pastShows = (data as any[]).filter((s) => isShowPast4Hours(s) && !s.is_subscription && s.replay_coin_price > 0);
+      const [showsRes, streamRes] = await Promise.all([
+        supabase.rpc("get_public_shows"),
+        supabase.from("streams").select("is_live").limit(1).single(),
+      ]);
+      if (streamRes.data) setIsStreamLive(streamRes.data.is_live);
+      if (showsRes.data) {
+        const streamLive = streamRes.data?.is_live ?? true;
+        const pastShows = (showsRes.data as any[]).filter((s) => {
+          if (s.is_subscription || s.replay_coin_price <= 0) return false;
+          if (isShowPast4Hours(s)) return true;
+          if (!streamLive && isShowPastSchedule(s)) return true;
+          return false;
+        });
         setShows(pastShows as Show[]);
       }
     };
@@ -92,9 +116,13 @@ const ReplayPage = () => {
     const showCh = supabase.channel("replay-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
       .subscribe();
+    const streamCh = supabase.channel("replay-streams")
+      .on("postgres_changes", { event: "*", schema: "public", table: "streams" }, () => fetchData())
+      .subscribe();
 
     return () => {
       supabase.removeChannel(showCh);
+      supabase.removeChannel(streamCh);
       cleanup.then((c) => c?.());
     };
   }, []);
