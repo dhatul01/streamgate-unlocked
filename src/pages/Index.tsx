@@ -1050,6 +1050,12 @@ const Index = () => {
                   <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
                 </div>
               )}
+              {coinResult.access_password && (
+                <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Akses Show</p>
+                  <p className="font-mono text-lg font-bold text-primary">{coinResult.access_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Sandi ini akan ditampilkan di kartu show Anda</p>
+                </div>
               <div className="flex gap-2">
                 <Button
                   className="flex-1 gap-2"
