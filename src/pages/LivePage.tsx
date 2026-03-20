@@ -706,12 +706,18 @@ const LivePage = () => {
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
-        <LiveChat
-          username={username}
-          tokenId={tokenData?.id}
-          isLive={isLive}
-          isAdmin={false}
-        />
+        <Suspense fallback={
+          <div className="flex h-full items-center justify-center">
+            <p className="text-xs text-muted-foreground">Memuat chat...</p>
+          </div>
+        }>
+          <LiveChat
+            username={username}
+            tokenId={tokenData?.id}
+            isLive={isLive}
+            isAdmin={false}
+          />
+        </Suspense>
       </div>
     </div>
   );
