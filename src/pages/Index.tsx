@@ -250,10 +250,10 @@ const Index = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password, access_password: result.access_password });
     setCoinBalance(result.remaining_balance);
 
-    // Save redeemed token + replay password to localStorage
+    // Save redeemed token + replay password + access password to localStorage
     if (coinUser) {
       const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
       stored[coinShowTarget.id] = result.token_code;
@@ -265,6 +265,13 @@ const Index = () => {
         storedPw[coinShowTarget.id] = result.replay_password;
         localStorage.setItem(`replay_passwords_${coinUser.id}`, JSON.stringify(storedPw));
         setReplayPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.replay_password }));
+      }
+
+      if (result.access_password) {
+        const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${coinUser.id}`) || "{}");
+        storedAp[coinShowTarget.id] = result.access_password;
+        localStorage.setItem(`access_passwords_${coinUser.id}`, JSON.stringify(storedAp));
+        setAccessPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.access_password }));
       }
     }
   };
