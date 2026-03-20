@@ -651,25 +651,6 @@ const LivePage = () => {
             </h1>
             <p className="text-xs text-muted-foreground tv:text-base truncate">{stream?.description}</p>
           </div>
-          {/* User info */}
-          {loggedInUser ? (
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-1 tv:px-4 tv:py-2">
-                <span className="text-xs tv:text-sm">🪙</span>
-                <span className="text-xs font-bold text-warning tv:text-sm">{coinBalance}</span>
-              </div>
-              <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 tv:px-4 tv:py-2">
-                <span className="text-xs font-medium text-foreground tv:text-sm truncate max-w-[80px]">{username}</span>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate(`/auth?redirect=/live?t=${encodeURIComponent(tokenCode)}`)}
-              className="shrink-0 rounded-full bg-primary px-3 py-1.5 tv:px-5 tv:py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 tv:text-sm"
-            >
-              Login
-            </button>
-          )}
           {isLive ? (
             <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base shrink-0">
               <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
