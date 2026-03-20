@@ -340,6 +340,26 @@ function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
+async function sendFonnteWhatsApp(phone: string, message: string) {
+  const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
+  if (!FONNTE_TOKEN) {
+    console.error('FONNTE_API_TOKEN not configured, skipping WA notification');
+    return;
+  }
+  const cleanPhone = phone.replace(/^0/, '62').replace(/[^0-9]/g, '');
+  try {
+    const res = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: { 'Authorization': FONNTE_TOKEN },
+      body: new URLSearchParams({ target: cleanPhone, message }),
+    });
+    const data = await res.json();
+    console.log('Fonnte WA sent:', JSON.stringify(data));
+  } catch (e) {
+    console.error('sendFonnteWhatsApp error:', e);
+  }
+}
+
 async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: 'POST',
