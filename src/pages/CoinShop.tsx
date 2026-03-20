@@ -21,7 +21,8 @@ const CoinShop = () => {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"buy" | "redeem" | "history">("buy");
   const [selectedPkg, setSelectedPkg] = useState<CoinPackage | null>(null);
-  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "done">("qris");
+  const [purchaseStep, setPurchaseStep] = useState<"phone" | "qris" | "upload" | "done">("phone");
+  const [buyerPhone, setBuyerPhone] = useState("");
   const [uploading, setUploading] = useState(false);
   const [redeemingShow, setRedeemingShow] = useState<string | null>(null);
   const [redeemResult, setRedeemResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
