@@ -245,16 +245,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
       container.appendChild(playerDiv);
 
-      const videoId = extractYTId(playlist.url);
+      // Obfuscate video ID: decode only at runtime to prevent static inspection
+      const _raw = extractYTId(playlist.url);
+      const _enc = obfuscate(_raw);
+      const videoId = deobfuscate(_enc);
 
       try {
         ytPlayerRef.current = new (window as any).YT.Player(playerDiv, {
           width: "100%",
           height: "100%",
           videoId,
-          host: "https://www.youtube.com",
+          host: "https://www.youtube-nocookie.com",
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
+            mute: 1, // Required for autoplay in all browsers
             enablejsapi: 1,
             controls: 0,
             disablekb: 1,
@@ -263,6 +267,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             rel: 0,
             iv_load_policy: 3,
             playsinline: 1,
+            origin: window.location.origin,
           },
           events: {
             onReady: (e: any) => {
@@ -272,11 +277,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               try {
                 const qualities = e.target.getAvailableQualityLevels?.();
                 if (qualities && qualities.length > 0) {
-                  const highest = qualities[0]; // first is highest (e.g. "hd1080")
+                  const highest = qualities[0];
                   e.target.setPlaybackQuality(highest);
                   e.target.setPlaybackQualityRange?.(highest, highest);
                 }
               } catch {}
+
+              // Hide iframe src to prevent source inspection
+              try {
+                const iframe = container.querySelector("iframe");
+                if (iframe) {
+                  Object.defineProperty(iframe, 'src', {
+                    get: () => '',
+                    set: function(v) { this.setAttribute('src', v); },
+                    configurable: true,
+                  });
+                }
+              } catch {}
+
               setIsLoading(false);
               if (autoPlay) {
                 e.target.playVideo();
@@ -284,7 +302,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             },
             onStateChange: (e: any) => {
               if (destroyed) return;
-              // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
               setIsPlaying(e.data === 1);
               setIsLoading(e.data === 3);
             },
@@ -330,8 +347,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const youtubeEmbedUrl = useMemo(() => {
     if (playlist.type !== "youtube") return "";
-    const videoId = extractYTId(playlist.url);
-    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1`;
+    const videoId = deobfuscate(obfuscate(extractYTId(playlist.url)));
+    return `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
   }, [playlist.type, playlist.url]);
   const togglePlay = (e?: React.MouseEvent) => {
     e?.stopPropagation();
