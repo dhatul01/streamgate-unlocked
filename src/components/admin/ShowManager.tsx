@@ -26,6 +26,7 @@ interface Show {
   category: string;
   category_member: string;
   coin_price: number;
+  access_password: string;
 }
 
 const CATEGORY_OPTIONS = [
