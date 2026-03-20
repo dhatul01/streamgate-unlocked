@@ -84,8 +84,8 @@ const InstallPage = () => {
 
         {/* Install Action */}
         {installed ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 p-6 text-center">
-            <CheckCircle className="h-10 w-10 text-green-500" />
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 p-6 text-center">
+            <CheckCircle className="h-10 w-10 text-primary" />
             <p className="font-semibold text-foreground">Berhasil Di-install!</p>
             <p className="text-sm text-muted-foreground">Buka RealTime48 dari home screen kamu</p>
           </div>
