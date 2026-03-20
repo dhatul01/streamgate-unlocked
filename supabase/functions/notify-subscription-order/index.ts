@@ -19,7 +19,7 @@ serve(async (req) => {
     const { order_id, show_title, phone, email, payment_proof_url } = await req.json();
 
     const escapedOrderId = escapeMarkdown(order_id);
-    const caption = `🎬 *Order Subscription Baru\\!*\n\n🎭 Show: ${escapeMarkdown(show_title)}\n📱 Phone: ${escapeMarkdown(phone)}\n📧 Email: ${escapeMarkdown(email)}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *APPROVE ${escapedOrderId}* untuk konfirmasi\n❌ Balas *REJECT ${escapedOrderId}* untuk tolak`;
+    const caption = `🎬 *Order Subscription Baru\\!*\n\n🎭 Show: ${escapeMarkdown(show_title)}\n📱 Phone: ${escapeMarkdown(phone)}\n📧 Email: ${escapeMarkdown(email)}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk konfirmasi\n❌ Balas *TIDAK ${escapedOrderId}* untuk tolak`;
 
     // Try to send photo if payment proof exists
     if (payment_proof_url) {
