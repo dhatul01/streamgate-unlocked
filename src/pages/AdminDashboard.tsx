@@ -19,6 +19,7 @@ import ModeratorAccountManager from "@/components/admin/ModeratorAccountManager"
 import CoinPackageManager from "@/components/admin/CoinPackageManager";
 import CoinOrderManager from "@/components/admin/CoinOrderManager";
 import PollManager from "@/components/admin/PollManager";
+import EarningsManager from "@/components/admin/EarningsManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -75,6 +76,7 @@ const AdminDashboard = () => {
       case "coin-orders": return <CoinOrderManager />;
       case "descriptions": return <LandingDescriptionManager />;
       case "polls": return <PollManager />;
+      case "earnings": return userRole === "admin" ? <EarningsManager /> : null;
       case "monitor": return <MonitorView />;
       case "site": return (
         <div className="space-y-6">

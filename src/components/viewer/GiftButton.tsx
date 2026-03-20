@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Gift, Coins } from "lucide-react";
@@ -27,11 +27,19 @@ const GiftButton = ({ isAuthenticated }: GiftButtonProps) => {
   const [amount, setAmount] = useState(1);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { toast } = useToast();
 
+  // Check if user is actually logged in with Supabase auth
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+    });
+  }, []);
+
   const handleSend = async () => {
-    if (!isAuthenticated) {
-      toast({ title: "Login dulu", description: "Silakan login untuk mengirim gift", variant: "destructive" });
+    if (!isLoggedIn) {
+      toast({ title: "Login dulu", description: "Silakan login di halaman utama untuk mengirim gift. Koin Anda akan dipotong.", variant: "destructive" });
       return;
     }
     if (amount < selectedType.min) {

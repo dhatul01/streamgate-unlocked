@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          source: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          source?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       admin_notifications: {
         Row: {
           created_at: string
@@ -38,6 +65,39 @@ export type Database = {
           message?: string
           title?: string
           type?: string
+        }
+        Relationships: []
+      }
+      admin_withdrawals: {
+        Row: {
+          account_number: string
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          account_number?: string
+          amount: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          account_number?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -910,6 +970,7 @@ export type Database = {
       }
       tokens: {
         Row: {
+          buyer_user_id: string | null
           code: string
           created_at: string
           duration_type: string
@@ -921,6 +982,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          buyer_user_id?: string | null
           code: string
           created_at?: string
           duration_type: string
@@ -932,6 +994,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          buyer_user_id?: string | null
           code?: string
           created_at?: string
           duration_type?: string

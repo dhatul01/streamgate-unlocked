@@ -31,7 +31,8 @@ const LivePage = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
-  const [showUsernameModal, setShowUsernameModal] = useState(!localStorage.getItem("rt48_username"));
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
@@ -39,6 +40,33 @@ const LivePage = () => {
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
   const playerRef = useRef<VideoPlayerHandle>(null);
+
+  // Auto-detect authenticated user and set their profile username
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profile?.username) {
+          setUsername(profile.username);
+          localStorage.setItem("rt48_username", profile.username);
+          setShowUsernameModal(false);
+          setAuthChecked(true);
+          return;
+        }
+      }
+      // Not authenticated or no username - show modal if no stored username
+      if (!localStorage.getItem("rt48_username")) {
+        setShowUsernameModal(true);
+      }
+      setAuthChecked(true);
+    };
+    checkAuth();
+  }, []);
 
   const getFingerprint = useCallback(() => {
     let fp = localStorage.getItem("rt48_fp");
