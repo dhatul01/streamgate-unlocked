@@ -8,6 +8,7 @@ import { Coins, Upload, CheckCircle, LogOut, ArrowLeft, Ticket, Copy, Sparkles, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
+import SharedNavbar from "@/components/viewer/SharedNavbar";
 
 interface CoinPackage { id: string; name: string; coin_amount: number; price: number; qris_image_url: string | null; }
 interface Show { id: string; title: string; coin_price: number; schedule_date: string; schedule_time: string; background_image_url: string | null; is_active: boolean; }
@@ -45,6 +46,30 @@ const CoinShop = () => {
     };
     init();
   }, [navigate]);
+
+  // Realtime coin balance & transactions updates
+  useEffect(() => {
+    if (!user) return;
+
+    const balChannel = supabase
+      .channel(`coinshop-balance-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
+        if (payload.new?.balance !== undefined) setBalance(payload.new.balance);
+      })
+      .subscribe();
+
+    const txChannel = supabase
+      .channel(`coinshop-transactions-${user.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "coin_transactions", filter: `user_id=eq.${user.id}` }, () => {
+        fetchData(user.id);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(balChannel);
+      supabase.removeChannel(txChannel);
+    };
+  }, [user]);
 
   const fetchData = async (userId: string) => {
     const [balRes, pkgRes, txRes] = await Promise.all([
@@ -144,25 +169,7 @@ const CoinShop = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="RealTime48" className="h-8 w-8" />
-            <span className="text-sm font-bold text-foreground">Real<span className="text-primary">Time48</span></span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/profile")} className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 hover:bg-secondary/80 transition-colors">
-              <User className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-medium text-foreground">{username}</span>
-            </button>
-            <div className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5">
-              <Coins className="h-4 w-4 text-warning" />
-              <span className="text-sm font-bold text-warning">{balance}</span>
-            </div>
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground"><LogOut className="h-4 w-4" /></button>
-          </div>
-        </div>
-      </header>
+      <SharedNavbar activePage="coins" />
 
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-6 flex gap-2">
