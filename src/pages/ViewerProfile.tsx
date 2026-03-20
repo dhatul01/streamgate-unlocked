@@ -44,7 +44,7 @@ const ViewerProfile = () => {
   const handleSave = async () => {
     if (!user || !username.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ username: username.trim() }).eq("id", user.id);
+    const { error } = await supabase.from("profiles").upsert({ id: user.id, username: username.trim() }, { onConflict: "id" });
     setSaving(false);
     if (error) {
       toast({ title: "Gagal menyimpan", description: error.message, variant: "destructive" });
