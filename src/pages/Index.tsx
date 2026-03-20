@@ -98,6 +98,8 @@ const Index = () => {
   const [coinShowTarget, setCoinShowTarget] = useState<Show | null>(null);
   const [coinRedeeming, setCoinRedeeming] = useState(false);
   const [coinResult, setCoinResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+  // Map of show_id -> token_code for shows redeemed by this user
+  const [redeemedTokens, setRedeemedTokens] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes] = await Promise.all([
@@ -128,17 +130,32 @@ const Index = () => {
   useEffect(() => {
     fetchData();
 
-    // Fetch coin user & balance
+    // Fetch coin user & balance & redeemed tokens
     const fetchCoinUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCoinUser(user);
         const [balRes, profileRes] = await Promise.all([
-          (supabase.from as any)("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
-          (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle(),
+          supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
+          supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
         ]);
         setCoinBalance(balRes.data?.balance || 0);
         setCoinUsername(profileRes.data?.username || user.user_metadata?.username || "");
+
+        // Load redeemed tokens from localStorage and validate them
+        try {
+          const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${user.id}`) || "{}");
+          const validMap: Record<string, string> = {};
+          for (const [showId, tokenCode] of Object.entries(stored)) {
+            const { data } = await supabase.rpc("validate_token", { _code: tokenCode as string });
+            if ((data as any)?.valid) {
+              validMap[showId] = tokenCode as string;
+            }
+          }
+          // Update localStorage with only valid tokens
+          localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
+          setRedeemedTokens(validMap);
+        } catch {}
       }
     };
     fetchCoinUser();
@@ -174,14 +191,23 @@ const Index = () => {
   const handleCoinRedeem = async () => {
     if (!coinShowTarget) return;
     setCoinRedeeming(true);
-    const { data, error } = await (supabase.rpc as any)("redeem_coins_for_token", { _show_id: coinShowTarget.id });
+    const { data, error } = await supabase.rpc("redeem_coins_for_token", { _show_id: coinShowTarget.id });
     setCoinRedeeming(false);
-    if (error || !data?.success) {
-      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       return;
     }
-    setCoinResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
-    setCoinBalance(data.remaining_balance);
+    setCoinResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setCoinBalance(result.remaining_balance);
+
+    // Save redeemed token to localStorage for persistent "Tonton Live" on show card
+    if (coinUser) {
+      const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${coinUser.id}`) || "{}");
+      stored[coinShowTarget.id] = result.token_code;
+      localStorage.setItem(`redeemed_tokens_${coinUser.id}`, JSON.stringify(stored));
+      setRedeemedTokens((prev) => ({ ...prev, [coinShowTarget.id]: result.token_code }));
+    }
   };
 
 
@@ -683,24 +709,46 @@ const Index = () => {
                       </div>
                     )}
                     <div className="mt-2 flex flex-col gap-2">
-                      {show.coin_price > 0 && (
-                        <button
-                          onClick={() => handleCoinBuy(show)}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-warning py-3 tv:py-4 font-semibold text-warning-foreground transition-all hover:bg-warning/90 hover:shadow-lg hover:shadow-warning/25 tv:text-lg tv:rounded-2xl"
-                        >
-                          <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> Beli dengan {show.coin_price} Koin
-                        </button>
+                      {redeemedTokens[show.id] ? (
+                        <>
+                          <a
+                            href={`/live?t=${redeemedTokens[show.id]}`}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
+                          >
+                            <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
+                          </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
+                              toast({ title: "Link disalin!" });
+                            }}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
+                          >
+                            <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {show.coin_price > 0 && (
+                            <button
+                              onClick={() => handleCoinBuy(show)}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-warning py-3 tv:py-4 font-semibold text-warning-foreground transition-all hover:bg-warning/90 hover:shadow-lg hover:shadow-warning/25 tv:text-lg tv:rounded-2xl"
+                            >
+                              <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> Beli dengan {show.coin_price} Koin
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleBuy(show)}
+                            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-semibold transition-all tv:text-lg tv:rounded-2xl ${
+                              show.coin_price > 0
+                                ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                                : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
+                            }`}
+                          >
+                            <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price > 0 ? "Beli via QRIS" : "Beli Tiket"}
+                          </button>
+                        </>
                       )}
-                      <button
-                        onClick={() => handleBuy(show)}
-                        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-semibold transition-all tv:text-lg tv:rounded-2xl ${
-                          show.coin_price > 0
-                            ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                            : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
-                        }`}
-                      >
-                        <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price > 0 ? "Beli via QRIS" : "Beli Tiket"}
-                      </button>
                     </div>
                   </div>
                 </motion.div>

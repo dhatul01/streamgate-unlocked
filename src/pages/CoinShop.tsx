@@ -155,6 +155,13 @@ const CoinShop = () => {
     setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
     setBalance(result.remaining_balance);
     setRedeemingShow(null);
+
+    // Save redeemed token to localStorage
+    if (user) {
+      const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${user.id}`) || "{}");
+      stored[showId] = result.token_code;
+      localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(stored));
+    }
   };
 
   const copyToken = (code: string) => {
