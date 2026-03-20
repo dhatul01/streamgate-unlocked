@@ -68,12 +68,23 @@ const ReplayPage = () => {
   const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
   const [replayCopied, setReplayCopied] = useState(false);
   const [replayResult, setReplayResult] = useState<{ replay_password: string; remaining_balance: number } | null>(null);
+  const [isStreamLive, setIsStreamLive] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data } = await supabase.rpc("get_public_shows");
-      if (data) {
-        const pastShows = (data as any[]).filter((s) => isShowPast4Hours(s) && !s.is_subscription && s.replay_coin_price > 0);
+      const [showsRes, streamRes] = await Promise.all([
+        supabase.rpc("get_public_shows"),
+        supabase.from("streams").select("is_live").limit(1).single(),
+      ]);
+      if (streamRes.data) setIsStreamLive(streamRes.data.is_live);
+      if (showsRes.data) {
+        const streamLive = streamRes.data?.is_live ?? true;
+        const pastShows = (showsRes.data as any[]).filter((s) => {
+          if (s.is_subscription || s.replay_coin_price <= 0) return false;
+          if (isShowPast4Hours(s)) return true;
+          if (!streamLive && isShowPastSchedule(s)) return true;
+          return false;
+        });
         setShows(pastShows as Show[]);
       }
     };
