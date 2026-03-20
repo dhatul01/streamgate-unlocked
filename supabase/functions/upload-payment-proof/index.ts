@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     // Determine safe extension from MIME type
     const extMap: Record<string, string> = {
       "image/jpeg": "jpg",
@@ -125,7 +130,7 @@ Deno.serve(async (req) => {
     const fileName = `${crypto.randomUUID()}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseClient.storage
       .from("payment-proofs")
       .upload(fileName, arrayBuffer, { contentType: file.type });
 
