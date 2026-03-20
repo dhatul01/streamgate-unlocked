@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Coins, Mail, Lock, ArrowLeft, Phone, User, KeyRound, CheckCircle2 } from "lucide-react";
+import { Coins, Mail, Lock, ArrowLeft, Phone, User, KeyRound, CheckCircle2, MessageCircle } from "lucide-react";
 
 type AuthMethod = "phone" | "email";
 
@@ -18,13 +18,20 @@ const ViewerAuth = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const { toast } = useToast();
 
+  useEffect(() => {
+    supabase.from("site_settings").select("value").eq("key", "whatsapp_number").single()
+      .then(({ data }) => { if (data?.value) setAdminWaNumber(data.value); });
+  }, []);
   const getRedirectPath = () => redirectTo || "/coins";
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
@@ -35,7 +42,13 @@ const ViewerAuth = () => {
   };
 
   const isFormValid = () => {
-    if (mode === "forgot") return forgotIdentifier.trim().length >= 5;
+    if (mode === "forgot") {
+      return (
+        forgotIdentifier.trim().length >= 5 &&
+        forgotNewPassword.length >= 6 &&
+        forgotNewPassword === forgotConfirmPassword
+      );
+    }
     if (mode === "signup" && !username.trim()) return false;
     if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
     return email.trim().includes("@") && password.length >= 6;
@@ -43,10 +56,15 @@ const ViewerAuth = () => {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      toast({ title: "Gagal", description: "Password baru tidak cocok", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("request_password_reset", {
         _identifier: forgotIdentifier.trim(),
+        _new_password: forgotNewPassword,
       });
       const result = data as any;
       if (error || !result?.success) {
@@ -55,7 +73,6 @@ const ViewerAuth = () => {
         return;
       }
 
-      // Notify admin via Telegram
       await supabase.functions.invoke("notify-password-reset", {
         body: {
           short_id: result.short_id,
@@ -105,6 +122,11 @@ const ViewerAuth = () => {
     setLoading(false);
   };
 
+  const handleContactAdmin = () => {
+    const msg = encodeURIComponent("Halo admin, saya butuh bantuan untuk reset password akun saya.");
+    window.open(`https://wa.me/${adminWaNumber}?text=${msg}`, "_blank");
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
@@ -130,18 +152,24 @@ const ViewerAuth = () => {
                 <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
                 <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
                 <p className="text-xs text-muted-foreground">
-                  Admin akan mengecek permintaan reset password kamu. Jika disetujui, kamu akan menerima link via WhatsApp untuk membuat password baru.
+                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, password baru langsung aktif dan kamu bisa login.
                 </p>
-                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
+                <p className="text-xs text-muted-foreground">
+                  Notifikasi akan dikirim via WhatsApp saat sudah disetujui.
+                </p>
+                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
                 </Button>
+                <button type="button" onClick={handleContactAdmin} className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors">
+                  <MessageCircle className="h-4 w-4" /> Hubungi Admin via WhatsApp
+                </button>
               </div>
             ) : (
               <>
                 <div className="rounded-lg bg-primary/10 p-3 text-center">
                   <KeyRound className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <p className="text-xs text-muted-foreground">
-                    Masukkan nomor HP atau email yang terdaftar. Admin akan mereview dan mengirim password baru via WhatsApp.
+                    Masukkan nomor HP/email dan password baru yang kamu inginkan. Admin akan mereview dan menyetujui via Telegram.
                   </p>
                 </div>
                 <div>
@@ -157,9 +185,45 @@ const ViewerAuth = () => {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Password Baru</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      placeholder="Min. 6 karakter"
+                      required
+                      minLength={6}
+                      className="bg-background pl-10"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Konfirmasi Password Baru</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      placeholder="Ulangi password baru"
+                      required
+                      minLength={6}
+                      className="bg-background pl-10"
+                    />
+                  </div>
+                  {forgotConfirmPassword && forgotNewPassword !== forgotConfirmPassword && (
+                    <p className="mt-1 text-xs text-destructive">Password tidak cocok</p>
+                  )}
+                </div>
                 <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
                   {loading ? "Mengirim..." : "Kirim Permintaan Reset"}
                 </Button>
+                <button type="button" onClick={handleContactAdmin} className="flex w-full items-center justify-center gap-2 rounded-lg border border-green-600 px-3 py-2 text-xs font-medium text-green-600 hover:bg-green-600/10 transition-colors">
+                  <MessageCircle className="h-3.5 w-3.5" /> Hubungi Admin via WhatsApp
+                </button>
                 <button type="button" onClick={() => setMode("login")} className="w-full text-center text-xs text-primary hover:underline">
                   Kembali ke Login
                 </button>
@@ -219,7 +283,7 @@ const ViewerAuth = () => {
                 {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
               </Button>
 
-              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
+              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
                 Lupa password?
               </button>
 

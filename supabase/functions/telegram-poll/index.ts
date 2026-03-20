@@ -425,26 +425,72 @@ async function processPasswordReset(
     const username = profile?.username || 'User';
 
     if (action === 'approve') {
-      // Set status to approved — user will set their own new password via reset link
-      await supabase.from('password_reset_requests')
-        .update({ status: 'approved', processed_at: new Date().toISOString() })
-        .eq('id', request.id);
+      // Check if user provided a new password in the request
+      const { data: fullRequest } = await supabase
+        .from('password_reset_requests')
+        .select('new_password')
+        .eq('id', request.id)
+        .single();
 
-      // Send reset link via WhatsApp
-      const resetLink = `https://realstream48.lovable.app/reset-password?token=${request.short_id}`;
-      if (request.phone) {
-        const waMsg = `✅ Permintaan reset password kamu telah disetujui!\n\nKlik link berikut untuk membuat password baru:\n${resetLink}\n\n⚠️ Link ini hanya bisa digunakan 1 kali.`;
-        await sendFonnteWhatsApp(request.phone, waMsg);
+      const newPassword = fullRequest?.new_password;
+
+      if (newPassword && newPassword !== '[user_set]') {
+        // Apply password directly using admin API
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+        const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${request.user_id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'apikey': SERVICE_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password: newPassword }),
+        });
+
+        if (!updateRes.ok) {
+          await sendTelegramMessage(botToken, chatId, `⚠️ Gagal mengubah password untuk ${escapeMarkdown(username)}\\.`);
+          return;
+        }
+
+        await supabase.from('password_reset_requests')
+          .update({ status: 'completed', processed_at: new Date().toISOString(), new_password: '[applied]' })
+          .eq('id', request.id);
+
+        if (request.phone) {
+          const waMsg = `✅ Password kamu telah berhasil direset!\n\nSilakan login dengan password baru yang kamu buat.\n\n🔗 https://realstream48.lovable.app/auth`;
+          await sendFonnteWhatsApp(request.phone, waMsg);
+        }
+
+        await supabase.from('admin_notifications').insert({
+          title: '🔑 Password Reset Selesai',
+          message: `Password untuk ${username} (${request.identifier}) telah diubah sesuai permintaan.`,
+          type: 'password_reset',
+        });
+
+        await sendTelegramMessage(botToken, chatId,
+          `✅ Password ${escapeMarkdown(username)} berhasil diubah\\! Notifikasi dikirim via WhatsApp\\.`);
+      } else {
+        // Fallback: send reset link
+        await supabase.from('password_reset_requests')
+          .update({ status: 'approved', processed_at: new Date().toISOString() })
+          .eq('id', request.id);
+
+        const resetLink = `https://realstream48.lovable.app/reset-password?token=${request.short_id}`;
+        if (request.phone) {
+          const waMsg = `✅ Permintaan reset password kamu telah disetujui!\n\nKlik link berikut untuk membuat password baru:\n${resetLink}\n\n⚠️ Link ini hanya bisa digunakan 1 kali.`;
+          await sendFonnteWhatsApp(request.phone, waMsg);
+        }
+
+        await supabase.from('admin_notifications').insert({
+          title: '🔑 Password Reset Disetujui',
+          message: `Reset password untuk ${username} (${request.identifier}) telah disetujui.`,
+          type: 'password_reset',
+        });
+
+        await sendTelegramMessage(botToken, chatId,
+          `✅ Reset \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} disetujui\\!\n🔗 Link reset dikirim via WhatsApp\\.`);
       }
-
-      await supabase.from('admin_notifications').insert({
-        title: '🔑 Password Reset Disetujui',
-        message: `Reset password untuk ${username} (${request.identifier}) telah disetujui. Menunggu user membuat password baru.`,
-        type: 'password_reset',
-      });
-
-      await sendTelegramMessage(botToken, chatId,
-        `✅ Reset \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} disetujui\\!\n🔗 Link reset dikirim via WhatsApp\\.`);
     } else {
       await supabase.from('password_reset_requests')
         .update({ status: 'rejected', processed_at: new Date().toISOString() })
