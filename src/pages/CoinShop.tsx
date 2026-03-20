@@ -54,7 +54,14 @@ const CoinShop = () => {
     const balChannel = supabase
       .channel(`coinshop-balance-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
-        if (payload.new?.balance !== undefined) setBalance(payload.new.balance);
+        if (payload.new?.balance !== undefined) {
+          const oldBal = payload.old?.balance ?? 0;
+          const newBal = payload.new.balance;
+          setBalance(newBal);
+          if (newBal > oldBal) {
+            toast({ title: "💰 Koin Ditambahkan!", description: `+${newBal - oldBal} koin telah masuk ke akunmu. Saldo: ${newBal} koin` });
+          }
+        }
       })
       .subscribe();
 
