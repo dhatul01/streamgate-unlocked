@@ -260,7 +260,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       // Decrypt server-encrypted URL, then extract video ID at runtime only
       const _decrypted = decryptUrl(playlist.url);
-      const _raw = extractYTId(_decrypted);
+      const _raw = (() => {
+        const match = _decrypted.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : _decrypted;
+      })();
       const _enc = obfuscate(_raw);
       const videoId = deobfuscate(_enc);
 
@@ -269,7 +272,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           width: "100%",
           height: "100%",
           videoId,
-          host: "https://www.youtube-nocookie.com",
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
             mute: 1, // Required for autoplay in all browsers
