@@ -767,157 +767,17 @@ const Index = () => {
           ) : (
             <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
               {regularShows.map((show, i) => (
-                <motion.div
+                <ShowCard
                   key={show.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="group relative overflow-hidden rounded-2xl tv:rounded-3xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5"
-                >
-                  <div className="relative h-48 tv:h-72 overflow-hidden">
-                    {show.background_image_url ? (
-                      <img src={show.background_image_url} alt={show.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-accent/10">
-                        <Ticket className="h-16 w-16 tv:h-24 tv:w-24 text-primary/30" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                    {/* Category badge */}
-                    {show.category && show.category !== "regular" && (() => {
-                      const cat = SHOW_CATEGORIES[show.category] || SHOW_CATEGORIES.regular;
-                      const memberText = show.category_member && (show.category === "birthday" || show.category === "last_show")
-                        ? ` — ${show.category_member}` : "";
-                      return (
-                        <span className={`absolute top-3 left-3 tv:top-4 tv:left-4 rounded-full px-3 py-1 text-[10px] tv:text-xs font-bold backdrop-blur-sm ${cat.color}`}>
-                          {cat.label}{memberText}
-                        </span>
-                      );
-                    })()}
-                    <div className="absolute bottom-3 left-4 right-4 tv:bottom-5 tv:left-6">
-                      <h3 className="text-xl font-bold text-foreground tv:text-3xl">{show.title}</h3>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    {isShowReplayMode(show) && show.replay_coin_price > 0 ? (
-                      <div className="flex items-center gap-1.5 text-sm text-accent tv:text-base">
-                        <Film className="h-4 w-4 tv:h-5 tv:w-5" />
-                        <span className="font-semibold">Replay: {show.replay_coin_price} Koin</span>
-                      </div>
-                    ) : show.coin_price > 0 ? (
-                      <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
-                        <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
-                        <span className="font-semibold">{show.coin_price} Koin</span>
-                      </div>
-                    ) : null}
-                    <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold text-muted-foreground tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
-                    {show.schedule_date && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
-                        <Calendar className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_date}
-                      </div>
-                    )}
-                    {show.schedule_time && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">
-                        <Clock className="h-4 w-4 tv:h-5 tv:w-5 text-primary" />{show.schedule_time}
-                      </div>
-                    )}
-                    {show.lineup && (
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
-                        <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
-                        <span className="line-clamp-2">{show.lineup}</span>
-                      </div>
-                    )}
-                    <div className="mt-2 flex flex-col gap-2">
-                      {/* Access password display */}
-                      {accessPasswords[show.id] && (
-                        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
-                          <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Akses Show</p>
-                          <p className="font-mono text-lg font-bold text-warning">{accessPasswords[show.id]}</p>
-                        </div>
-                      )}
-                      {redeemedTokens[show.id] ? (
-                        isShowReplayMode(show) ? (
-                          <div className="space-y-2">
-                            {(accessPasswords[show.id] || replayPasswords[show.id]) && (accessPasswords[show.id] || replayPasswords[show.id]) !== "__purchased__" && (
-                              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
-                                <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay — salin sebelum menonton</p>
-                                <p className="font-mono text-lg font-bold text-warning">{accessPasswords[show.id] || replayPasswords[show.id]}</p>
-                              </div>
-                            )}
-                            <button
-                              onClick={() => {
-                                const pw = accessPasswords[show.id] || replayPasswords[show.id];
-                                if (pw && pw !== "__purchased__") {
-                                  navigator.clipboard.writeText(pw);
-                                  toast({ title: "Sandi disalin! Membuka halaman replay..." });
-                                  setTimeout(() => {
-                                    window.open("https://replaytime.lovable.app", "_blank");
-                                  }, 500);
-                                } else {
-                                  window.open("https://replaytime.lovable.app", "_blank");
-                                }
-                              }}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 tv:py-4 font-semibold text-accent-foreground transition-all hover:bg-accent/90 hover:shadow-lg hover:shadow-accent/25 tv:text-lg tv:rounded-2xl"
-                            >
-                              <Copy className="h-4 w-4 tv:h-6 tv:w-6" /> {(accessPasswords[show.id] || replayPasswords[show.id]) && (accessPasswords[show.id] || replayPasswords[show.id]) !== "__purchased__" ? "Salin Sandi & Tonton Replay" : "Tonton Replay"}
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
-                                toast({ title: "Link disalin!" });
-                              }}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
-                            >
-                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <a
-                              href={`/live?t=${redeemedTokens[show.id]}`}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 tv:py-4 font-semibold text-primary-foreground transition-all hover:bg-success/90 hover:shadow-lg hover:shadow-success/25 tv:text-lg tv:rounded-2xl"
-                            >
-                              <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Tonton Live
-                            </a>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedTokens[show.id]}`);
-                                toast({ title: "Link disalin!" });
-                              }}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
-                            >
-                              <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
-                            </button>
-                          </>
-                        )
-                      ) : (
-                        <>
-                          {show.coin_price > 0 && (
-                            <button
-                              onClick={() => handleCoinBuy(show)}
-                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-warning py-3 tv:py-4 font-semibold text-warning-foreground transition-all hover:bg-warning/90 hover:shadow-lg hover:shadow-warning/25 tv:text-lg tv:rounded-2xl"
-                            >
-                              <Coins className="h-4 w-4 tv:h-6 tv:w-6" /> Beli dengan {show.coin_price} Koin
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleBuy(show)}
-                            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 tv:py-4 font-semibold transition-all tv:text-lg tv:rounded-2xl ${
-                              show.coin_price > 0
-                                ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                                : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25"
-                            }`}
-                          >
-                            <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> {show.coin_price > 0 ? "Beli via QRIS" : "Beli Tiket"}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
+                  show={show}
+                  index={i}
+                  isReplayMode={isShowReplayMode(show)}
+                  redeemedToken={redeemedTokens[show.id]}
+                  accessPassword={accessPasswords[show.id]}
+                  replayPassword={replayPasswords[show.id]}
+                  onBuy={handleBuy}
+                  onCoinBuy={handleCoinBuy}
+                />
               ))}
             </div>
           )}
