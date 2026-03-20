@@ -18,17 +18,24 @@ serve(async (req) => {
 
     const { order_id, show_title, phone, email, payment_proof_url } = await req.json();
 
-    const escapedOrderId = escapeMarkdown(order_id);
-    const caption = `🎬 *Order Subscription Baru\\!*\n\n🎭 Show: ${escapeMarkdown(show_title)}\n📱 Phone: ${escapeMarkdown(phone)}\n📧 Email: ${escapeMarkdown(email)}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk konfirmasi\n❌ Balas *TIDAK ${escapedOrderId}* untuk tolak`;
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data: orderData } = await supabase
+      .from('subscription_orders')
+      .select('short_id')
+      .eq('id', order_id)
+      .single();
+
+    const shortId = orderData?.short_id || order_id;
+
+    const caption = `🎬 *Order Subscription Baru\\!*\n\n🎭 Show: ${escapeMarkdown(show_title)}\n📱 Phone: ${escapeMarkdown(phone)}\n📧 Email: ${escapeMarkdown(email)}\n🆔 ID: \`${escapeMarkdown(shortId)}\`\n\n✅ Balas *YA ${escapeMarkdown(shortId)}* untuk konfirmasi\n❌ Balas *TIDAK ${escapeMarkdown(shortId)}* untuk tolak\n\n💡 Bulk: *YA ${escapeMarkdown(shortId)},s2,s3*`;
 
     // Try to send photo if payment proof exists
     if (payment_proof_url) {
       try {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-
         const { data: fileData, error: downloadError } = await supabase.storage
           .from('payment-proofs')
           .download(payment_proof_url);

@@ -21,7 +21,6 @@ serve(async () => {
 
   let totalProcessed = 0;
 
-  // Read initial offset
   const { data: state, error: stateErr } = await supabase
     .from('telegram_bot_state')
     .select('update_offset')
@@ -32,7 +31,6 @@ serve(async () => {
 
   let currentOffset = state.update_offset;
 
-  // Poll loop
   while (true) {
     const elapsed = Date.now() - startTime;
     const remainingMs = MAX_RUNTIME_MS - elapsed;
@@ -44,11 +42,7 @@ serve(async () => {
     const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        offset: currentOffset,
-        timeout,
-        allowed_updates: ['message'],
-      }),
+      body: JSON.stringify({ offset: currentOffset, timeout, allowed_updates: ['message'] }),
     });
 
     const data = await response.json();
@@ -57,7 +51,6 @@ serve(async () => {
     const updates = data.result ?? [];
     if (updates.length === 0) continue;
 
-    // Store messages
     const rows = updates
       .filter((u: any) => u.message)
       .map((u: any) => ({
@@ -72,18 +65,12 @@ serve(async () => {
       await supabase.from('telegram_messages').upsert(rows, { onConflict: 'update_id' });
     }
 
-    // Advance offset
     const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
-    await supabase
-      .from('telegram_bot_state')
-      .update({ update_offset: newOffset, updated_at: new Date().toISOString() })
-      .eq('id', 1);
+    await supabase.from('telegram_bot_state').update({ update_offset: newOffset, updated_at: new Date().toISOString() }).eq('id', 1);
     currentOffset = newOffset;
 
-    // Process admin replies for coin order approval/rejection
-    const adminMessages = rows.filter(
-      (r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text
-    );
+    // Process admin replies
+    const adminMessages = rows.filter((r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text);
 
     for (const msg of adminMessages) {
       const rawText = (msg.text as string).trim();
@@ -96,71 +83,155 @@ serve(async () => {
         await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
         totalProcessed++;
       } else if (yaMatch) {
-        await processAnyOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, yaMatch[1].trim(), 'approve');
-        totalProcessed++;
+        // Support bulk: "YA c1,c2,c3" or single "YA c1"
+        const ids = yaMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
+        await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
+        totalProcessed += ids.length;
       } else if (tidakMatch) {
-        await processAnyOrder(supabase, BOT_TOKEN, ADMIN_CHAT_ID, tidakMatch[1].trim(), 'reject');
-        totalProcessed++;
+        const ids = tidakMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
+        await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
+        totalProcessed += ids.length;
       }
 
-      // Mark as processed
-      await supabase
-        .from('telegram_messages')
-        .update({ processed: true })
-        .eq('update_id', msg.update_id);
+      await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
     }
   }
 
   return new Response(JSON.stringify({ ok: true, processed: totalProcessed, finalOffset: currentOffset }));
 });
 
+// ─── Bulk processing ───
+
+async function processBulkOrders(
+  supabase: any, botToken: string, chatId: string,
+  shortIds: string[], action: 'approve' | 'reject'
+) {
+  const results: string[] = [];
+
+  for (const shortId of shortIds) {
+    const result = await processOrderByShortId(supabase, botToken, chatId, shortId, action);
+    results.push(result);
+  }
+
+  // Send summary if bulk (>1)
+  if (shortIds.length > 1) {
+    const summary = `📋 *Hasil Bulk ${action === 'approve' ? 'Konfirmasi' : 'Tolak'}:*\n\n` + results.join('\n');
+    await sendTelegramMessage(botToken, chatId, summary);
+  }
+}
+
+async function processOrderByShortId(
+  supabase: any, botToken: string, chatId: string,
+  shortId: string, action: 'approve' | 'reject'
+): Promise<string> {
+  // Try coin_orders by short_id
+  const { data: coinOrder } = await supabase
+    .from('coin_orders')
+    .select('id, user_id, coin_amount, status, package_id, phone, short_id')
+    .eq('short_id', shortId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (coinOrder) {
+    await processCoinOrder(supabase, botToken, chatId, coinOrder, action, shortId.length <= 5);
+    return `${action === 'approve' ? '✅' : '❌'} ${escapeMarkdown(shortId)} \\(koin\\)`;
+  }
+
+  // Try subscription_orders by short_id
+  const { data: subOrder } = await supabase
+    .from('subscription_orders')
+    .select('id, show_id, phone, email, status, short_id')
+    .eq('short_id', shortId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (subOrder) {
+    await processSubscriptionOrder(supabase, botToken, chatId, subOrder, action, shortId.length <= 5);
+    return `${action === 'approve' ? '✅' : '❌'} ${escapeMarkdown(shortId)} \\(subscription\\)`;
+  }
+
+  // Fallback: try as UUID for backward compatibility
+  const { data: coinByUuid } = await supabase
+    .from('coin_orders')
+    .select('id, user_id, coin_amount, status, package_id, phone, short_id')
+    .eq('id', shortId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (coinByUuid) {
+    await processCoinOrder(supabase, botToken, chatId, coinByUuid, action, false);
+    return `${action === 'approve' ? '✅' : '❌'} ${escapeMarkdown(shortId)} \\(koin\\)`;
+  }
+
+  const { data: subByUuid } = await supabase
+    .from('subscription_orders')
+    .select('id, show_id, phone, email, status, short_id')
+    .eq('id', shortId)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (subByUuid) {
+    await processSubscriptionOrder(supabase, botToken, chatId, subByUuid, action, false);
+    return `${action === 'approve' ? '✅' : '❌'} ${escapeMarkdown(shortId)} \\(subscription\\)`;
+  }
+
+  // Not found - only send individual message if not bulk
+  return `⚠️ ${escapeMarkdown(shortId)} tidak ditemukan`;
+}
+
+// ─── Status command ───
+
 async function handleStatusCommand(supabase: any, botToken: string, chatId: string) {
   try {
-    // Fetch recent pending coin orders
     const { data: coinOrders } = await supabase
       .from('coin_orders')
-      .select('id, coin_amount, price, created_at, user_id')
+      .select('id, coin_amount, price, created_at, user_id, short_id')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(10);
 
-    // Fetch recent pending subscription orders
     const { data: subOrders } = await supabase
       .from('subscription_orders')
-      .select('id, show_id, phone, email, created_at')
+      .select('id, show_id, phone, email, created_at, short_id')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(10);
 
     let message = '📊 *STATUS ORDER TERBARU*\n\n';
 
-    // Coin orders section
     if (coinOrders && coinOrders.length > 0) {
-      message += `🪙 *Order Koin Pending (${coinOrders.length}):*\n`;
+      message += `🪙 *Order Koin Pending \\(${coinOrders.length}\\):*\n`;
+      const allIds: string[] = [];
       for (const o of coinOrders) {
         const { data: profile } = await supabase.from('profiles').select('username').eq('id', o.user_id).single();
         const time = new Date(o.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-        message += `• ${escapeMarkdown(profile?.username || 'User')} \\- ${o.coin_amount} koin \\(Rp ${escapeMarkdown(Number(o.price).toLocaleString('id-ID'))}\\)\n  ID: \`${o.id}\` \\| ${escapeMarkdown(time)}\n`;
+        const sid = o.short_id || o.id.substring(0, 6);
+        allIds.push(sid);
+        message += `• \`${escapeMarkdown(sid)}\` ${escapeMarkdown(profile?.username || 'User')} \\- ${o.coin_amount} koin \\(Rp ${escapeMarkdown(Number(o.price).toLocaleString('id-ID'))}\\) \\| ${escapeMarkdown(time)}\n`;
       }
+      message += `\n💡 Konfirmasi semua: \`YA ${allIds.join(',')}\`\n`;
     } else {
       message += '🪙 *Order Koin:* Tidak ada order pending\n';
     }
 
     message += '\n';
 
-    // Subscription orders section
     if (subOrders && subOrders.length > 0) {
-      message += `🎬 *Subscription Pending (${subOrders.length}):*\n`;
+      message += `🎬 *Subscription Pending \\(${subOrders.length}\\):*\n`;
+      const allIds: string[] = [];
       for (const o of subOrders) {
         const { data: show } = await supabase.from('shows').select('title').eq('id', o.show_id).single();
         const time = new Date(o.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-        message += `• ${escapeMarkdown(show?.title || 'Unknown')} \\- ${escapeMarkdown(o.email)}\n  ID: \`${o.id}\` \\| ${escapeMarkdown(time)}\n`;
+        const sid = o.short_id || o.id.substring(0, 6);
+        allIds.push(sid);
+        message += `• \`${escapeMarkdown(sid)}\` ${escapeMarkdown(show?.title || 'Unknown')} \\- ${escapeMarkdown(o.email)} \\| ${escapeMarkdown(time)}\n`;
       }
+      message += `\n💡 Konfirmasi semua: \`YA ${allIds.join(',')}\`\n`;
     } else {
       message += '🎬 *Subscription:* Tidak ada order pending\n';
     }
 
-    message += '\n📌 *Commands:*\n`YA <id>` \\- Konfirmasi order\n`TIDAK <id>` \\- Tolak order\n`/status` \\- Cek order pending';
+    message += '\n📌 *Commands:*\n`YA <id>` \\- Konfirmasi order\n`YA id1,id2,id3` \\- Bulk konfirmasi\n`TIDAK <id>` \\- Tolak order\n`/status` \\- Cek order pending';
 
     await sendTelegramMessage(botToken, chatId, message);
   } catch (e) {
@@ -169,116 +240,69 @@ async function handleStatusCommand(supabase: any, botToken: string, chatId: stri
   }
 }
 
-async function processAnyOrder(
-  supabase: any,
-  botToken: string,
-  chatId: string,
-  orderId: string,
-  action: 'approve' | 'reject'
-) {
-  // Try coin_orders first
-  const { data: coinOrder } = await supabase
-    .from('coin_orders')
-    .select('id, user_id, coin_amount, status, package_id, phone')
-    .eq('id', orderId)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  if (coinOrder) {
-    await processCoinOrder(supabase, botToken, chatId, coinOrder, action);
-    return;
-  }
-
-  // Try subscription_orders
-  const { data: subOrder } = await supabase
-    .from('subscription_orders')
-    .select('id, show_id, phone, email, status')
-    .eq('id', orderId)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  if (subOrder) {
-    await processSubscriptionOrder(supabase, botToken, chatId, subOrder, action);
-    return;
-  }
-
-  await sendTelegramMessage(botToken, chatId,
-    `❌ Order \`${orderId}\` tidak ditemukan atau sudah diproses\\.`);
-}
+// ─── Process individual orders ───
 
 async function processCoinOrder(
-  supabase: any,
-  botToken: string,
-  chatId: string,
-  order: any,
-  action: 'approve' | 'reject'
+  supabase: any, botToken: string, chatId: string,
+  order: any, action: 'approve' | 'reject', isBulk: boolean
 ) {
   try {
+    const sid = order.short_id || order.id.substring(0, 6);
+
     if (action === 'approve') {
       await supabase.from('coin_orders').update({ status: 'confirmed' }).eq('id', order.id);
 
       const { data: existingBalance } = await supabase
-        .from('coin_balances')
-        .select('balance')
-        .eq('user_id', order.user_id)
-        .maybeSingle();
+        .from('coin_balances').select('balance').eq('user_id', order.user_id).maybeSingle();
 
       if (existingBalance) {
-        await supabase
-          .from('coin_balances')
+        await supabase.from('coin_balances')
           .update({ balance: existingBalance.balance + order.coin_amount, updated_at: new Date().toISOString() })
           .eq('user_id', order.user_id);
       } else {
-        await supabase
-          .from('coin_balances')
-          .insert({ user_id: order.user_id, balance: order.coin_amount });
+        await supabase.from('coin_balances').insert({ user_id: order.user_id, balance: order.coin_amount });
       }
 
       await supabase.from('coin_transactions').insert({
-        user_id: order.user_id,
-        amount: order.coin_amount,
-        type: 'purchase',
-        reference_id: order.id,
+        user_id: order.user_id, amount: order.coin_amount,
+        type: 'purchase', reference_id: order.id,
         description: `Pembelian ${order.coin_amount} koin`,
       });
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', order.user_id)
-        .single();
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', order.user_id).single();
 
       await supabase.from('admin_notifications').insert({
         title: '✅ Order Koin Dikonfirmasi via Telegram',
-        message: `Order ${order.id} untuk ${profile?.username || 'User'} (${order.coin_amount} koin) telah dikonfirmasi.`,
+        message: `Order ${sid} untuk ${profile?.username || 'User'} (${order.coin_amount} koin) telah dikonfirmasi.`,
         type: 'coin_order',
       });
 
-      // Send WA notification to user
       if (order.phone) {
         const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      await sendTelegramMessage(botToken, chatId,
-        `✅ Order koin \`${order.id}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
+      if (!isBulk) {
+        await sendTelegramMessage(botToken, chatId,
+          `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
+      }
     } else {
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
       await supabase.from('admin_notifications').insert({
         title: '❌ Order Koin Ditolak via Telegram',
-        message: `Order ${order.id} telah ditolak.`,
+        message: `Order ${sid} telah ditolak.`,
         type: 'coin_order',
       });
 
-      // Send WA notification to user
       if (order.phone) {
         const waMsg = `❌ Maaf, pembayaran kamu untuk pembelian koin tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      await sendTelegramMessage(botToken, chatId,
-        `❌ Order koin \`${order.id}\` telah ditolak\\.`);
+      if (!isBulk) {
+        await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
+      }
     }
   } catch (e) {
     console.error('processCoinOrder error:', e);
@@ -288,19 +312,13 @@ async function processCoinOrder(
 }
 
 async function processSubscriptionOrder(
-  supabase: any,
-  botToken: string,
-  chatId: string,
-  order: any,
-  action: 'approve' | 'reject'
+  supabase: any, botToken: string, chatId: string,
+  order: any, action: 'approve' | 'reject', isBulk: boolean
 ) {
   try {
-    const { data: show } = await supabase
-      .from('shows')
-      .select('title, group_link')
-      .eq('id', order.show_id)
-      .single();
+    const sid = order.short_id || order.id.substring(0, 6);
 
+    const { data: show } = await supabase.from('shows').select('title, group_link').eq('id', order.show_id).single();
     const showTitle = show?.title || 'Unknown Show';
 
     if (action === 'approve') {
@@ -308,11 +326,10 @@ async function processSubscriptionOrder(
 
       await supabase.from('admin_notifications').insert({
         title: '✅ Subscription Dikonfirmasi via Telegram',
-        message: `Order ${order.id} untuk "${showTitle}" (${order.email}) telah dikonfirmasi.`,
+        message: `Order ${sid} untuk "${showTitle}" (${order.email}) telah dikonfirmasi.`,
         type: 'subscription_order',
       });
 
-      // Send WhatsApp notification to user
       if (order.phone) {
         let waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
         if (show?.group_link) {
@@ -321,25 +338,28 @@ async function processSubscriptionOrder(
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      await sendTelegramMessage(botToken, chatId,
-        `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil dikonfirmasi\\!`);
+      if (!isBulk) {
+        await sendTelegramMessage(botToken, chatId,
+          `✅ Subscription \`${escapeMarkdown(sid)}\` untuk "${escapeMarkdown(showTitle)}" berhasil dikonfirmasi\\!`);
+      }
     } else {
       await supabase.from('subscription_orders').update({ status: 'rejected' }).eq('id', order.id);
 
       await supabase.from('admin_notifications').insert({
         title: '❌ Subscription Ditolak via Telegram',
-        message: `Order ${order.id} untuk "${showTitle}" telah ditolak.`,
+        message: `Order ${sid} untuk "${showTitle}" telah ditolak.`,
         type: 'subscription_order',
       });
 
-      // Send WhatsApp notification to user
       if (order.phone) {
         const waMsg = `❌ Maaf, pembayaran kamu untuk *${showTitle}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      await sendTelegramMessage(botToken, chatId,
-        `❌ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" telah ditolak\\.`);
+      if (!isBulk) {
+        await sendTelegramMessage(botToken, chatId,
+          `❌ Subscription \`${escapeMarkdown(sid)}\` untuk "${escapeMarkdown(showTitle)}" telah ditolak\\.`);
+      }
     }
   } catch (e) {
     console.error('processSubscriptionOrder error:', e);
@@ -348,16 +368,15 @@ async function processSubscriptionOrder(
   }
 }
 
+// ─── Helpers ───
+
 function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 async function sendFonnteWhatsApp(phone: string, message: string) {
   const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
-  if (!FONNTE_TOKEN) {
-    console.error('FONNTE_API_TOKEN not configured, skipping WA notification');
-    return;
-  }
+  if (!FONNTE_TOKEN) return;
   const cleanPhone = phone.replace(/^0/, '62').replace(/[^0-9]/g, '');
   try {
     const res = await fetch('https://api.fonnte.com/send', {
@@ -380,6 +399,7 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
   });
   const data = await res.json();
   if (!data.ok) {
+    // Fallback: strip markdown
     await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
