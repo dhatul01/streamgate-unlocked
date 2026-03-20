@@ -285,7 +285,7 @@ async function processSubscriptionOrder(
   try {
     const { data: show } = await supabase
       .from('shows')
-      .select('title')
+      .select('title, group_link')
       .eq('id', order.show_id)
       .single();
 
@@ -300,6 +300,15 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
+      // Send WhatsApp notification to user
+      if (order.phone) {
+        let waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
+        if (show?.group_link) {
+          waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
+        }
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
+
       await sendTelegramMessage(botToken, chatId,
         `✅ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" berhasil dikonfirmasi\\!`);
     } else {
@@ -310,6 +319,12 @@ async function processSubscriptionOrder(
         message: `Order ${order.id} untuk "${showTitle}" telah ditolak.`,
         type: 'subscription_order',
       });
+
+      // Send WhatsApp notification to user
+      if (order.phone) {
+        const waMsg = `❌ Maaf, pembayaran kamu untuk *${showTitle}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
 
       await sendTelegramMessage(botToken, chatId,
         `❌ Subscription \`${order.id}\` untuk "${escapeMarkdown(showTitle)}" telah ditolak\\.`);
