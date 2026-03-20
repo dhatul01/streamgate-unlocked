@@ -50,15 +50,10 @@ const ViewerAuth = () => {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      toast({ title: "Gagal", description: "Password baru tidak cocok", variant: "destructive" });
-      return;
-    }
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("request_password_reset", {
         _identifier: forgotIdentifier.trim(),
-        _new_password: forgotNewPassword,
       });
       const result = data as any;
       if (error || !result?.success) {
