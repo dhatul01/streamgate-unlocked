@@ -120,7 +120,7 @@ const ViewerAuth = () => {
 
   const handleContactAdmin = () => {
     const msg = encodeURIComponent("Halo admin, saya butuh bantuan untuk reset password akun saya.");
-    window.open(`https://wa.me/${ADMIN_WA_NUMBER}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${adminWaNumber}?text=${msg}`, "_blank");
   };
 
   return (
