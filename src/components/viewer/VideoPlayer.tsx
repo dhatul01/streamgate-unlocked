@@ -666,16 +666,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <div className="flex-1" />
 
-        {playlist.type === "m3u8" && qualities.length > 0 && (
-          <select
-            value={currentQuality}
-            onChange={(e) => handleQualityChange(Number(e.target.value))}
-            className="rounded-md bg-secondary px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground"
-          >
-            {qualities.map((q) => (
-              <option key={q.index} value={q.index}>{q.label}</option>
-            ))}
-          </select>
+        {qualities.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
+              className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              {qualities.find(q => q.index === currentQuality)?.label || "Auto"}
+            </button>
+            {showQualityMenu && (
+              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[100px] tv:min-w-[140px]">
+                {qualities.map((q) => (
+                  <button
+                    key={q.index}
+                    onClick={(e) => { e.stopPropagation(); handleQualityChange(q.index, q.ytKey); }}
+                    className={`block w-full rounded-md px-3 py-1.5 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition ${
+                      currentQuality === q.index
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <button
