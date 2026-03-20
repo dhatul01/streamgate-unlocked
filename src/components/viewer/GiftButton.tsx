@@ -27,7 +27,15 @@ const GiftButton = ({ isAuthenticated }: GiftButtonProps) => {
   const [amount, setAmount] = useState(1);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { toast } = useToast();
+
+  // Check if user is actually logged in with Supabase auth
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+    });
+  }, []);
 
   const handleSend = async () => {
     if (!isAuthenticated) {
