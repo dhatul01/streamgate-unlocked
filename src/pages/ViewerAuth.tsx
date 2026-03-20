@@ -18,8 +18,6 @@ const ViewerAuth = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState("");
-  const [forgotNewPassword, setForgotNewPassword] = useState("");
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
@@ -43,11 +41,7 @@ const ViewerAuth = () => {
 
   const isFormValid = () => {
     if (mode === "forgot") {
-      return (
-        forgotIdentifier.trim().length >= 5 &&
-        forgotNewPassword.length >= 6 &&
-        forgotNewPassword === forgotConfirmPassword
-      );
+      return forgotIdentifier.trim().length >= 5;
     }
     if (mode === "signup" && !username.trim()) return false;
     if (method === "phone") return normalizePhone(phone).length >= 10 && password.length >= 6;
@@ -56,15 +50,10 @@ const ViewerAuth = () => {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      toast({ title: "Gagal", description: "Password baru tidak cocok", variant: "destructive" });
-      return;
-    }
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("request_password_reset", {
         _identifier: forgotIdentifier.trim(),
-        _new_password: forgotNewPassword,
       });
       const result = data as any;
       if (error || !result?.success) {
@@ -152,12 +141,12 @@ const ViewerAuth = () => {
                 <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
                 <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
                 <p className="text-xs text-muted-foreground">
-                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, password baru langsung aktif dan kamu bisa login.
+                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, kamu akan menerima link via WhatsApp untuk membuat password baru.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Notifikasi akan dikirim via WhatsApp saat sudah disetujui.
                 </p>
-                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
                 </Button>
                 <button type="button" onClick={handleContactAdmin} className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors">
@@ -169,7 +158,7 @@ const ViewerAuth = () => {
                 <div className="rounded-lg bg-primary/10 p-3 text-center">
                   <KeyRound className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <p className="text-xs text-muted-foreground">
-                    Masukkan nomor HP/email dan password baru yang kamu inginkan. Admin akan mereview dan menyetujui via Telegram.
+                    Masukkan nomor HP atau email yang terdaftar. Admin akan mereview dan mengirim link reset via WhatsApp.
                   </p>
                 </div>
                 <div>
@@ -184,39 +173,6 @@ const ViewerAuth = () => {
                       className="bg-background pl-10"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Password Baru</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={forgotNewPassword}
-                      onChange={(e) => setForgotNewPassword(e.target.value)}
-                      placeholder="Min. 6 karakter"
-                      required
-                      minLength={6}
-                      className="bg-background pl-10"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Konfirmasi Password Baru</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={forgotConfirmPassword}
-                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                      placeholder="Ulangi password baru"
-                      required
-                      minLength={6}
-                      className="bg-background pl-10"
-                    />
-                  </div>
-                  {forgotConfirmPassword && forgotNewPassword !== forgotConfirmPassword && (
-                    <p className="mt-1 text-xs text-destructive">Password tidak cocok</p>
-                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
                   {loading ? "Mengirim..." : "Kirim Permintaan Reset"}
@@ -283,7 +239,7 @@ const ViewerAuth = () => {
                 {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
               </Button>
 
-              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
+              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
                 Lupa password?
               </button>
 
