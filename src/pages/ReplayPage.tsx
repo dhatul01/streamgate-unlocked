@@ -265,18 +265,28 @@ const ReplayPage = () => {
                       <span className="font-semibold">{show.replay_coin_price} Koin</span>
                     </div>
 
-                    {hasPassword ? (
+                    {hasPassword && replayPasswords[show.id] && replayPasswords[show.id] !== "__purchased__" ? (
+                      <div className="space-y-2">
+                        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-center">
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                          <p className="font-mono text-lg font-bold text-warning">{replayPasswords[show.id]}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(replayPasswords[show.id]);
+                            toast({ title: "Sandi disalin! Membuka halaman replay..." });
+                            setTimeout(() => {
+                              window.open("https://replaytime.lovable.app", "_blank");
+                            }, 500);
+                          }}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-foreground transition-all hover:bg-accent/90"
+                        >
+                          <Copy className="h-4 w-4" /> Salin Sandi & Tonton Replay
+                        </button>
+                      </div>
+                    ) : hasPassword ? (
                       <button
-                        onClick={() => {
-                          const pw = replayPasswords[show.id];
-                          if (pw && pw !== "__purchased__") {
-                            setReplayModal({ showId: show.id, password: pw });
-                            setReplayCopied(false);
-                          } else {
-                            // Purchased but password lost - go directly to replay site
-                            window.open("https://replaytime.lovable.app", "_blank");
-                          }
-                        }}
+                        onClick={() => window.open("https://replaytime.lovable.app", "_blank")}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-foreground transition-all hover:bg-accent/90"
                       >
                         <Play className="h-4 w-4" /> Tonton Replay
