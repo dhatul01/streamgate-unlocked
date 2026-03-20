@@ -20,7 +20,6 @@ const allSections = [
   { id: "coin-orders", label: "Order Koin", icon: Coins, adminOnly: false },
   { id: "descriptions", label: "Deskripsi LP", icon: FileText, adminOnly: false },
   { id: "polls", label: "Live Poll", icon: BarChart3, adminOnly: false },
-  { id: "earnings", label: "Pendapatan", icon: Wallet, adminOnly: true },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
   { id: "site", label: "Pengaturan", icon: Settings, adminOnly: false },
   { id: "moderators", label: "Akun Moderator", icon: Users, adminOnly: true },
