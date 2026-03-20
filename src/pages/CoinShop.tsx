@@ -47,6 +47,30 @@ const CoinShop = () => {
     init();
   }, [navigate]);
 
+  // Realtime coin balance & transactions updates
+  useEffect(() => {
+    if (!user) return;
+
+    const balChannel = supabase
+      .channel(`coinshop-balance-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "coin_balances", filter: `user_id=eq.${user.id}` }, (payload: any) => {
+        if (payload.new?.balance !== undefined) setBalance(payload.new.balance);
+      })
+      .subscribe();
+
+    const txChannel = supabase
+      .channel(`coinshop-transactions-${user.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "coin_transactions", filter: `user_id=eq.${user.id}` }, () => {
+        fetchData(user.id);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(balChannel);
+      supabase.removeChannel(txChannel);
+    };
+  }, [user]);
+
   const fetchData = async (userId: string) => {
     const [balRes, pkgRes, txRes] = await Promise.all([
       supabase.from("coin_balances").select("balance").eq("user_id", userId).maybeSingle(),
