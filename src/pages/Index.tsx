@@ -135,40 +135,27 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCoinUser(user);
-        const [balRes, profileRes, txRes] = await Promise.all([
+        const [balRes, profileRes] = await Promise.all([
           supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle(),
           supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
-          supabase.from("coin_transactions").select("reference_id, description").eq("user_id", user.id).eq("type", "redeem").order("created_at", { ascending: false }),
         ]);
         setCoinBalance(balRes.data?.balance || 0);
         setCoinUsername(profileRes.data?.username || user.user_metadata?.username || "");
 
-        // Build redeemed tokens map from transaction descriptions
-        // Description format: "Tukar koin untuk <show_title>" and token code is in the generated token
-        // We need to look up active tokens with COIN- prefix for this user
-        if (txRes.data && txRes.data.length > 0) {
-          const showIds = txRes.data.map((tx: any) => tx.reference_id).filter(Boolean);
-          // For each redeemed show, find the matching active COIN- token
-          const tokenMap: Record<string, string> = {};
-          for (const showId of showIds) {
-            if (tokenMap[showId]) continue;
-            // Find token created around the same time as the transaction
-            const { data: tokens } = await supabase
-              .from("tokens" as any)
-              .select("code, status, expires_at")
-              .like("code", "COIN-%")
-              .eq("status", "active")
-              .gt("expires_at", new Date().toISOString())
-              .order("created_at", { ascending: false })
-              .limit(50);
-            if (tokens && tokens.length > 0) {
-              // Match tokens: we'll use the most recent valid one per show
-              // Since we can't directly link token to show, store first valid token for each show
-              tokenMap[showId] = (tokens[0] as any).code;
+        // Load redeemed tokens from localStorage and validate them
+        try {
+          const stored = JSON.parse(localStorage.getItem(`redeemed_tokens_${user.id}`) || "{}");
+          const validMap: Record<string, string> = {};
+          for (const [showId, tokenCode] of Object.entries(stored)) {
+            const { data } = await supabase.rpc("validate_token", { _code: tokenCode as string });
+            if ((data as any)?.valid) {
+              validMap[showId] = tokenCode as string;
             }
           }
-          setRedeemedTokens(tokenMap);
-        }
+          // Update localStorage with only valid tokens
+          localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
+          setRedeemedTokens(validMap);
+        } catch {}
       }
     };
     fetchCoinUser();
