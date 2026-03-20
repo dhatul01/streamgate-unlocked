@@ -20,6 +20,7 @@ interface Show {
   category_member?: string;
   coin_price: number;
   replay_coin_price: number;
+  is_replay: boolean;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {

@@ -181,8 +181,9 @@ const Index = () => {
     }
   };
 
-  // A show is in "replay mode" when: stream is offline AND schedule has passed, OR past 4 hours regardless
+  // A show is in "replay mode" when: admin manually set is_replay, OR stream offline + schedule passed, OR past 4 hours
   const isShowReplayMode = (show: Show) => {
+    if (show.is_replay) return true;
     if (isShowPast4Hours(show)) return true;
     if (!isStreamLive && isShowPastSchedule(show)) return true;
     return false;
