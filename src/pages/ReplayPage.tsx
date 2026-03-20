@@ -99,10 +99,31 @@ const ReplayPage = () => {
         const { data: bal } = await supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
         setCoinBalance(bal?.balance || 0);
 
+        // Load replay passwords from localStorage
+        let storedPw: Record<string, string> = {};
         try {
-          const stored = JSON.parse(localStorage.getItem(`replay_passwords_${user.id}`) || "{}");
-          setReplayPasswords(stored);
+          storedPw = JSON.parse(localStorage.getItem(`replay_passwords_${user.id}`) || "{}");
         } catch {}
+
+        // Also check coin_transactions for past replay purchases not in localStorage
+        const { data: txns } = await supabase
+          .from("coin_transactions")
+          .select("reference_id, description")
+          .eq("user_id", user.id)
+          .in("type", ["replay_redeem", "redeem"])
+          .order("created_at", { ascending: false });
+
+        if (txns) {
+          for (const tx of txns) {
+            if (tx.reference_id && !storedPw[tx.reference_id]) {
+              // Mark as purchased (password unknown but purchased)
+              storedPw[tx.reference_id] = storedPw[tx.reference_id] || "__purchased__";
+            }
+          }
+          localStorage.setItem(`replay_passwords_${user.id}`, JSON.stringify(storedPw));
+        }
+
+        setReplayPasswords(storedPw);
 
         const ch = supabase
           .channel(`replay-balance-${user.id}`)
@@ -247,8 +268,14 @@ const ReplayPage = () => {
                     {hasPassword ? (
                       <button
                         onClick={() => {
-                          setReplayModal({ showId: show.id, password: replayPasswords[show.id] });
-                          setReplayCopied(false);
+                          const pw = replayPasswords[show.id];
+                          if (pw && pw !== "__purchased__") {
+                            setReplayModal({ showId: show.id, password: pw });
+                            setReplayCopied(false);
+                          } else {
+                            // Purchased but password lost - go directly to replay site
+                            window.open("https://replaytime.lovable.app", "_blank");
+                          }
                         }}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-foreground transition-all hover:bg-accent/90"
                       >
