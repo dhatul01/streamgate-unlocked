@@ -547,6 +547,42 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_requests: {
+        Row: {
+          created_at: string
+          id: string
+          identifier: string
+          new_password: string | null
+          phone: string
+          processed_at: string | null
+          short_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier?: string
+          new_password?: string | null
+          phone?: string
+          processed_at?: string | null
+          short_id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier?: string
+          new_password?: string | null
+          phone?: string
+          processed_at?: string | null
+          short_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       playlists: {
         Row: {
           created_at: string
@@ -1172,6 +1208,7 @@ export type Database = {
         Args: { _fingerprint: string; _token_code: string }
         Returns: undefined
       }
+      request_password_reset: { Args: { _identifier: string }; Returns: Json }
       self_reset_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: Json
