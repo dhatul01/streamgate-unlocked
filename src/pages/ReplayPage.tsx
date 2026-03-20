@@ -43,6 +43,19 @@ const isShowPast4Hours = (show: Show) => {
   }
 };
 
+const isShowPastSchedule = (show: Show) => {
+  if (!show.schedule_date || !show.schedule_time) return false;
+  try {
+    const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+    const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+    const showDate = new Date(dateTimeStr);
+    if (isNaN(showDate.getTime())) return false;
+    return new Date() > showDate;
+  } catch {
+    return false;
+  }
+};
+
 const ReplayPage = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
