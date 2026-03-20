@@ -75,7 +75,7 @@ const ViewerAuth = () => {
         toast({ title: "Gagal daftar", description: msg, variant: "destructive" });
       } else {
         toast({ title: "Berhasil!" });
-        navigate("/coins");
+        navigate(getRedirectPath());
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
