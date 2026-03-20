@@ -314,50 +314,65 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             onReady: (e: any) => {
               if (destroyed) return;
               ytReadyRef.current = true;
-              // Force highest quality first, then let it adapt to network
-              try {
-                const qualities = e.target.getAvailableQualityLevels?.();
-                if (qualities && qualities.length > 0) {
-                  const highest = qualities[0]; // e.g. "hd1080", "hd720"
-                  e.target.setPlaybackQuality(highest);
-                }
-              } catch {}
-              // After 8 seconds, release quality lock so it adapts to network
-              setTimeout(() => {
-                if (destroyed) return;
+              let qualityReleased = false;
+              const releaseQuality = () => {
+                if (qualityReleased || destroyed) return;
+                qualityReleased = true;
                 try {
                   if (ytPlayerRef.current && typeof ytPlayerRef.current.setPlaybackQuality === 'function') {
                     ytPlayerRef.current.setPlaybackQuality('default');
                   }
                 } catch {}
-              }, 8000);
+              };
+
+              // Force highest quality for best initial experience
+              try {
+                const qualities = e.target.getAvailableQualityLevels?.();
+                if (qualities && qualities.length > 0) {
+                  e.target.setPlaybackQuality(qualities[0]);
+                }
+              } catch {}
+
+              // Fallback: release after 8s regardless
+              const fallbackTimer = setTimeout(releaseQuality, 8000);
+              // Store release fn so onStateChange can call it on prolonged buffering
+              (e.target as any).__releaseQuality = releaseQuality;
+              (e.target as any).__fallbackTimer = fallbackTimer;
 
               try {
                 const iframe = container.querySelector("iframe");
                 if (iframe) {
                   iframe.removeAttribute("title");
                   iframe.setAttribute("referrerpolicy", "no-referrer");
-                  // Remove allow attribute to prevent link navigation
                   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
                 }
               } catch {}
 
-              // Keep loading overlay visible until video actually starts playing
-              // This hides the channel name / title card that YouTube shows briefly
               if (autoPlay) e.target.playVideo();
             },
             onStateChange: (e: any) => {
               if (destroyed) return;
               const state = e.data;
-              // 1 = playing, 2 = paused, 3 = buffering
               setIsPlaying(state === 1);
-              // Only hide loading when video is actually playing — this keeps
-              // the overlay visible during the brief YouTube title/channel card
+
               if (state === 1 || state === 2) {
                 setIsLoading(false);
-              } else if (state === 3) {
-                // Don't show loading for brief buffering if already loaded once
-                // (prevents flicker during quality changes)
+              }
+
+              // If buffering lasts >4s, release quality lock early
+              if (state === 3) {
+                const bufferTimeout = setTimeout(() => {
+                  if (destroyed) return;
+                  try {
+                    const p = ytPlayerRef.current;
+                    if (p && typeof p.getPlayerState === "function" && p.getPlayerState() === 3) {
+                      (p as any).__releaseQuality?.();
+                    }
+                  } catch {}
+                }, 4000);
+                (e.target as any).__bufferTimeout = bufferTimeout;
+              } else {
+                clearTimeout((e.target as any).__bufferTimeout);
               }
             },
             onError: (e: any) => {
