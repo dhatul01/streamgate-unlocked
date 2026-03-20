@@ -308,9 +308,7 @@ async function processCoinOrder(
         await sendFonnteWhatsApp(order.phone, waMsg);
       }
 
-      if (!isBulk) {
-        await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
-      }
+      await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
     }
   } catch (e) {
     console.error('processCoinOrder error:', e);
