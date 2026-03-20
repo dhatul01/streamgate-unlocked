@@ -71,6 +71,7 @@ interface SiteSettings {
 const Index = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
+  const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
     whatsapp_number: "",
