@@ -332,6 +332,10 @@ const ShowManager = () => {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Harga Koin (0 = tidak dijual via koin)</label>
               <Input type="number" value={editing.coin_price} onChange={(e) => setEditing({ ...editing, coin_price: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="0" />
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">🔐 Sandi Akses Show (ditampilkan ke user setelah beli koin)</label>
+              <Input value={editing.access_password || ""} onChange={(e) => setEditing({ ...editing, access_password: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="Kosongkan jika tidak perlu sandi" />
+            </div>
 
             {/* Subscription-specific fields */}
             {editing.is_subscription && (
