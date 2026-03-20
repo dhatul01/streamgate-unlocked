@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,18 +16,58 @@ serve(async (req) => {
     const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
     if (!ADMIN_CHAT_ID) throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured');
 
-    const { order_id, username, package_name, coin_amount, price } = await req.json();
+    const { order_id, username, package_name, coin_amount, price, payment_proof_url } = await req.json();
 
     const priceFormatted = escapeMarkdown(Number(price).toLocaleString('id-ID'));
     const escapedOrderId = escapeMarkdown(order_id);
-    const message = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
+    const caption = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
 
+    // Try to send photo if payment proof exists
+    if (payment_proof_url) {
+      try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('payment-proofs')
+          .download(payment_proof_url);
+
+        if (!downloadError && fileData) {
+          const formData = new FormData();
+          formData.append('chat_id', ADMIN_CHAT_ID);
+          formData.append('caption', caption);
+          formData.append('parse_mode', 'MarkdownV2');
+          formData.append('photo', fileData, 'payment-proof.jpg');
+
+          const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          const photoResult = await photoResponse.json();
+          if (photoResult.ok) {
+            return new Response(JSON.stringify({ success: true }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          console.warn('sendPhoto failed:', JSON.stringify(photoResult));
+        } else {
+          console.warn('Download failed:', downloadError?.message);
+        }
+      } catch (e) {
+        console.warn('Photo upload error:', e instanceof Error ? e.message : e);
+      }
+    }
+
+    // Fallback: text message only
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: ADMIN_CHAT_ID,
-        text: message,
+        text: caption,
         parse_mode: 'MarkdownV2',
       }),
     });

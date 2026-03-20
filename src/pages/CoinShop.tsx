@@ -94,6 +94,7 @@ const CoinShop = () => {
           package_name: selectedPkg!.name,
           coin_amount: selectedPkg!.coin_amount,
           price: selectedPkg!.price,
+          payment_proof_url: data.path,
         },
       }).catch(() => {});
     }
