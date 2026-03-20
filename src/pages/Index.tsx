@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock, Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -34,6 +34,7 @@ interface Show {
   category?: string;
   category_member?: string;
   coin_price: number;
+  replay_coin_price: number;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -135,13 +136,26 @@ const Index = () => {
   const isShowPast2Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
     try {
-      // Parse "DD Month YYYY" or similar date format + time like "15:00 WIB"
       const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
       const dateTimeStr = `${show.schedule_date} ${timeStr}`;
       const showDate = new Date(dateTimeStr);
       if (isNaN(showDate.getTime())) return false;
       const twoHoursAfter = new Date(showDate.getTime() + 2 * 60 * 60 * 1000);
       return new Date() > twoHoursAfter;
+    } catch {
+      return false;
+    }
+  };
+
+  // Helper: check if show is past 4 hours (move to replay)
+  const isShowPast4Hours = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      return new Date() > new Date(showDate.getTime() + 4 * 60 * 60 * 1000);
     } catch {
       return false;
     }
@@ -362,7 +376,8 @@ const Index = () => {
     setSelectedShow(null);
   };
 
-  const regularShows = shows.filter((s) => !s.is_subscription);
+  const regularShows = shows.filter((s) => !s.is_subscription && !isShowPast4Hours(s));
+  const replayShows = shows.filter((s) => !s.is_subscription && isShowPast4Hours(s) && s.replay_coin_price > 0);
   const subscriptionShows = shows.filter((s) => s.is_subscription);
 
   const menuItems = [
@@ -389,6 +404,12 @@ const Index = () => {
       label: "Coin Shop",
       description: "Beli koin untuk akses nonton show",
       action: () => { window.location.href = "/coins"; },
+    },
+    {
+      icon: <Film className="h-5 w-5 tv:h-7 tv:w-7 text-accent" />,
+      label: "Replay Show",
+      description: "Tonton ulang show yang sudah berlalu",
+      action: () => { window.location.href = "/replay"; },
     },
     {
       icon: <Ticket className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
@@ -751,12 +772,17 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-3 p-4 tv:p-6 tv:space-y-4">
-                    {show.coin_price > 0 && (
+                    {isShowPast2Hours(show) && show.replay_coin_price > 0 ? (
+                      <div className="flex items-center gap-1.5 text-sm text-accent tv:text-base">
+                        <Film className="h-4 w-4 tv:h-5 tv:w-5" />
+                        <span className="font-semibold">Replay: {show.replay_coin_price} Koin</span>
+                      </div>
+                    ) : show.coin_price > 0 ? (
                       <div className="flex items-center gap-1.5 text-sm text-warning tv:text-base">
                         <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
                         <span className="font-semibold">{show.coin_price} Koin</span>
                       </div>
-                    )}
+                    ) : null}
                     <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold text-muted-foreground tv:text-lg tv:px-4 tv:py-1.5">{show.price}</span>
                     {show.schedule_date && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground tv:text-base">

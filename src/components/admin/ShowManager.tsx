@@ -26,6 +26,7 @@ interface Show {
   category: string;
   category_member: string;
   coin_price: number;
+  replay_coin_price: number;
   access_password: string;
 }
 
@@ -102,6 +103,7 @@ const ShowManager = () => {
         category: show.category,
         category_member: show.category_member,
         coin_price: show.coin_price,
+        replay_coin_price: show.replay_coin_price,
         access_password: show.access_password,
       })
       .eq("id", show.id);
@@ -331,6 +333,10 @@ const ShowManager = () => {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Harga Koin (0 = tidak dijual via koin)</label>
               <Input type="number" value={editing.coin_price} onChange={(e) => setEditing({ ...editing, coin_price: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="0" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">🎬 Harga Koin Replay (0 = tidak ada replay)</label>
+              <Input type="number" value={editing.replay_coin_price} onChange={(e) => setEditing({ ...editing, replay_coin_price: parseInt(e.target.value) || 0 })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="0" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">🔐 Sandi Akses Show (ditampilkan ke user setelah beli koin)</label>
