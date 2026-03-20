@@ -410,8 +410,8 @@ const Index = () => {
     setSelectedShow(null);
   };
 
-  const regularShows = shows.filter((s) => !s.is_subscription && !isShowPast4Hours(s));
-  const replayShows = shows.filter((s) => !s.is_subscription && isShowPast4Hours(s) && s.replay_coin_price > 0);
+  const regularShows = shows.filter((s) => !s.is_subscription && !isShowReplayMode(s));
+  const replayShows = shows.filter((s) => !s.is_subscription && isShowReplayMode(s) && s.replay_coin_price > 0);
   const subscriptionShows = shows.filter((s) => s.is_subscription);
 
   const menuItems = [
