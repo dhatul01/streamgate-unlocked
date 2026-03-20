@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense, memo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
-import LiveChat from "@/components/viewer/LiveChat";
-import UsernameModal from "@/components/viewer/UsernameModal";
-import PlayerAnimations, { type AnimationType } from "@/components/viewer/PlayerAnimations";
 import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
+
+// Lazy load heavy components
+const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
+const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
+const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
+
+type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
 import logo from "@/assets/logo.png";
 
@@ -593,8 +597,14 @@ const LivePage = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
-      <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
-      {showUsernameModal && <UsernameModal onSubmit={handleUsernameSet} />}
+      <Suspense fallback={null}>
+        <PlayerAnimations type={playerAnimation} backgroundOnly={isLive} />
+      </Suspense>
+      {showUsernameModal && (
+        <Suspense fallback={null}>
+          <UsernameModal onSubmit={handleUsernameSet} />
+        </Suspense>
+      )}
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
@@ -696,12 +706,18 @@ const LivePage = () => {
       </div>
 
       <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
-        <LiveChat
-          username={username}
-          tokenId={tokenData?.id}
-          isLive={isLive}
-          isAdmin={false}
-        />
+        <Suspense fallback={
+          <div className="flex h-full items-center justify-center">
+            <p className="text-xs text-muted-foreground">Memuat chat...</p>
+          </div>
+        }>
+          <LiveChat
+            username={username}
+            tokenId={tokenData?.id}
+            isLive={isLive}
+            isAdmin={false}
+          />
+        </Suspense>
       </div>
     </div>
   );

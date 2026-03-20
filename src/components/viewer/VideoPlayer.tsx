@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo } from "react";
-import Watermark from "@/components/viewer/Watermark";
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useCallback, lazy, Suspense } from "react";
+
+const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 
 interface VideoPlayerProps {
   playlist: {
@@ -24,18 +25,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [showControls, setShowControls] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
   const ytReadyRef = useRef(false);
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const hlsInitRef = useRef(false);
 
   // Helper: check if YT player API is usable
-  const isYTReady = () => {
+  const isYTReady = useCallback(() => {
     const p = ytPlayerRef.current;
     return p && ytReadyRef.current && typeof p.getPlayerState === "function" && typeof p.playVideo === "function";
-  };
+  }, []);
 
   useImperativeHandle(ref, () => ({
     play: () => {
@@ -65,30 +69,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setIsPlaying(false);
       }
     },
-  }));
+  }), [playlist.type, isYTReady]);
 
-  // Hide controls after 3s
+  // Hide controls after 3s — passive event listeners for performance
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    const el = containerRef.current;
+    if (!el) return;
+
     const resetTimer = () => {
       setShowControls(true);
-      clearTimeout(timeout);
-      timeout = setTimeout(() => setShowControls(false), 3000);
+      clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
     };
-    const el = containerRef.current;
-    el?.addEventListener("mousemove", resetTimer);
-    el?.addEventListener("touchstart", resetTimer);
+
+    el.addEventListener("mousemove", resetTimer, { passive: true });
+    el.addEventListener("touchstart", resetTimer, { passive: true });
     resetTimer();
     return () => {
-      clearTimeout(timeout);
-      el?.removeEventListener("mousemove", resetTimer);
-      el?.removeEventListener("touchstart", resetTimer);
+      clearTimeout(controlsTimeoutRef.current);
+      el.removeEventListener("mousemove", resetTimer);
+      el.removeEventListener("touchstart", resetTimer);
     };
   }, []);
 
   // Cleanup HLS on unmount or playlist change
   useEffect(() => {
     setIsLoading(true);
+    hlsInitRef.current = false;
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -98,29 +105,34 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   }, [playlist]);
 
   // Obfuscate helper: encode/decode video source at runtime
-  const obfuscate = (str: string) => btoa(unescape(encodeURIComponent(str)));
-  const deobfuscate = (str: string) => decodeURIComponent(escape(atob(str)));
+  const obfuscate = useCallback((str: string) => btoa(unescape(encodeURIComponent(str))), []);
+  const deobfuscate = useCallback((str: string) => decodeURIComponent(escape(atob(str))), []);
 
   // XOR decrypt for server-encrypted YouTube URLs
-  const decryptUrl = (encoded: string): string => {
+  const decryptUrl = useCallback((encoded: string): string => {
     if (!encoded.startsWith("enc:")) return encoded;
     const b64 = encoded.slice(4);
-    const _k = [82,84,52,56,120,75,57,109,81,50,118,76,55,110,80,52]; // key bytes
+    const _k = [82,84,52,56,120,75,57,109,81,50,118,76,55,110,80,52];
     const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     const result = new Uint8Array(bytes.length);
     for (let i = 0; i < bytes.length; i++) {
       result[i] = bytes[i] ^ _k[i % _k.length];
     }
     return new TextDecoder().decode(result);
-  };
+  }, []);
 
-  // Init HLS for m3u8
+  // Init HLS for m3u8 — optimized with memory management
   useEffect(() => {
-    if (playlist.type !== "m3u8" || !videoRef.current) return;
+    if (playlist.type !== "m3u8" || !videoRef.current || hlsInitRef.current) return;
+    hlsInitRef.current = true;
+
+    let destroyed = false;
+    let hls: any = null;
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
-      // Decode URL at runtime only
+      if (destroyed) return;
+
       const decodedUrl = deobfuscate(obfuscate(playlist.url));
       if (!Hls.isSupported()) {
         videoRef.current!.src = decodedUrl;
@@ -128,33 +140,36 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         return;
       }
 
-      const hls = new Hls({
-        // Live stream tuning for smooth playback
+      hls = new Hls({
+        // Live stream tuning
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 6,
         liveDurationInfinity: true,
-        // Buffer settings - keep enough buffer to prevent stalls
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        // Optimized buffer settings for 1000+ concurrent viewers
+        // Lower buffers reduce memory per client while maintaining smooth playback
+        maxBufferLength: 20,
+        maxMaxBufferLength: 40,
+        maxBufferSize: 30 * 1000 * 1000, // 30MB (reduced from 60MB)
         maxBufferHole: 0.5,
-        // Fast ABR switching for Auto mode
+        // Backbuffer trimming — critical for memory management in long streams
+        backBufferLength: 30, // Only keep 30s of past content
+        // ABR settings
         abrEwmaDefaultEstimate: 1_000_000,
         abrBandWidthFactor: 0.9,
         abrBandWidthUpFactor: 0.7,
-        // Recovery & retry
-        fragLoadingMaxRetry: 6,
-        fragLoadingRetryDelay: 1000,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
+        // Recovery & retry — with exponential backoff
+        fragLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 1500,
+        manifestLoadingMaxRetry: 3,
+        levelLoadingMaxRetry: 3,
         // Faster start
         startFragPrefetch: true,
         testBandwidth: true,
         progressive: true,
         lowLatencyMode: false,
-        // Prevent URL leaking in error logs
         debug: false,
       });
+
       hlsRef.current = hls;
       hls.loadSource(decodedUrl);
       hls.attachMedia(videoRef.current!);
@@ -165,7 +180,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         const origSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
         Object.defineProperty(videoEl, 'src', {
           get: () => '',
-          set: (v) => origSrc?.set?.call(videoEl, v),
+          set: (v: string) => origSrc?.set?.call(videoEl, v),
           configurable: true,
         });
         Object.defineProperty(videoEl, 'currentSrc', {
@@ -175,12 +190,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       } catch {}
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
+        if (destroyed) return;
         const levels = data.levels.map((l: any, i: number) => ({
           label: `${l.height}p`,
           index: i,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        // Default to Auto (-1) for adaptive bitrate
         hls.currentLevel = -1;
         setCurrentQuality(-1);
         setIsLoading(false);
@@ -190,34 +205,36 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         }
       });
 
-      // Show loading when level is switching
       hls.on(Hls.Events.LEVEL_SWITCHING, () => {
-        setIsSwitchingQuality(true);
+        if (!destroyed) setIsSwitchingQuality(true);
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, () => {
-        setIsSwitchingQuality(false);
+        if (!destroyed) setIsSwitchingQuality(false);
       });
       hls.on(Hls.Events.FRAG_BUFFERED, () => {
-        setIsSwitchingQuality(false);
+        if (!destroyed) setIsSwitchingQuality(false);
       });
 
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
+        if (destroyed) return;
         setIsLoading(false);
         setIsSwitchingQuality(false);
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn("[HLS] Network error, attempting recovery...");
               hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn("[HLS] Media error, attempting recovery...");
               hls.recoverMediaError();
               break;
             default:
-              console.error("[HLS] Fatal error, reinitializing...");
               hls.destroy();
-              setTimeout(() => initHls(), 2000);
+              hlsRef.current = null;
+              hlsInitRef.current = false;
+              // Reinit after delay
+              setTimeout(() => {
+                if (!destroyed) initHls();
+              }, 3000);
               break;
           }
         }
@@ -225,7 +242,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
 
     initHls();
-  }, [playlist, autoPlay]);
+
+    return () => {
+      destroyed = true;
+      if (hls) {
+        hls.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [playlist, autoPlay, obfuscate, deobfuscate]);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -238,7 +263,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         createYTPlayer();
         return;
       }
-      // Avoid duplicate script tags
       if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
         const tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
@@ -258,7 +282,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       playerDiv.id = `_p${Math.random().toString(36).slice(2, 10)}`;
       container.appendChild(playerDiv);
 
-      // Decrypt server-encrypted URL, then extract video ID at runtime only
       const _decrypted = decryptUrl(playlist.url);
       const _raw = (() => {
         const match = _decrypted.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
@@ -274,7 +297,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
-            mute: 1, // Required for autoplay in all browsers
+            mute: 1,
             enablejsapi: 1,
             controls: 0,
             disablekb: 1,
@@ -289,7 +312,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             onReady: (e: any) => {
               if (destroyed) return;
               ytReadyRef.current = true;
-              // Force highest quality first
               try {
                 const qualities = e.target.getAvailableQualityLevels?.();
                 if (qualities && qualities.length > 0) {
@@ -299,7 +321,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 }
               } catch {}
 
-              // Protect iframe: remove title attribute and sandbox src visibility
               try {
                 const iframe = container.querySelector("iframe");
                 if (iframe) {
@@ -309,9 +330,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               } catch {}
 
               setIsLoading(false);
-              if (autoPlay) {
-                e.target.playVideo();
-              }
+              if (autoPlay) e.target.playVideo();
             },
             onStateChange: (e: any) => {
               if (destroyed) return;
@@ -343,7 +362,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       } catch {}
       ytPlayerRef.current = null;
     };
-  }, [playlist, autoPlay]);
+  }, [playlist, autoPlay, decryptUrl, obfuscate, deobfuscate]);
 
   // Cloudflare loading
   useEffect(() => {
@@ -353,76 +372,45 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     }
   }, [playlist]);
 
-  const extractYTId = (url: string) => {
-    // Decrypt if server-encrypted
-    const decrypted = decryptUrl(url);
-    const match = decrypted.match(/(?:youtu\.be\/|v=|\/embed\/|\/v\/)([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : decrypted;
-  };
-
-  const youtubeEmbedUrl = useMemo(() => {
-    if (playlist.type !== "youtube") return "";
-    const videoId = extractYTId(playlist.url);
-    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&playsinline=1&controls=0&rel=0&modestbranding=1&mute=1&origin=${encodeURIComponent(window.location.origin)}`;
-  }, [playlist.type, playlist.url]);
-  const togglePlay = (e?: React.MouseEvent) => {
+  const togglePlay = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     
     if (playlist.type === "youtube") {
       const player = ytPlayerRef.current;
-      if (!player || !ytReadyRef.current) {
-        console.warn("[VideoPlayer] YT player not ready, ytReadyRef:", ytReadyRef.current);
-        return;
-      }
+      if (!player || !ytReadyRef.current) return;
       try {
-        // Always use actual YT player state, not React state
         const state = typeof player.getPlayerState === "function" ? player.getPlayerState() : -1;
-        console.log("[VideoPlayer] YT state:", state, "isPlaying:", isPlaying);
-        
         if (state === 1 || state === 3) {
-          // Playing or buffering → pause
           player.pauseVideo();
           setIsPlaying(false);
         } else {
-          // Paused, ended, unstarted, cued → play
           try {
             const duration = typeof player.getDuration === "function" ? player.getDuration() : 0;
-            if (duration && duration > 0) {
-              player.seekTo(duration, true);
-            }
+            if (duration && duration > 0) player.seekTo(duration, true);
           } catch {}
           player.playVideo();
           setIsPlaying(true);
         }
-      } catch (err) {
-        console.warn("[VideoPlayer] togglePlay YT error:", err);
-      }
+      } catch {}
     } else if (playlist.type === "cloudflare") {
-      // Cloudflare uses iframe, toggle state only
-      setIsPlaying(!isPlaying);
+      setIsPlaying(prev => !prev);
     } else if (videoRef.current) {
-      // m3u8 or other HTML5 video — use actual paused state
       const video = videoRef.current;
-      console.log("[VideoPlayer] video.paused:", video.paused, "isPlaying:", isPlaying);
-      
       if (video.paused) {
         if (playlist.type === "m3u8" && hlsRef.current?.liveSyncPosition) {
           video.currentTime = hlsRef.current.liveSyncPosition;
         }
         video.play()
           .then(() => setIsPlaying(true))
-          .catch((err) => {
-            console.warn("[VideoPlayer] play() failed:", err);
-            setIsPlaying(false);
-          });
+          .catch(() => setIsPlaying(false));
       } else {
         video.pause();
         setIsPlaying(false);
       }
     }
-  };
+  }, [playlist.type]);
 
-  const toggleFullscreen = async () => {
+  const toggleFullscreen = useCallback(async () => {
     if (!containerRef.current) return;
     try {
       if (document.fullscreenElement) {
@@ -431,9 +419,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         await containerRef.current.requestFullscreen();
       }
     } catch {}
-  };
+  }, []);
 
-  const toggleOrientation = async () => {
+  const toggleOrientation = useCallback(async () => {
     try {
       const orientation = screen.orientation;
       if (orientation.type.includes("portrait")) {
@@ -442,23 +430,27 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         await (orientation as any).lock("portrait");
       }
     } catch {}
-  };
+  }, []);
 
-  const handleQualityChange = (index: number) => {
+  const handleQualityChange = useCallback((index: number) => {
     if (hlsRef.current) {
       setIsSwitchingQuality(true);
       hlsRef.current.currentLevel = index;
       setCurrentQuality(index);
     }
-  };
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  }, []);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  // Memoize Cloudflare iframe src to prevent re-renders
+  const cloudflareSrc = useMemo(() => {
+    if (playlist.type !== "cloudflare") return "";
+    return `https://customer-${playlist.url}.cloudflarestream.com/iframe`;
+  }, [playlist.type, playlist.url]);
 
   return (
     <div
@@ -491,10 +483,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             ref={ytContainerRef}
             className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
           />
-          {/* Overlay to block iframe inspection & handle play/pause click */}
           <div
             className="absolute inset-0 z-10 cursor-pointer"
-            onClick={(e) => togglePlay(e)}
+            onClick={togglePlay}
             onContextMenu={(e) => e.preventDefault()}
           />
           <div
@@ -516,22 +507,27 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {playlist.type === "cloudflare" && (
         <>
           <iframe
-            src={`https://customer-${playlist.url}.cloudflarestream.com/iframe`}
+            src={cloudflareSrc}
             className={`h-full w-full ${isFullscreen ? "max-h-screen aspect-video" : "absolute inset-0"}`}
             allow="autoplay; fullscreen"
             allowFullScreen
+            loading="lazy"
           />
           <div className="absolute inset-0 z-10 cursor-pointer" onClick={togglePlay} style={{ pointerEvents: "auto" }} />
         </>
       )}
 
-      {/* Token code watermark */}
-      {tokenCode && <Watermark tokenCode={tokenCode} />}
+      {/* Token code watermark — lazy loaded */}
+      {tokenCode && (
+        <Suspense fallback={null}>
+          <Watermark tokenCode={tokenCode} />
+        </Suspense>
+      )}
 
       {/* Admin watermark image */}
       {watermarkUrl && (
         <div className="pointer-events-none absolute bottom-12 right-3 z-20 tv:bottom-20 tv:right-6">
-          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" />
+          <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" loading="lazy" />
         </div>
       )}
 
@@ -543,7 +539,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         onContextMenu={(e) => e.preventDefault()}
       >
         <button
-          onClick={(e) => togglePlay(e)}
+          onClick={togglePlay}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
         >
           {isPlaying ? (

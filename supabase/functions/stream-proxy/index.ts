@@ -20,13 +20,13 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 function edgeRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(key);
-  // Cleanup expired entries more aggressively with per-IP keys
-  if (rateLimitMap.size > 500) {
+  // Cleanup expired entries — higher threshold for 1000+ concurrent viewers
+  if (rateLimitMap.size > 2000) {
     for (const [k, v] of rateLimitMap) {
       if (now > v.resetAt) rateLimitMap.delete(k);
     }
     // Hard cap: if still too large after cleanup, evict oldest entries
-    if (rateLimitMap.size > 2000) {
+    if (rateLimitMap.size > 5000) {
       const entries = [...rateLimitMap.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt);
       for (let i = 0; i < entries.length - 1000; i++) {
         rateLimitMap.delete(entries[i][0]);
@@ -50,11 +50,11 @@ function getRateLimitResponse(): Response {
 }
 
 // --- In-memory cache ---
-// m3u8 content cache: 4 second TTL (fresh enough for live HLS)
-// With 1000 viewers refreshing every 6s, this reduces origin fetches from
-// ~167/sec to ~1 every 4 seconds — a 99.4% reduction
-const M3U8_CACHE_TTL_MS = 4000;
-const PLAYLIST_URL_CACHE_TTL_MS = 30000; // DB URL lookup cache: 30 seconds
+// m3u8 content cache: 6 second TTL (fresh enough for live HLS, ~2 segment intervals)
+// With 1000+ viewers refreshing every 6s, this reduces origin fetches from
+// ~167/sec to ~1 every 6 seconds — a 99.4% reduction
+const M3U8_CACHE_TTL_MS = 6000;
+const PLAYLIST_URL_CACHE_TTL_MS = 60000; // DB URL lookup cache: 60 seconds (URLs rarely change)
 
 interface CacheEntry { content: string; cachedAt: number }
 const m3u8Cache = new Map<string, CacheEntry>();

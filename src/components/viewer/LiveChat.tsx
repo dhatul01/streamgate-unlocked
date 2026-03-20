@@ -186,7 +186,11 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           startTransition(() => {
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
-              setMessages((prev) => [...prev, newMsg]);
+              setMessages((prev) => {
+                const next = [...prev, newMsg];
+                // Trim to last 100 messages to prevent memory growth during long streams
+                return next.length > 100 ? next.slice(-100) : next;
+              });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
             } else if (payload.eventType === "DELETE") {
               setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
