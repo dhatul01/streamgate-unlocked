@@ -14,6 +14,7 @@ serve(async (req) => {
 
     const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID');
     if (!ADMIN_CHAT_ID) throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured');
+    console.log('Using chat_id:', ADMIN_CHAT_ID);
 
     const { order_id, username, package_name, coin_amount, price } = await req.json();
 
