@@ -395,22 +395,31 @@ const TokenFactory = () => {
       )}
 
       {/* Duration Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as DurationKey); setStatusFilter("all"); }}>
-        <TabsList className="w-full grid grid-cols-3">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabKey); setStatusFilter("all"); }}>
+        <TabsList className="w-full grid grid-cols-4">
           {DURATION_TABS.map(({ key, label, emoji }) => (
-            <TabsTrigger key={key} value={key} className="gap-1.5 text-xs">
+            <TabsTrigger key={key} value={key} className="gap-1 text-xs">
               <span>{emoji}</span> {label}
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">
                 {getCountByDuration(key)}
               </span>
             </TabsTrigger>
           ))}
+          <TabsTrigger value="coin" className="gap-1 text-xs">
+            <span>🪙</span> Koin
+            <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">
+              {getCountByDuration("coin")}
+            </span>
+          </TabsTrigger>
         </TabsList>
         {DURATION_TABS.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-4">
             {renderTokenList(key)}
           </TabsContent>
         ))}
+        <TabsContent value="coin" className="mt-4">
+          {renderTokenList("coin")}
+        </TabsContent>
       </Tabs>
     </div>
   );
