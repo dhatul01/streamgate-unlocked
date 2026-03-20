@@ -6,6 +6,7 @@ import logo from "@/assets/logo.png";
 import { Crown, Sparkles, CheckCircle, Star, Upload, Users, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import SharedNavbar from "@/components/viewer/SharedNavbar";
 
 interface Show {
   id: string;
