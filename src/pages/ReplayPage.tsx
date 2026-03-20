@@ -116,9 +116,13 @@ const ReplayPage = () => {
     const showCh = supabase.channel("replay-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
       .subscribe();
+    const streamCh = supabase.channel("replay-streams")
+      .on("postgres_changes", { event: "*", schema: "public", table: "streams" }, () => fetchData())
+      .subscribe();
 
     return () => {
       supabase.removeChannel(showCh);
+      supabase.removeChannel(streamCh);
       cleanup.then((c) => c?.());
     };
   }, []);
