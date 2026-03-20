@@ -132,7 +132,7 @@ const TokenFactory = () => {
     toast({ title: "Session direset" });
   };
 
-  const deleteTokens = async (ids: string[], dur: DurationKey) => {
+  const deleteTokens = async (ids: string[], dur: TabKey) => {
     if (deleting || ids.length === 0) return;
     setDeleting(true);
     try {
@@ -150,7 +150,7 @@ const TokenFactory = () => {
     }
   };
 
-  const toggleSelect = (id: string, dur: DurationKey) => {
+  const toggleSelect = (id: string, dur: TabKey) => {
     setSelected((prev) => {
       const next = new Set(prev[dur]);
       if (next.has(id)) next.delete(id); else next.add(id);
