@@ -141,12 +141,12 @@ const ViewerAuth = () => {
                 <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
                 <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
                 <p className="text-xs text-muted-foreground">
-                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, password baru langsung aktif dan kamu bisa login.
+                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, kamu akan menerima link via WhatsApp untuk membuat password baru.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Notifikasi akan dikirim via WhatsApp saat sudah disetujui.
                 </p>
-                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
                 </Button>
                 <button type="button" onClick={handleContactAdmin} className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors">
