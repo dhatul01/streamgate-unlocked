@@ -83,14 +83,21 @@ serve(async () => {
         await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
         totalProcessed++;
       } else if (yaMatch) {
-        // Support bulk: "YA c1,c2,c3" or single "YA c1"
         const ids = yaMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
-        await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
-        totalProcessed += ids.length;
+        if (ids.length > 10) {
+          await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk konfirmasi\\. Silakan bagi menjadi beberapa perintah\\.');
+        } else {
+          await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
+          totalProcessed += ids.length;
+        }
       } else if (tidakMatch) {
         const ids = tidakMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
-        await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
-        totalProcessed += ids.length;
+        if (ids.length > 10) {
+          await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk tolak\\. Silakan bagi menjadi beberapa perintah\\.');
+        } else {
+          await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
+          totalProcessed += ids.length;
+        }
       }
 
       await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
