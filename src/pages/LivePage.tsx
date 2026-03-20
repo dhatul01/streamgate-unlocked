@@ -31,7 +31,8 @@ const LivePage = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
-  const [showUsernameModal, setShowUsernameModal] = useState(!localStorage.getItem("rt48_username"));
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
