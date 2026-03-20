@@ -537,6 +537,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_order_closed: boolean
+          is_replay: boolean
           is_subscription: boolean
           lineup: string
           max_subscribers: number
@@ -560,6 +561,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_order_closed?: boolean
+          is_replay?: boolean
           is_subscription?: boolean
           lineup?: string
           max_subscribers?: number
@@ -583,6 +585,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_order_closed?: boolean
+          is_replay?: boolean
           is_subscription?: boolean
           lineup?: string
           max_subscribers?: number
@@ -900,6 +903,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_order_closed: boolean
+          is_replay: boolean
           is_subscription: boolean
           lineup: string
           max_subscribers: number

@@ -20,6 +20,7 @@ interface Show {
   category_member?: string;
   coin_price: number;
   replay_coin_price: number;
+  is_replay: boolean;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -81,6 +82,7 @@ const ReplayPage = () => {
         const streamLive = streamRes.data?.is_live ?? true;
         const pastShows = (showsRes.data as any[]).filter((s) => {
           if (s.is_subscription || s.replay_coin_price <= 0) return false;
+          if (s.is_replay) return true;
           if (isShowPast4Hours(s)) return true;
           if (!streamLive && isShowPastSchedule(s)) return true;
           return false;
