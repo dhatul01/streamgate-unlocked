@@ -454,6 +454,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     }
   }, []);
 
+  const toggleYtMute = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!isYTReady()) return;
+    const player = ytPlayerRef.current;
+    try {
+      if (player.isMuted()) {
+        player.unMute();
+        setYtMuted(false);
+      } else {
+        player.mute();
+        setYtMuted(true);
+      }
+    } catch {}
+  }, [isYTReady]);
+
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onFsChange);
