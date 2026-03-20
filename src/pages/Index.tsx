@@ -1070,6 +1070,12 @@ const Index = () => {
           </DialogHeader>
           {!coinResult ? (
             <div className="space-y-4">
+              {coinShowTarget?.qris_image_url && (
+                <div className="text-center">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">📱 Scan QRIS untuk pembayaran</p>
+                  <img src={coinShowTarget.qris_image_url} alt="QRIS" className="mx-auto max-h-48 rounded-lg object-contain" />
+                </div>
+              )}
               <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Show</span>
