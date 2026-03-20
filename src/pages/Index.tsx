@@ -137,6 +137,20 @@ const Index = () => {
     if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
   };
 
+  // Helper: check if show scheduled time has already passed
+  const isShowPastSchedule = (show: Show) => {
+    if (!show.schedule_date || !show.schedule_time) return false;
+    try {
+      const timeStr = show.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+      const dateTimeStr = `${show.schedule_date} ${timeStr}`;
+      const showDate = new Date(dateTimeStr);
+      if (isNaN(showDate.getTime())) return false;
+      return new Date() > showDate;
+    } catch {
+      return false;
+    }
+  };
+
   // Helper: check if show is past 2 hours from schedule
   const isShowPast2Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
@@ -152,7 +166,7 @@ const Index = () => {
     }
   };
 
-  // Helper: check if show is past 4 hours (move to replay)
+  // Helper: check if show is past 4 hours (move to replay page)
   const isShowPast4Hours = (show: Show) => {
     if (!show.schedule_date || !show.schedule_time) return false;
     try {
@@ -163,6 +177,15 @@ const Index = () => {
       return new Date() > new Date(showDate.getTime() + 4 * 60 * 60 * 1000);
     } catch {
       return false;
+    }
+  };
+
+  // A show is in "replay mode" when: stream is offline AND schedule has passed, OR past 4 hours regardless
+  const isShowReplayMode = (show: Show) => {
+    if (isShowPast4Hours(show)) return true;
+    if (!isStreamLive && isShowPastSchedule(show)) return true;
+    return false;
+  };
     }
   };
 
