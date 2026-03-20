@@ -103,7 +103,25 @@ const SchedulePage = () => {
       ]);
       if (streamRes.data) setIsStreamLive(streamRes.data.is_live);
       if (showsRes.data) {
-        const upcoming = (showsRes.data as Show[]).filter(s => !s.is_replay && !s.is_subscription && s.schedule_date);
+        const isLive = streamRes.data?.is_live ?? true;
+        const allShows = showsRes.data as Show[];
+        const upcoming = allShows.filter(s => {
+          if (s.is_subscription) return false;
+          if (!s.schedule_date) return false;
+          // Exclude if admin marked as replay
+          if (s.is_replay) return false;
+          // Exclude if past 4 hours (auto-replay)
+          if (s.schedule_date && s.schedule_time) {
+            try {
+              const timeStr = s.schedule_time.replace(/\s*WIB\s*/i, "").trim();
+              const showDate = new Date(`${s.schedule_date} ${timeStr}`);
+              if (!isNaN(showDate.getTime()) && new Date() > new Date(showDate.getTime() + 4 * 60 * 60 * 1000)) return false;
+              // Exclude if stream offline + past schedule
+              if (!isLive && new Date() > showDate) return false;
+            } catch {}
+          }
+          return true;
+        });
         upcoming.sort((a, b) => {
           const dateA = a.schedule_date ? new Date(a.schedule_date).getTime() : 0;
           const dateB = b.schedule_date ? new Date(b.schedule_date).getTime() : 0;
