@@ -77,10 +77,20 @@ serve(async () => {
       const text = rawText.toUpperCase();
       const yaMatch = text.match(/^YA\s+(.+)$/);
       const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
+      const resetMatch = text.match(/^RESET\s+(.+)$/);
+      const tolakResetMatch = text.match(/^TOLAK_RESET\s+(.+)$/);
       const isStatus = rawText === '/status' || text === '/STATUS';
 
       if (isStatus) {
         await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
+        totalProcessed++;
+      } else if (resetMatch) {
+        const shortId = resetMatch[1].trim().toLowerCase();
+        await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'approve');
+        totalProcessed++;
+      } else if (tolakResetMatch) {
+        const shortId = tolakResetMatch[1].trim().toLowerCase();
+        await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'reject');
         totalProcessed++;
       } else if (yaMatch) {
         const ids = yaMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
