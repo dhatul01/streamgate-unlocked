@@ -179,7 +179,7 @@ async function processAnyOrder(
   // Try coin_orders first
   const { data: coinOrder } = await supabase
     .from('coin_orders')
-    .select('id, user_id, coin_amount, status, package_id')
+    .select('id, user_id, coin_amount, status, package_id, phone')
     .eq('id', orderId)
     .eq('status', 'pending')
     .maybeSingle();
@@ -254,6 +254,12 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
+      // Send WA notification to user
+      if (order.phone) {
+        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
+
       await sendTelegramMessage(botToken, chatId,
         `✅ Order koin \`${order.id}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
     } else {
@@ -264,6 +270,12 @@ async function processCoinOrder(
         message: `Order ${order.id} telah ditolak.`,
         type: 'coin_order',
       });
+
+      // Send WA notification to user
+      if (order.phone) {
+        const waMsg = `❌ Maaf, pembayaran kamu untuk pembelian koin tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
 
       await sendTelegramMessage(botToken, chatId,
         `❌ Order koin \`${order.id}\` telah ditolak\\.`);
