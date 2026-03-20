@@ -159,7 +159,7 @@ const CoinShop = () => {
       toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       setRedeemingShow(null); return;
     }
-    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance, replay_password: result.replay_password });
     setBalance(result.remaining_balance);
     setRedeemingShow(null);
 
