@@ -299,15 +299,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 }
               } catch {}
 
-              // Hide iframe src to prevent source inspection
+              // Protect iframe: remove title attribute and sandbox src visibility
               try {
                 const iframe = container.querySelector("iframe");
                 if (iframe) {
-                  Object.defineProperty(iframe, 'src', {
-                    get: () => '',
-                    set: function(v) { this.setAttribute('src', v); },
-                    configurable: true,
-                  });
+                  iframe.removeAttribute("title");
+                  iframe.setAttribute("referrerpolicy", "no-referrer");
                 }
               } catch {}
 
