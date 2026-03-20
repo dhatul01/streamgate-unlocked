@@ -37,7 +37,7 @@ const CoinShop = () => {
       setUser(user);
 
       // Get username from profiles
-      const { data: profile } = await (supabase.from as any)("profiles").select("username").eq("id", user.id).maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
       setUsername(profile?.username || user.user_metadata?.username || "User");
 
       await fetchData(user.id);
@@ -48,9 +48,9 @@ const CoinShop = () => {
 
   const fetchData = async (userId: string) => {
     const [balRes, pkgRes, txRes] = await Promise.all([
-      (supabase.from as any)("coin_balances").select("balance").eq("user_id", userId).maybeSingle(),
-      (supabase.from as any)("coin_packages").select("*").eq("is_active", true).order("sort_order"),
-      (supabase.from as any)("coin_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+      supabase.from("coin_balances").select("balance").eq("user_id", userId).maybeSingle(),
+      supabase.from("coin_packages").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("coin_transactions").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
     ]);
     setBalance(balRes.data?.balance || 0);
     setPackages(pkgRes.data || []);
@@ -74,18 +74,34 @@ const CoinShop = () => {
     formData.append("file", file);
     formData.append("type", "coin");
 
+    console.log("Uploading payment proof for coin order...");
     const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
-    if (error || !data?.path) { toast({ title: "Upload gagal", variant: "destructive" }); setUploading(false); return; }
+    console.log("Upload result:", { data, error });
+    if (error || !data?.path) { 
+      console.error("Upload failed:", error, data);
+      toast({ title: "Upload gagal", description: error?.message || "Coba lagi", variant: "destructive" }); 
+      setUploading(false); 
+      return; 
+    }
 
     setUploading(false);
     setPurchaseStep("done");
 
-    const { data: orderData } = await (supabase.from as any)("coin_orders").insert({
+    console.log("Inserting coin order...");
+    const { data: orderData, error: insertError } = await supabase.from("coin_orders").insert({
       user_id: user.id, package_id: selectedPkg!.id,
       coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
       payment_proof_url: data.path, status: "pending",
       phone: buyerPhone.trim(),
     }).select("id").single();
+    console.log("Insert result:", { orderData, insertError });
+    
+    if (insertError) {
+      console.error("Insert coin order failed:", insertError);
+      toast({ title: "Order gagal disimpan", description: insertError.message, variant: "destructive" });
+      return;
+    }
+    
     toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
 
     // Send WhatsApp notification to admin
@@ -105,13 +121,14 @@ const CoinShop = () => {
 
   const handleRedeem = async (showId: string) => {
     setRedeemingShow(showId);
-    const { data, error } = await (supabase.rpc as any)("redeem_coins_for_token", { _show_id: showId });
-    if (error || !data?.success) {
-      toast({ title: "Gagal menukar koin", description: data?.error || error?.message, variant: "destructive" });
+    const { data, error } = await supabase.rpc("redeem_coins_for_token", { _show_id: showId });
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Gagal menukar koin", description: result?.error || error?.message, variant: "destructive" });
       setRedeemingShow(null); return;
     }
-    setRedeemResult({ token_code: data.token_code, remaining_balance: data.remaining_balance });
-    setBalance(data.remaining_balance);
+    setRedeemResult({ token_code: result.token_code, remaining_balance: result.remaining_balance });
+    setBalance(result.remaining_balance);
     setRedeemingShow(null);
   };
 
