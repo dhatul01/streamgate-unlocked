@@ -215,18 +215,15 @@ const ShowCard = ({
 
                   if (isTooEarly && showStart) {
                     return (
-                      <div className="space-y-2">
-                        <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center space-y-1">
-                          <p className="text-xs text-muted-foreground">⏳ Menunggu Live Streaming</p>
-                          <p className="font-mono text-lg font-bold text-primary">{countdown}</p>
-                          <p className="text-[10px] text-muted-foreground">Akses dibuka 2 jam sebelum show</p>
+                      <div className="rounded-xl border border-muted bg-muted/50 p-4 text-center space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">⏳ Menunggu Live Streaming</p>
+                        <p className="font-mono text-2xl font-bold text-primary">{countdown}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {show.schedule_date} • {show.schedule_time}
+                        </p>
+                        <div className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-3 text-sm font-semibold text-muted-foreground/50 cursor-not-allowed tv:text-lg tv:rounded-2xl">
+                          <Radio className="h-4 w-4 tv:h-6 tv:w-6" /> Menunggu Live...
                         </div>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/live?t=${redeemedToken}`); toast({ title: "Link disalin!" }); }}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted py-2.5 tv:py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/80 tv:text-base tv:rounded-2xl"
-                        >
-                          <Copy className="h-3.5 w-3.5 tv:h-5 tv:w-5" /> Salin Link Nonton
-                        </button>
                       </div>
                     );
                   }
