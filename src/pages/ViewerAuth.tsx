@@ -19,7 +19,11 @@ const ViewerAuth = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const { toast } = useToast();
+
+  const getRedirectPath = () => redirectTo || "/coins";
 
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
