@@ -16,17 +16,20 @@ interface VideoPlayerProps {
 export interface VideoPlayerHandle {
   play: () => void;
   pause: () => void;
+  seekTo?: (time: number) => void;
+  getCurrentTime?: () => number;
 }
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
-  const [qualities, setQualities] = useState<{ label: string; index: number }[]>([]);
+  const [qualities, setQualities] = useState<{ label: string; index: number; ytKey?: string }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ytMuted, setYtMuted] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -69,6 +72,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         videoRef.current.pause();
         setIsPlaying(false);
       }
+    },
+    seekTo: (time: number) => {
+      if (playlist.type === "youtube" && isYTReady()) {
+        ytPlayerRef.current.seekTo(time, true);
+      } else if (videoRef.current) {
+        videoRef.current.currentTime = time;
+      }
+    },
+    getCurrentTime: () => {
+      if (playlist.type === "youtube" && isYTReady()) {
+        try { return ytPlayerRef.current.getCurrentTime() || 0; } catch { return 0; }
+      }
+      return videoRef.current?.currentTime || 0;
     },
   }), [playlist.type, isYTReady]);
 
@@ -325,11 +341,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 } catch {}
               };
 
-              // Force highest quality for best initial experience
+              // Force highest quality for best initial experience + populate quality list
               try {
-                const qualities = e.target.getAvailableQualityLevels?.();
-                if (qualities && qualities.length > 0) {
-                  e.target.setPlaybackQuality(qualities[0]);
+                const ytQuals = e.target.getAvailableQualityLevels?.() || [];
+                if (ytQuals.length > 0) {
+                  e.target.setPlaybackQuality(ytQuals[0]);
+                  const ytLabelMap: Record<string, string> = {
+                    hd2160: "4K", hd1440: "1440p", hd1080: "1080p", hd720: "720p",
+                    large: "480p", medium: "360p", small: "240p", tiny: "144p",
+                  };
+                  const mapped = ytQuals
+                    .filter((q: string) => q !== "auto" && ytLabelMap[q])
+                    .map((q: string, i: number) => ({ label: ytLabelMap[q] || q, index: i, ytKey: q }));
+                  setQualities([{ label: "Auto", index: -1, ytKey: "auto" }, ...mapped]);
+                  setCurrentQuality(-1);
                 }
               } catch {}
 
@@ -357,6 +382,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
               if (state === 1 || state === 2) {
                 setIsLoading(false);
+                // Re-populate qualities when playback starts (may have more options now)
+                if (state === 1) {
+                  try {
+                    const ytQuals = e.target.getAvailableQualityLevels?.() || [];
+                    if (ytQuals.length > 0) {
+                      const ytLabelMap: Record<string, string> = {
+                        hd2160: "4K", hd1440: "1440p", hd1080: "1080p", hd720: "720p",
+                        large: "480p", medium: "360p", small: "240p", tiny: "144p",
+                      };
+                      const mapped = ytQuals
+                        .filter((q: string) => q !== "auto" && ytLabelMap[q])
+                        .map((q: string, i: number) => ({ label: ytLabelMap[q] || q, index: i, ytKey: q }));
+                      setQualities(prev => {
+                        if (prev.length <= 1) return [{ label: "Auto", index: -1, ytKey: "auto" }, ...mapped];
+                        return prev;
+                      });
+                    }
+                  } catch {}
+                }
               }
 
               // If buffering lasts >4s, release quality lock early
@@ -470,13 +514,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     } catch {}
   }, []);
 
-  const handleQualityChange = useCallback((index: number) => {
-    if (hlsRef.current) {
+  const handleQualityChange = useCallback((index: number, ytKey?: string) => {
+    if (playlist.type === "youtube" && isYTReady() && ytKey) {
+      try {
+        ytPlayerRef.current.setPlaybackQuality(ytKey === "auto" ? "default" : ytKey);
+        setCurrentQuality(index);
+      } catch {}
+    } else if (hlsRef.current) {
       setIsSwitchingQuality(true);
       hlsRef.current.currentLevel = index;
       setCurrentQuality(index);
     }
-  }, []);
+    setShowQualityMenu(false);
+  }, [playlist.type, isYTReady]);
 
   const toggleYtMute = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -616,16 +666,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <div className="flex-1" />
 
-        {playlist.type === "m3u8" && qualities.length > 0 && (
-          <select
-            value={currentQuality}
-            onChange={(e) => handleQualityChange(Number(e.target.value))}
-            className="rounded-md bg-secondary px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground"
-          >
-            {qualities.map((q) => (
-              <option key={q.index} value={q.index}>{q.label}</option>
-            ))}
-          </select>
+        {qualities.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
+              className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              {qualities.find(q => q.index === currentQuality)?.label || "Auto"}
+            </button>
+            {showQualityMenu && (
+              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[100px] tv:min-w-[140px]">
+                {qualities.map((q) => (
+                  <button
+                    key={q.index}
+                    onClick={(e) => { e.stopPropagation(); handleQualityChange(q.index, q.ytKey); }}
+                    className={`block w-full rounded-md px-3 py-1.5 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition ${
+                      currentQuality === q.index
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <button

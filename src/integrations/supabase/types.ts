@@ -1072,6 +1072,74 @@ export type Database = {
         }
         Relationships: []
       }
+      watch_parties: {
+        Row: {
+          created_at: string
+          host_token_code: string | null
+          host_username: string
+          id: string
+          is_active: boolean
+          is_playing: boolean | null
+          playback_position: number | null
+          playlist_index: number | null
+          room_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          host_token_code?: string | null
+          host_username: string
+          id?: string
+          is_active?: boolean
+          is_playing?: boolean | null
+          playback_position?: number | null
+          playlist_index?: number | null
+          room_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          host_token_code?: string | null
+          host_username?: string
+          id?: string
+          is_active?: boolean
+          is_playing?: boolean | null
+          playback_position?: number | null
+          playlist_index?: number | null
+          room_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      watch_party_members: {
+        Row: {
+          id: string
+          joined_at: string
+          party_id: string
+          username: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          party_id: string
+          username: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          party_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_party_members_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "watch_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
