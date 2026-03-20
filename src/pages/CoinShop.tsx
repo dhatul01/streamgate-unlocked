@@ -299,6 +299,13 @@ const CoinShop = () => {
           {redeemResult && (
             <div className="space-y-4 text-center">
               <div className="rounded-lg bg-secondary p-4"><p className="font-mono text-lg font-bold text-primary">{redeemResult.token_code}</p></div>
+              {redeemResult.replay_password && (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
+                  <p className="font-mono text-lg font-bold text-warning">{redeemResult.replay_password}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Simpan sandi ini untuk akses replay setelah show selesai</p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2" variant="outline" onClick={() => copyToken(redeemResult.token_code)}><Copy className="h-4 w-4" /> Salin Link</Button>
                 <Button className="flex-1 gap-2" onClick={() => navigate(`/live?t=${redeemResult.token_code}`)}><Sparkles className="h-4 w-4" /> Tonton Live</Button>
