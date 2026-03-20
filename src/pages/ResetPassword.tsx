@@ -1,54 +1,28 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Lock, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft, CheckCircle2 } from "lucide-react";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Check for recovery token in URL hash
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
-      setReady(true);
-    } else {
-      // Listen for auth state change (recovery event)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "PASSWORD_RECOVERY") setReady(true);
-      });
-      return () => subscription.unsubscribe();
-    }
-  }, []);
-
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password.length < 6) return;
-    setLoading(true);
-
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      toast({ title: "Gagal", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Password berhasil diubah!" });
-      navigate("/coins");
-    }
-    setLoading(false);
-  };
-
-  if (!ready) {
+  if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="text-center space-y-4">
           <img src={logo} alt="RealTime48" className="mx-auto h-16 w-16" />
-          <p className="text-sm text-muted-foreground">Memverifikasi link reset...</p>
+          <p className="text-sm text-muted-foreground">Link reset tidak valid.</p>
           <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-2 text-sm text-primary hover:underline mx-auto">
             <ArrowLeft className="h-4 w-4" /> Kembali ke Login
           </button>
@@ -57,12 +31,56 @@ const ResetPassword = () => {
     );
   }
 
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm text-center space-y-4">
+          <img src={logo} alt="RealTime48" className="mx-auto h-16 w-16" />
+          <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+          <h1 className="text-xl font-bold text-foreground">Password Berhasil Diubah!</h1>
+          <p className="text-sm text-muted-foreground">Silakan login menggunakan password baru kamu.</p>
+          <Button onClick={() => navigate("/auth")} className="w-full">
+            Masuk Sekarang
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) return;
+    if (password !== confirmPassword) {
+      toast({ title: "Gagal", description: "Password tidak cocok", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+
+    const { data, error } = await supabase.functions.invoke("apply-password-reset", {
+      body: { short_id: token, new_password: password },
+    });
+
+    if (error || !data?.success) {
+      toast({
+        title: "Gagal",
+        description: data?.error || error?.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } else {
+      setSuccess(true);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <img src={logo} alt="RealTime48" className="mx-auto mb-4 h-16 w-16" />
-          <h1 className="text-2xl font-bold text-foreground">Reset Password</h1>
+          <h1 className="text-2xl font-bold text-foreground">Buat Password Baru</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Masukkan password baru untuk akunmu
+          </p>
         </div>
 
         <form onSubmit={handleReset} className="space-y-4 rounded-xl border border-border bg-card p-6">
@@ -73,10 +91,21 @@ const ResetPassword = () => {
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 karakter" required minLength={6} className="bg-background pl-10" />
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={loading || password.length < 6}>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Konfirmasi Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ketik ulang password" required minLength={6} className="bg-background pl-10" />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading || password.length < 6 || password !== confirmPassword}>
             {loading ? "Menyimpan..." : "Simpan Password Baru"}
           </Button>
         </form>
+
+        <button onClick={() => navigate("/auth")} className="mt-4 flex w-full items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Login
+        </button>
       </div>
     </div>
   );
