@@ -9,10 +9,9 @@ const corsHeaders = {
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Simple in-memory rate limit (per-IP, resets on cold start)
 const uploadCounts = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5; // max uploads
-const RATE_WINDOW = 60_000; // per 60 seconds
+const RATE_LIMIT = 5;
+const RATE_WINDOW = 60_000;
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -31,7 +30,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Rate limit by IP
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     if (isRateLimited(clientIp)) {
       return new Response(
@@ -47,14 +45,33 @@ Deno.serve(async (req) => {
 
     if (!file) {
       return new Response(JSON.stringify({ error: "No file provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // For coin orders, skip show validation
+    // Validate file type
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate file size
+    if (file.size > MAX_SIZE) {
+      return new Response(
+        JSON.stringify({ error: "File too large. Maximum size is 5 MB." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // For non-coin uploads, validate show_id
     if (uploadType !== "coin") {
-      // Require a valid show_id to prevent anonymous abuse
       if (!showId) {
         return new Response(
           JSON.stringify({ error: "show_id is required" }),
@@ -62,29 +79,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Validate file type
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Validate file size
-      if (file.size > MAX_SIZE) {
-        return new Response(
-          JSON.stringify({ error: "File too large. Maximum size is 5 MB." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const sb = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
-      // Verify show exists and is active
-      const { data: show, error: showError } = await sb
+      const { data: show, error: showError } = await supabase
         .from("shows")
         .select("id")
         .eq("id", showId)
@@ -99,45 +94,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Validate file type (for all uploads)
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Validate file size (for all uploads)
-    if (file.size > MAX_SIZE) {
-      return new Response(
-        JSON.stringify({ error: "File too large. Maximum size is 5 MB." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Determine safe extension from MIME type
-    const extMap: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-    };
+    // Upload file
+    const extMap: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
     const ext = extMap[file.type] || "jpg";
     const fileName = `${crypto.randomUUID()}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
-    const { error: uploadError } = await supabaseClient.storage
+    const { error: uploadError } = await supabase.storage
       .from("payment-proofs")
       .upload(fileName, arrayBuffer, { contentType: file.type });
 
     if (uploadError) {
       return new Response(JSON.stringify({ error: uploadError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -147,8 +116,7 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     return new Response(JSON.stringify({ error: "Upload failed" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
