@@ -34,6 +34,7 @@ interface Show {
   category?: string;
   category_member?: string;
   coin_price: number;
+  replay_coin_price: number;
 }
 
 const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
