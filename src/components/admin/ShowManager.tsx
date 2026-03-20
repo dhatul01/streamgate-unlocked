@@ -271,7 +271,38 @@ const ShowManager = () => {
               </div>
             )}
 
-            {/* Category selector */}
+            {/* Replay mode toggle */}
+            {!editing.is_subscription && editing.replay_coin_price > 0 && (
+              <div className="flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 p-3">
+                <div className="flex items-center gap-2">
+                  <Film className="h-4 w-4 text-accent" />
+                  <div>
+                    <span className="text-sm font-medium text-foreground">Mode Replay</span>
+                    <p className="text-[10px] text-muted-foreground">Ubah kartu menjadi "Tonton Replay" & kirim notifikasi WA</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={editing.is_replay}
+                  onCheckedChange={async (v) => {
+                    const u = { ...editing, is_replay: v };
+                    setEditing(u);
+                    await updateShow(u);
+                    if (v) {
+                      // Send WhatsApp notifications to buyers
+                      try {
+                        await supabase.functions.invoke("notify-replay-available", {
+                          body: { show_id: editing.id, show_title: editing.title },
+                        });
+                        toast({ title: "🎬 Mode Replay Aktif", description: "Notifikasi WA dikirim ke pembeli." });
+                      } catch {
+                        toast({ title: "🎬 Mode Replay Aktif", description: "Notifikasi gagal dikirim." });
+                      }
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Kategori Show</label>
               <div className="grid grid-cols-2 gap-2">
