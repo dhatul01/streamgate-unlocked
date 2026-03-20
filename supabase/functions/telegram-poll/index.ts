@@ -254,6 +254,12 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
+      // Send WA notification to user
+      if (order.phone) {
+        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
+
       await sendTelegramMessage(botToken, chatId,
         `✅ Order koin \`${order.id}\` berhasil dikonfirmasi\\!\n💰 ${order.coin_amount} koin ditambahkan ke akun ${escapeMarkdown(profile?.username || 'User')}\\.`);
     } else {
