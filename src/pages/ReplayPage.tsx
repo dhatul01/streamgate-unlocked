@@ -116,12 +116,24 @@ const ReplayPage = () => {
         if (txns) {
           for (const tx of txns) {
             if (tx.reference_id && !storedPw[tx.reference_id]) {
-              // Purchased but password lost
               storedPw[tx.reference_id] = "__purchased__";
             }
           }
           localStorage.setItem(`replay_passwords_${user.id}`, JSON.stringify(storedPw));
         }
+
+        // Fetch real access passwords from DB for purchased shows
+        try {
+          const { data: pwData } = await supabase.rpc("get_purchased_show_passwords");
+          if (pwData && typeof pwData === "object") {
+            const pwMap = pwData as Record<string, string>;
+            // Override localStorage passwords with real ones from DB
+            for (const [showId, pw] of Object.entries(pwMap)) {
+              if (pw) storedPw[showId] = pw;
+            }
+            localStorage.setItem(`replay_passwords_${user.id}`, JSON.stringify(storedPw));
+          }
+        } catch {}
 
         setReplayPasswords(storedPw);
 

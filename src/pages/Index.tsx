@@ -224,10 +224,22 @@ const Index = () => {
           setReplayPasswords(storedPw);
         } catch {}
 
-        // Load access passwords from localStorage
+        // Load access passwords from localStorage, then override with real passwords from DB
         try {
           const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${user.id}`) || "{}");
           setAccessPasswords(storedAp);
+        } catch {}
+
+        // Fetch real access passwords from DB for purchased shows
+        try {
+          const { data: pwData } = await supabase.rpc("get_purchased_show_passwords");
+          if (pwData && typeof pwData === "object") {
+            const pwMap = pwData as Record<string, string>;
+            const storedAp = JSON.parse(localStorage.getItem(`access_passwords_${user.id}`) || "{}");
+            const merged = { ...storedAp, ...pwMap };
+            localStorage.setItem(`access_passwords_${user.id}`, JSON.stringify(merged));
+            setAccessPasswords(merged);
+          }
         } catch {}
 
         // Subscribe to balance changes for toast notification
