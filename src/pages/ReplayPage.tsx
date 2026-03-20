@@ -389,32 +389,23 @@ const ReplayPage = () => {
           {replayModal && (
             <div className="space-y-4 text-center">
               <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-1">🔐 Sandi Replay</p>
                 <p className="font-mono text-2xl font-bold text-warning">{replayModal.password}</p>
               </div>
               <Button
                 className="w-full gap-2"
-                variant="outline"
                 onClick={() => {
                   navigator.clipboard.writeText(replayModal.password);
-                  setReplayCopied(true);
-                  toast({ title: "Sandi disalin!" });
+                  toast({ title: "Sandi disalin! Membuka halaman replay..." });
+                  setTimeout(() => {
+                    window.open("https://replaytime.lovable.app", "_blank");
+                    setReplayModal(null);
+                  }, 500);
                 }}
               >
-                <Copy className="h-4 w-4" /> {replayCopied ? "✓ Sandi Disalin" : "Salin Sandi"}
+                <Copy className="h-4 w-4" /> Salin Sandi & Tonton Replay
               </Button>
-              <Button
-                className="w-full gap-2"
-                disabled={!replayCopied}
-                onClick={() => {
-                  window.open("https://replaytime.lovable.app", "_blank");
-                  setReplayModal(null);
-                }}
-              >
-                <Play className="h-4 w-4" /> Tonton Replay
-              </Button>
-              {!replayCopied && (
-                <p className="text-xs text-destructive">⚠️ Salin sandi terlebih dahulu sebelum menuju replay</p>
-              )}
+              <p className="text-xs text-muted-foreground">⚠️ Sandi akan disalin otomatis, lalu halaman replay terbuka</p>
             </div>
           )}
         </DialogContent>
