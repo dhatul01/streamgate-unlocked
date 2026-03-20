@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
+import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 
 interface CoinPackage { id: string; name: string; coin_amount: number; price: number; qris_image_url: string | null; }
 interface Show { id: string; title: string; coin_price: number; schedule_date: string; schedule_time: string; background_image_url: string | null; is_active: boolean; }
