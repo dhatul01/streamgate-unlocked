@@ -18,6 +18,7 @@ import SubscriptionOrderManager from "@/components/admin/SubscriptionOrderManage
 import ModeratorAccountManager from "@/components/admin/ModeratorAccountManager";
 import CoinPackageManager from "@/components/admin/CoinPackageManager";
 import CoinOrderManager from "@/components/admin/CoinOrderManager";
+import PollManager from "@/components/admin/PollManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
