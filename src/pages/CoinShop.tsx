@@ -26,7 +26,7 @@ const CoinShop = () => {
   const [buyerPhone, setBuyerPhone] = useState("");
   const [uploading, setUploading] = useState(false);
   const [redeemingShow, setRedeemingShow] = useState<string | null>(null);
-  const [redeemResult, setRedeemResult] = useState<{ token_code: string; remaining_balance: number } | null>(null);
+  const [redeemResult, setRedeemResult] = useState<{ token_code: string; remaining_balance: number; replay_password?: string } | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
