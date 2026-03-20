@@ -1056,6 +1056,7 @@ const Index = () => {
                   <p className="font-mono text-lg font-bold text-primary">{coinResult.access_password}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">Sandi ini akan ditampilkan di kartu show Anda</p>
                 </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   className="flex-1 gap-2"
