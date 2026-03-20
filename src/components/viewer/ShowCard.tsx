@@ -48,13 +48,16 @@ function parseShowDateTime(dateStr: string, timeStr: string): number | null {
 
 function useCountdown(dateStr: string, timeStr: string) {
   const [text, setText] = useState("");
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const target = parseShowDateTime(dateStr, timeStr);
     if (!target) return;
 
     const update = () => {
-      const diff = target - Date.now();
+      const current = Date.now();
+      setNow(current);
+      const diff = target - current;
       if (diff <= 0) { setText("LIVE!"); return; }
       const d = Math.floor(diff / 86400000);
       const h = Math.floor((diff % 86400000) / 3600000);
@@ -71,7 +74,7 @@ function useCountdown(dateStr: string, timeStr: string) {
     return () => clearInterval(id);
   }, [dateStr, timeStr]);
 
-  return text;
+  return { text, now };
 }
 
 const ShowCard = ({
@@ -79,7 +82,7 @@ const ShowCard = ({
   onBuy, onCoinBuy, showCountdown = true,
 }: ShowCardProps) => {
   const { toast } = useToast();
-  const countdown = useCountdown(show.schedule_date, show.schedule_time);
+  const { text: countdown, now: currentTime } = useCountdown(show.schedule_date, show.schedule_time);
 
   const pw = accessPassword || replayPassword;
   const hasPw = pw && pw !== "__purchased__";
@@ -208,7 +211,7 @@ const ShowCard = ({
                 {(() => {
                   const showStart = parseShowDateTime(show.schedule_date, show.schedule_time);
                   const accessOpens = showStart ? showStart - 2 * 60 * 60 * 1000 : null;
-                  const isTooEarly = accessOpens ? Date.now() < accessOpens : false;
+                  const isTooEarly = accessOpens ? currentTime < accessOpens : false;
 
                   if (isTooEarly && showStart) {
                     return (
