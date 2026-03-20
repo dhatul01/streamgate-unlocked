@@ -12,6 +12,7 @@ import ViewerAuth from "./pages/ViewerAuth";
 import CoinShop from "./pages/CoinShop";
 import ResetPassword from "./pages/ResetPassword";
 import ViewerProfile from "./pages/ViewerProfile";
+import ReplayPage from "./pages/ReplayPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
