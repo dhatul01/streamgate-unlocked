@@ -341,11 +341,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 } catch {}
               };
 
-              // Force highest quality for best initial experience
+              // Force highest quality for best initial experience + populate quality list
               try {
-                const qualities = e.target.getAvailableQualityLevels?.();
-                if (qualities && qualities.length > 0) {
-                  e.target.setPlaybackQuality(qualities[0]);
+                const ytQuals = e.target.getAvailableQualityLevels?.() || [];
+                if (ytQuals.length > 0) {
+                  e.target.setPlaybackQuality(ytQuals[0]);
+                  const ytLabelMap: Record<string, string> = {
+                    hd2160: "4K", hd1440: "1440p", hd1080: "1080p", hd720: "720p",
+                    large: "480p", medium: "360p", small: "240p", tiny: "144p",
+                  };
+                  const mapped = ytQuals
+                    .filter((q: string) => q !== "auto" && ytLabelMap[q])
+                    .map((q: string, i: number) => ({ label: ytLabelMap[q] || q, index: i, ytKey: q }));
+                  setQualities([{ label: "Auto", index: -1, ytKey: "auto" }, ...mapped]);
+                  setCurrentQuality(-1);
                 }
               } catch {}
 
