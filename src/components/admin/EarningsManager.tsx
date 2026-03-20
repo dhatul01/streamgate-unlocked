@@ -3,7 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coins, TrendingUp, ArrowDownToLine, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Coins, TrendingUp, ArrowDownToLine, Clock, CheckCircle2, XCircle, Banknote } from "lucide-react";
+
+const COIN_TO_IDR = 1000;
+
+const formatRupiah = (amount: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
 
 interface Earning {
   id: string;
@@ -92,7 +97,7 @@ const EarningsManager = () => {
     if (error) {
       toast({ title: "Gagal", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Permintaan penarikan berhasil dibuat" });
+      toast({ title: `Penarikan ${formatRupiah(withdrawAmount * COIN_TO_IDR)} berhasil dibuat` });
       setWithdrawAmount(0);
       setAccountNumber("");
       fetchData();
@@ -116,7 +121,7 @@ const EarningsManager = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-foreground">Pendapatan Gift</h2>
-        <p className="text-xs text-muted-foreground">Kelola pendapatan dari gift viewer untuk pencairan GoPay</p>
+        <p className="text-xs text-muted-foreground">Kelola pendapatan dari gift viewer · 1 Koin = {formatRupiah(COIN_TO_IDR)}</p>
       </div>
 
       {/* Stats */}
@@ -124,28 +129,34 @@ const EarningsManager = () => {
         <div className="rounded-xl border border-border bg-card p-4 text-center">
           <TrendingUp className="mx-auto mb-1 h-5 w-5 text-success" />
           <p className="text-xl font-bold text-success">{totalEarnings}</p>
-          <p className="text-[10px] text-muted-foreground">Total Pendapatan</p>
+          <p className="text-xs font-semibold text-success/70">{formatRupiah(totalEarnings * COIN_TO_IDR)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Total Pendapatan</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 text-center">
           <ArrowDownToLine className="mx-auto mb-1 h-5 w-5 text-primary" />
           <p className="text-xl font-bold text-primary">{totalWithdrawn}</p>
-          <p className="text-[10px] text-muted-foreground">Total Ditarik</p>
+          <p className="text-xs font-semibold text-primary/70">{formatRupiah(totalWithdrawn * COIN_TO_IDR)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Total Ditarik</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 text-center">
           <Coins className="mx-auto mb-1 h-5 w-5 text-warning" />
           <p className="text-xl font-bold text-warning">{available}</p>
-          <p className="text-[10px] text-muted-foreground">Saldo Tersedia</p>
+          <p className="text-xs font-semibold text-warning/70">{formatRupiah(available * COIN_TO_IDR)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Saldo Tersedia</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 text-center">
           <Clock className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
           <p className="text-xl font-bold text-foreground">{pendingWithdrawals}</p>
-          <p className="text-[10px] text-muted-foreground">Menunggu Proses</p>
+          <p className="text-xs font-semibold text-muted-foreground">{formatRupiah(pendingWithdrawals * COIN_TO_IDR)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Menunggu Proses</p>
         </div>
       </div>
 
       {/* Withdrawal form */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Tarik Saldo ke GoPay</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground flex items-center gap-2">
+          <Banknote className="h-4 w-4 text-success" /> Tarik Saldo ke GoPay
+        </h3>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
             <label className="text-[10px] text-muted-foreground">Jumlah Koin</label>
@@ -158,6 +169,11 @@ const EarningsManager = () => {
               placeholder="Jumlah koin"
               className="mt-1"
             />
+            {withdrawAmount > 0 && (
+              <p className="mt-1 text-xs font-medium text-success">
+                = {formatRupiah(withdrawAmount * COIN_TO_IDR)}
+              </p>
+            )}
           </div>
           <div className="flex-1">
             <label className="text-[10px] text-muted-foreground">Nomor GoPay</label>
@@ -185,7 +201,10 @@ const EarningsManager = () => {
             {withdrawals.map((w) => (
               <div key={w.id} className="flex items-center justify-between rounded-lg bg-background p-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground">{w.amount} Koin → {w.account_number}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {w.amount} Koin ({formatRupiah(w.amount * COIN_TO_IDR)})
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">→ GoPay {w.account_number}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-[9px] rounded px-1.5 py-0.5 font-medium ${
                       w.status === "completed" ? "bg-success/10 text-success" :
@@ -226,7 +245,10 @@ const EarningsManager = () => {
                   <p className="text-xs font-medium text-foreground">{e.description}</p>
                   <p className="text-[10px] text-muted-foreground">{new Date(e.created_at).toLocaleString("id-ID")}</p>
                 </div>
-                <span className="text-sm font-bold text-success">+{e.amount}</span>
+                <div className="text-right">
+                  <span className="text-sm font-bold text-success">+{e.amount}</span>
+                  <p className="text-[10px] text-success/70">{formatRupiah(e.amount * COIN_TO_IDR)}</p>
+                </div>
               </div>
             ))}
           </div>
