@@ -1109,6 +1109,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_my_active_show_tokens: { Args: never; Returns: Json }
       get_my_password_reset_status: { Args: never; Returns: Json }
       get_or_create_referral_code: { Args: never; Returns: Json }
       get_order_count: { Args: { _show_id: string }; Returns: number }
