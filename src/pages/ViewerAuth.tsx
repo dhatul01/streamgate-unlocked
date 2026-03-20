@@ -21,6 +21,7 @@ const ViewerAuth = () => {
   const [forgotNewPassword, setForgotNewPassword] = useState("");
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
