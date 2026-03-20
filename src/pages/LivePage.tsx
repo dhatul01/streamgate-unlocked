@@ -31,8 +31,6 @@ const LivePage = () => {
   const [username, setUsername] = useState(() => localStorage.getItem("rt48_username") || "");
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
-  const [coinBalance, setCoinBalance] = useState<number>(0);
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
