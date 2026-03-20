@@ -212,6 +212,21 @@ const CoinShop = () => {
       <Dialog open={!!selectedPkg} onOpenChange={() => setSelectedPkg(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Beli {selectedPkg?.coin_amount} Koin</DialogTitle><DialogDescription>{formatPrice(selectedPkg?.price || 0)}</DialogDescription></DialogHeader>
+          {purchaseStep === "phone" && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Masukkan nomor WhatsApp untuk notifikasi status order</p>
+              <Input
+                type="tel"
+                placeholder="08xxxxxxxxxx"
+                value={buyerPhone}
+                onChange={(e) => setBuyerPhone(e.target.value)}
+                className="bg-background"
+              />
+              <Button className="w-full" disabled={!buyerPhone.trim() || buyerPhone.trim().length < 10} onClick={() => setPurchaseStep(selectedPkg?.qris_image_url ? "qris" : "upload")}>
+                Lanjut →
+              </Button>
+            </div>
+          )}
           {purchaseStep === "qris" && selectedPkg?.qris_image_url && (
             <div className="space-y-3">
               <img src={selectedPkg.qris_image_url} alt="QRIS" className="mx-auto w-64 rounded-lg" />
@@ -219,7 +234,7 @@ const CoinShop = () => {
               <Button className="w-full" onClick={() => setPurchaseStep("upload")}>Sudah Bayar → Upload Bukti</Button>
             </div>
           )}
-          {(purchaseStep === "upload" || (purchaseStep === "qris" && !selectedPkg?.qris_image_url)) && (
+          {purchaseStep === "upload" && (
             <div className="space-y-3">
               <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 hover:border-primary">
                 <Upload className={`h-8 w-8 ${uploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
