@@ -87,6 +87,12 @@ const ReplayPage = () => {
           if (!streamLive && isShowPastSchedule(s)) return true;
           return false;
         });
+        // Sort newest first by schedule_date
+        pastShows.sort((a, b) => {
+          const dateA = a.schedule_date ? new Date(a.schedule_date).getTime() : 0;
+          const dateB = b.schedule_date ? new Date(b.schedule_date).getTime() : 0;
+          return dateB - dateA;
+        });
         setShows(pastShows as Show[]);
       }
     };
