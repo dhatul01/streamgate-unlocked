@@ -7,7 +7,6 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LiveControl from "@/components/admin/LiveControl";
-import PlaylistManager from "@/components/admin/PlaylistManager";
 import TokenFactory from "@/components/admin/TokenFactory";
 import ShowManager from "@/components/admin/ShowManager";
 import MonitorView from "@/components/admin/MonitorView";
