@@ -16,22 +16,25 @@ const DURATION_TABS = [
 ] as const;
 
 type DurationKey = "daily" | "weekly" | "monthly";
+type TabKey = DurationKey | "coin";
 
 const TokenFactory = () => {
   const [tokens, setTokens] = useState<any[]>([]);
+  const [coinTokens, setCoinTokens] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Record<string, number>>({});
   const [duration, setDuration] = useState<DurationKey>("daily");
   const [maxDevices, setMaxDevices] = useState("1");
   const [bulkCount, setBulkCount] = useState("1");
   const [isPublic, setIsPublic] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Record<DurationKey, Set<string>>>({
+  const [selected, setSelected] = useState<Record<TabKey, Set<string>>>({
     daily: new Set(),
     weekly: new Set(),
     monthly: new Set(),
+    coin: new Set(),
   });
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked" | "expired">("all");
-  const [activeTab, setActiveTab] = useState<DurationKey>("daily");
+  const [activeTab, setActiveTab] = useState<TabKey>("daily");
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [copiedTokens, setCopiedTokens] = useState<Set<string>>(() => {
@@ -43,12 +46,12 @@ const TokenFactory = () => {
   const { toast } = useToast();
 
   const fetchTokens = async () => {
-    const { data } = await supabase
-      .from("tokens")
-      .select("*")
-      .not("code", "like", "COIN-%")
-      .order("created_at", { ascending: false });
-    setTokens(data || []);
+    const [manualRes, coinRes] = await Promise.all([
+      supabase.from("tokens").select("*").not("code", "like", "COIN-%").order("created_at", { ascending: false }),
+      supabase.from("tokens").select("*").like("code", "COIN-%").order("created_at", { ascending: false }),
+    ]);
+    setTokens(manualRes.data || []);
+    setCoinTokens(coinRes.data || []);
     const { data: sessData } = await supabase.from("token_sessions").select("token_id");
     if (sessData) {
       const counts: Record<string, number> = {};
@@ -101,12 +104,13 @@ const TokenFactory = () => {
     toast({ title: "Link disalin!" });
   };
 
-  const bulkCopyUncopied = (dur: DurationKey) => {
-    const uncopied = tokens.filter(
-      (t) => t.duration_type === dur && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
+  const bulkCopyUncopied = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens;
+    const uncopied = source.filter(
+      (t) => (dur === "coin" || t.duration_type === dur) && !copiedTokens.has(t.code) && t.status !== "blocked" && !isExpired(t)
     );
     if (uncopied.length === 0) {
-      toast({ title: `Tidak ada token ${DURATION_TABS.find(d => d.key === dur)?.label.toLowerCase()} baru untuk disalin` });
+      toast({ title: `Tidak ada token baru untuk disalin` });
       return;
     }
     const links = uncopied.map((t) => `${window.location.origin}/live?t=${t.code}`).join("\n");
@@ -128,7 +132,7 @@ const TokenFactory = () => {
     toast({ title: "Session direset" });
   };
 
-  const deleteTokens = async (ids: string[], dur: DurationKey) => {
+  const deleteTokens = async (ids: string[], dur: TabKey) => {
     if (deleting || ids.length === 0) return;
     setDeleting(true);
     try {
@@ -146,7 +150,7 @@ const TokenFactory = () => {
     }
   };
 
-  const toggleSelect = (id: string, dur: DurationKey) => {
+  const toggleSelect = (id: string, dur: TabKey) => {
     setSelected((prev) => {
       const next = new Set(prev[dur]);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -156,9 +160,10 @@ const TokenFactory = () => {
 
   const isExpired = (t: any) => new Date(t.expires_at) < new Date();
 
-  const getFilteredTokens = (dur: DurationKey) => {
-    return tokens.filter((t) => {
-      if (t.duration_type !== dur) return false;
+  const getFilteredTokens = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens;
+    return source.filter((t) => {
+      if (dur !== "coin" && t.duration_type !== dur) return false;
       const matchSearch = t.code.toLowerCase().includes(search.toLowerCase());
       if (!matchSearch) return false;
       if (statusFilter === "all") return true;
@@ -169,19 +174,22 @@ const TokenFactory = () => {
     });
   };
 
-  const getCountByDuration = (dur: DurationKey) => tokens.filter(t => t.duration_type === dur).length;
+  const getCountByDuration = (dur: TabKey) => {
+    if (dur === "coin") return coinTokens.length;
+    return tokens.filter(t => t.duration_type === dur).length;
+  };
 
-  const getCountByStatus = (dur: DurationKey) => {
-    const durTokens = tokens.filter(t => t.duration_type === dur);
+  const getCountByStatus = (dur: TabKey) => {
+    const source = dur === "coin" ? coinTokens : tokens.filter(t => t.duration_type === dur);
     return {
-      all: durTokens.length,
-      active: durTokens.filter(t => t.status !== "blocked" && !isExpired(t)).length,
-      blocked: durTokens.filter(t => t.status === "blocked").length,
-      expired: durTokens.filter(t => t.status !== "blocked" && isExpired(t)).length,
+      all: source.length,
+      active: source.filter(t => t.status !== "blocked" && !isExpired(t)).length,
+      blocked: source.filter(t => t.status === "blocked").length,
+      expired: source.filter(t => t.status !== "blocked" && isExpired(t)).length,
     };
   };
 
-  const renderTokenList = (dur: DurationKey) => {
+  const renderTokenList = (dur: TabKey) => {
     const filtered = getFilteredTokens(dur);
     const sel = selected[dur];
     const counts = getCountByStatus(dur);
@@ -387,22 +395,31 @@ const TokenFactory = () => {
       )}
 
       {/* Duration Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as DurationKey); setStatusFilter("all"); }}>
-        <TabsList className="w-full grid grid-cols-3">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabKey); setStatusFilter("all"); }}>
+        <TabsList className="w-full grid grid-cols-4">
           {DURATION_TABS.map(({ key, label, emoji }) => (
-            <TabsTrigger key={key} value={key} className="gap-1.5 text-xs">
+            <TabsTrigger key={key} value={key} className="gap-1 text-xs">
               <span>{emoji}</span> {label}
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">
                 {getCountByDuration(key)}
               </span>
             </TabsTrigger>
           ))}
+          <TabsTrigger value="coin" className="gap-1 text-xs">
+            <span>🪙</span> Koin
+            <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold">
+              {getCountByDuration("coin")}
+            </span>
+          </TabsTrigger>
         </TabsList>
         {DURATION_TABS.map(({ key }) => (
           <TabsContent key={key} value={key} className="mt-4">
             {renderTokenList(key)}
           </TabsContent>
         ))}
+        <TabsContent value="coin" className="mt-4">
+          {renderTokenList("coin")}
+        </TabsContent>
       </Tabs>
     </div>
   );

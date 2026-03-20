@@ -314,14 +314,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             onReady: (e: any) => {
               if (destroyed) return;
               ytReadyRef.current = true;
+              // Force highest quality first, then let it adapt to network
               try {
                 const qualities = e.target.getAvailableQualityLevels?.();
                 if (qualities && qualities.length > 0) {
-                  const highest = qualities[0];
+                  const highest = qualities[0]; // e.g. "hd1080", "hd720"
                   e.target.setPlaybackQuality(highest);
-                  e.target.setPlaybackQualityRange?.(highest, highest);
                 }
               } catch {}
+              // After 8 seconds, release quality lock so it adapts to network
+              setTimeout(() => {
+                if (destroyed) return;
+                try {
+                  if (ytPlayerRef.current && typeof ytPlayerRef.current.setPlaybackQuality === 'function') {
+                    ytPlayerRef.current.setPlaybackQuality('default');
+                  }
+                } catch {}
+              }, 8000);
 
               try {
                 const iframe = container.querySelector("iframe");
