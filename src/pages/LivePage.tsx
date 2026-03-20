@@ -639,17 +639,22 @@ const LivePage = () => {
 
         <div className="player-area relative">
           {isLive && activePlaylist && signedStreamUrl ? (
-            <VideoPlayer
-              key={playerKey}
-              ref={playerRef}
-              playlist={{
-                ...activePlaylist,
-                url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
-              }}
-              autoPlay
-              watermarkUrl={watermarkUrl}
-              tokenCode={tokenData?.code}
-            />
+            <>
+              <VideoPlayer
+                key={playerKey}
+                ref={playerRef}
+                playlist={{
+                  ...activePlaylist,
+                  url: activePlaylist.type === "m3u8" ? signedStreamUrl : activePlaylist.url,
+                }}
+                autoPlay
+                watermarkUrl={watermarkUrl}
+                tokenCode={tokenData?.code}
+              />
+              <Suspense fallback={null}>
+                <GiftOverlay />
+              </Suspense>
+            </>
           ) : isLive && activePlaylist && signedUrlLoading ? (
             <div className="relative flex aspect-video w-full flex-col items-center justify-center bg-card">
               <div className="flex flex-col items-center gap-3 tv:gap-5">
@@ -687,6 +692,19 @@ const LivePage = () => {
             </div>
           )}
         </div>
+
+        {/* Gift & PiP buttons below player when live */}
+        {isLive && (
+          <div className="flex items-center gap-2 border-t border-border px-4 py-2 tv:px-8 tv:py-3">
+            <Suspense fallback={null}>
+              <GiftButton isAuthenticated={!!tokenData} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <PipButton />
+            </Suspense>
+            <div className="flex-1" />
+          </div>
+        )}
 
         {isLive && playlists.length > 1 && (
           <div className="flex gap-2 tv:gap-3 overflow-x-auto border-t border-border px-4 py-2 tv:px-8 tv:py-4">
