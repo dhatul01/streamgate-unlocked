@@ -514,13 +514,19 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     } catch {}
   }, []);
 
-  const handleQualityChange = useCallback((index: number) => {
-    if (hlsRef.current) {
+  const handleQualityChange = useCallback((index: number, ytKey?: string) => {
+    if (playlist.type === "youtube" && isYTReady() && ytKey) {
+      try {
+        ytPlayerRef.current.setPlaybackQuality(ytKey === "auto" ? "default" : ytKey);
+        setCurrentQuality(index);
+      } catch {}
+    } else if (hlsRef.current) {
       setIsSwitchingQuality(true);
       hlsRef.current.currentLevel = index;
       setCurrentQuality(index);
     }
-  }, []);
+    setShowQualityMenu(false);
+  }, [playlist.type, isYTReady]);
 
   const toggleYtMute = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
