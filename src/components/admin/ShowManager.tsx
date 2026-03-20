@@ -103,6 +103,7 @@ const ShowManager = () => {
         category: show.category,
         category_member: show.category_member,
         coin_price: show.coin_price,
+        replay_coin_price: show.replay_coin_price,
         access_password: show.access_password,
       })
       .eq("id", show.id);
