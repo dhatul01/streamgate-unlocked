@@ -239,7 +239,7 @@ const ViewerAuth = () => {
                 {loading ? "Memproses..." : mode === "login" ? "Masuk" : "Daftar"}
               </Button>
 
-              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); setForgotNewPassword(""); setForgotConfirmPassword(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
+              <button type="button" onClick={() => { setMode("forgot"); setForgotSubmitted(false); setForgotIdentifier(""); }} className="w-full text-center text-[11px] text-muted-foreground hover:text-primary">
                 Lupa password?
               </button>
 
