@@ -46,6 +46,7 @@ const TokenFactory = () => {
     const { data } = await supabase
       .from("tokens")
       .select("*")
+      .not("code", "like", "COIN-%")
       .order("created_at", { ascending: false });
     setTokens(data || []);
     const { data: sessData } = await supabase.from("token_sessions").select("token_id");
