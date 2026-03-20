@@ -159,6 +159,7 @@ export type Database = {
           payment_proof_url: string
           phone: string
           price: number
+          short_id: string
           status: string
           user_id: string
         }
@@ -170,6 +171,7 @@ export type Database = {
           payment_proof_url?: string
           phone?: string
           price: number
+          short_id?: string
           status?: string
           user_id: string
         }
@@ -181,6 +183,7 @@ export type Database = {
           payment_proof_url?: string
           phone?: string
           price?: number
+          short_id?: string
           status?: string
           user_id?: string
         }
@@ -640,6 +643,7 @@ export type Database = {
           id: string
           payment_proof_url: string
           phone: string
+          short_id: string
           show_id: string
           status: string
         }
@@ -649,6 +653,7 @@ export type Database = {
           id?: string
           payment_proof_url?: string
           phone?: string
+          short_id?: string
           show_id: string
           status?: string
         }
@@ -658,6 +663,7 @@ export type Database = {
           id?: string
           payment_proof_url?: string
           phone?: string
+          short_id?: string
           show_id?: string
           status?: string
         }

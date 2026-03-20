@@ -18,18 +18,26 @@ serve(async (req) => {
 
     const { order_id, username, package_name, coin_amount, price, payment_proof_url } = await req.json();
 
+    // Fetch the short_id from coin_orders
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data: orderData } = await supabase
+      .from('coin_orders')
+      .select('short_id')
+      .eq('id', order_id)
+      .single();
+
+    const shortId = orderData?.short_id || order_id;
+
     const priceFormatted = escapeMarkdown(Number(price).toLocaleString('id-ID'));
-    const escapedOrderId = escapeMarkdown(order_id);
-    const caption = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 Order ID: \`${escapedOrderId}\`\n\n✅ Balas *YA ${escapedOrderId}* untuk approve\n❌ Balas *TIDAK ${escapedOrderId}* untuk reject`;
+    const caption = `🪙 *Order Koin Baru\\!*\n\n👤 User: ${escapeMarkdown(username)}\n📦 Paket: ${escapeMarkdown(package_name)}\n💰 Jumlah: ${coin_amount} koin\n💵 Harga: Rp ${priceFormatted}\n🆔 ID: \`${escapeMarkdown(shortId)}\`\n\n✅ Balas *YA ${escapeMarkdown(shortId)}* untuk approve\n❌ Balas *TIDAK ${escapeMarkdown(shortId)}* untuk reject\n\n💡 Bulk: *YA ${escapeMarkdown(shortId)},c2,c3*`;
 
     // Try to send photo if payment proof exists
     if (payment_proof_url) {
       try {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-
         const { data: fileData, error: downloadError } = await supabase.storage
           .from('payment-proofs')
           .download(payment_proof_url);
