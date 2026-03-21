@@ -319,7 +319,7 @@ async function processCoinOrder(
       }
 
       await sendTelegramMessage(botToken, chatId,
-        `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${username}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
+        `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${escapeMarkdown(profile?.username || 'User')}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
     } else {
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
