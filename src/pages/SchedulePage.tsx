@@ -18,9 +18,8 @@ const SchedulePage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [showsRes, settingsRes] = await Promise.all([
+      const [showsRes] = await Promise.all([
         supabase.rpc("get_public_shows"),
-        supabase.from("site_settings").select("*").in("key", ["whatsapp_number"]),
       ]);
       if (showsRes.data) {
         const allShows = showsRes.data as Show[];
