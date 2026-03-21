@@ -1,10 +1,1 @@
-project_id = "wbihxjezvmaycgzvfvru"
-
-[functions.send-otp]
-verify_jwt = false
-
-[functions.verify-otp]
-verify_jwt = false
-
-[functions.fonnte-webhook]
-verify_jwt = false
+project_id = "ndpjfzmffgbroexdsyaq"
