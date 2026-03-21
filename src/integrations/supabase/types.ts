@@ -891,6 +891,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          payment_method: string
           payment_proof_url: string
           phone: string
           short_id: string
@@ -901,6 +902,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          payment_method?: string
           payment_proof_url?: string
           phone?: string
           short_id?: string
@@ -911,6 +913,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          payment_method?: string
           payment_proof_url?: string
           phone?: string
           short_id?: string
@@ -1271,6 +1274,10 @@ export type Database = {
       parse_show_datetime: {
         Args: { _date: string; _time: string }
         Returns: string
+      }
+      redeem_coins_for_membership: {
+        Args: { _email: string; _phone: string; _show_id: string }
+        Returns: Json
       }
       redeem_coins_for_replay: { Args: { _show_id: string }; Returns: Json }
       redeem_coins_for_token: { Args: { _show_id: string }; Returns: Json }
