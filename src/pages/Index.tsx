@@ -849,13 +849,10 @@ const Index = () => {
                 <Button
                   onClick={handleConfirmRegular}
                   disabled={!email.trim()}
-                  className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg"
+                  className="w-full gap-2 tv:py-6 tv:text-lg"
                 >
-                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan via WhatsApp
+                  <CheckCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan
                 </Button>
-                <p className="text-[10px] text-center text-muted-foreground tv:text-xs">
-                  * Anda akan diarahkan ke WhatsApp untuk mengirim data pesanan dan bukti transfer secara manual ke admin
-                </p>
               </div>
             )}
 
