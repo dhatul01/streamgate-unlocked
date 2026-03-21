@@ -404,7 +404,15 @@ const MembershipPage = () => {
                   <p className="text-xs text-muted-foreground">Saldo kamu: {coinBalance} koin</p>
                 </div>
                 {coinBalance < selectedShow.coin_price && (
-                  <p className="text-center text-xs text-destructive font-medium">Koin tidak cukup. Silakan top up terlebih dahulu.</p>
+                  <div className="space-y-2 text-center">
+                    <p className="text-xs text-destructive font-medium">Koin tidak cukup. Silakan top up terlebih dahulu.</p>
+                    <a
+                      href="/coins"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-warning/15 px-4 py-2 text-xs font-bold text-warning transition hover:bg-warning/25"
+                    >
+                      <Coins className="h-3.5 w-3.5" /> Beli Koin
+                    </a>
+                  </div>
                 )}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>

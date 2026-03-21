@@ -455,7 +455,13 @@ const Index = () => {
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <Sheet>
+            {/* Coin Shop shortcut - hidden when sheet is open */}
+            {!sheetOpen && (
+              <a href="/coins" className="rounded-lg bg-warning/10 p-2 tv:p-3 text-warning transition hover:bg-warning/20" title="Coin Shop">
+                <Coins className="h-5 w-5 tv:h-7 tv:w-7" />
+              </a>
+            )}
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button className="rounded-lg bg-secondary p-2 tv:p-3 text-secondary-foreground transition hover:bg-secondary/80">
                 <Menu className="h-5 w-5 tv:h-7 tv:w-7" />
