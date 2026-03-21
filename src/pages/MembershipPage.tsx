@@ -111,8 +111,8 @@ const MembershipPage = () => {
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedShow) return;
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/heic", "image/heif"];
+    if (file.type && !allowedTypes.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
       toast({ title: "Format file tidak didukung", variant: "destructive" });
       return;
     }
@@ -125,14 +125,22 @@ const MembershipPage = () => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("show_id", selectedShow.id);
-      const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
-      if (error) throw error;
-      if (data?.path) {
-        setProofUrl(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`);
-        setPurchaseStep("info");
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-payment-proof`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        throw new Error(data?.error || "Upload gagal");
       }
-    } catch {
-      toast({ title: "Upload gagal", variant: "destructive" });
+      setProofUrl(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`);
+      setPurchaseStep("info");
+    } catch (err: any) {
+      toast({ title: "Upload gagal", description: err?.message || "Coba lagi", variant: "destructive" });
     }
     setUploadingProof(false);
   };
