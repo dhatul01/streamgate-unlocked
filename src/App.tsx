@@ -44,6 +44,7 @@ const App = () => (
         </Routes>
       </BrowserRouter>
       <InstallBanner />
+      <SecurityAlert />
     </TooltipProvider>
   </QueryClientProvider>
 );
