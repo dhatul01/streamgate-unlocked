@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
@@ -22,6 +22,7 @@ const allSections = [
   { id: "polls", label: "Live Poll", icon: BarChart3, adminOnly: false },
   { id: "security", label: "Security Log", icon: Shield, adminOnly: true },
   { id: "health", label: "System Health", icon: Activity, adminOnly: true },
+  { id: "live-logs", label: "Live Logs", icon: ScrollText, adminOnly: true },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
   { id: "site", label: "Pengaturan", icon: Settings, adminOnly: false },
   { id: "moderators", label: "Akun Moderator", icon: Users, adminOnly: true },
