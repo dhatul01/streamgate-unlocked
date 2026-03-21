@@ -5,7 +5,7 @@ const TELEGRAM_API = 'https://api.telegram.org/bot';
 const MAX_RUNTIME_MS = 52_000;
 const MIN_REMAINING_MS = 6_000;
 const LONG_POLL_MAX_SECONDS = 20;
-const LOCK_WINDOW_MS = 65_000;
+const LOCK_WINDOW_MS = 25_000;
 
 serve(async () => {
   const startTime = Date.now();
@@ -21,144 +21,143 @@ serve(async () => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
-  const { data: state, error: stateErr } = await supabase
-    .from('telegram_bot_state')
-    .select('update_offset, updated_at')
-    .eq('id', 1)
-    .single();
-
-  if (stateErr) return errorResponse(stateErr.message);
-
-  const lastRunAt = state?.updated_at ? new Date(state.updated_at).getTime() : 0;
-  if (Date.now() - lastRunAt < LOCK_WINDOW_MS) {
+  const lock = await acquireLock(supabase);
+  if (!lock.acquired) {
     return jsonResponse({ ok: true, skipped: true, reason: 'previous run still active' });
   }
 
-  await touchState(supabase, { updated_at: new Date().toISOString() });
+  let currentOffset = lock.update_offset;
+  let totalProcessed = 0;
 
   try {
-    const deleteWebhookResponse = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/deleteWebhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ drop_pending_updates: false }),
-    });
-    await deleteWebhookResponse.text();
-  } catch (_) {
-    // ignore webhook cleanup failures
-  }
-
-  let totalProcessed = 0;
-  let currentOffset = state.update_offset;
-
-  while (true) {
-    const elapsed = Date.now() - startTime;
-    const remainingMs = MAX_RUNTIME_MS - elapsed;
-    if (remainingMs < MIN_REMAINING_MS) break;
-
-    const timeout = Math.min(LONG_POLL_MAX_SECONDS, Math.floor(remainingMs / 1000) - 3);
-    if (timeout < 1) break;
-
-    await touchState(supabase, { updated_at: new Date().toISOString() });
-
-    const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        offset: currentOffset,
-        timeout,
-        allowed_updates: ['message'],
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      if (data?.error_code === 409) {
-        console.warn('409 conflict detected, skipping this run to avoid overlap');
-        await touchState(supabase, { updated_at: new Date().toISOString() });
-        return jsonResponse({ ok: true, skipped: true, reason: 'telegram getUpdates conflict' });
-      }
-      return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
+    try {
+      const deleteWebhookResponse = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/deleteWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drop_pending_updates: false }),
+      });
+      await deleteWebhookResponse.text();
+    } catch (_) {
+      // ignore webhook cleanup failures
     }
 
-    const updates = data.result ?? [];
-    if (updates.length === 0) {
-      await touchState(supabase, { updated_at: new Date().toISOString() });
-      continue;
-    }
+    while (true) {
+      const elapsed = Date.now() - startTime;
+      const remainingMs = MAX_RUNTIME_MS - elapsed;
+      if (remainingMs < MIN_REMAINING_MS) break;
 
-    const rows = updates
-      .filter((u: any) => u.message)
-      .map((u: any) => ({
-        update_id: u.update_id,
-        chat_id: u.message.chat.id,
-        text: u.message.text ?? null,
-        raw_update: u,
-        processed: false,
-      }));
+      const timeout = Math.min(LONG_POLL_MAX_SECONDS, Math.floor(remainingMs / 1000) - 3);
+      if (timeout < 1) break;
 
-    if (rows.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('telegram_messages')
-        .upsert(rows, { onConflict: 'update_id' });
+      await touchState(supabase);
 
-      if (upsertError) {
-        return errorResponse(`telegram_messages upsert failed: ${upsertError.message}`);
-      }
-    }
+      const response = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offset: currentOffset,
+          timeout,
+          allowed_updates: ['message'],
+        }),
+      });
 
-    const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
-    await touchState(supabase, {
-      update_offset: newOffset,
-      updated_at: new Date().toISOString(),
-    });
-    currentOffset = newOffset;
-
-    const adminMessages = rows.filter((r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text);
-
-    for (const msg of adminMessages) {
-      const rawText = (msg.text as string).trim();
-      const text = rawText.toUpperCase();
-      const yaMatch = text.match(/^YA\s+(.+)$/);
-      const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
-      const resetMatch = text.match(/^RESET\s+(.+)$/);
-      const tolakResetMatch = text.match(/^TOLAK_RESET\s+(.+)$/);
-      const isStatus = rawText === '/status' || text === '/STATUS';
-
-      if (isStatus) {
-        await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
-        totalProcessed++;
-      } else if (resetMatch) {
-        const shortId = resetMatch[1].trim().toLowerCase();
-        await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'approve');
-        totalProcessed++;
-      } else if (tolakResetMatch) {
-        const shortId = tolakResetMatch[1].trim().toLowerCase();
-        await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'reject');
-        totalProcessed++;
-      } else if (yaMatch) {
-        const ids = yaMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
-        if (ids.length > 10) {
-          await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk konfirmasi\. Silakan bagi menjadi beberapa perintah\.');
-        } else {
-          await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
-          totalProcessed += ids.length;
+      const data = await response.json();
+      if (!response.ok) {
+        if (data?.error_code === 409) {
+          console.warn('409 conflict detected, skipping this run to avoid overlap');
+          return jsonResponse({ ok: true, skipped: true, reason: 'telegram getUpdates conflict' });
         }
-      } else if (tidakMatch) {
-        const ids = tidakMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
-        if (ids.length > 10) {
-          await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk tolak\. Silakan bagi menjadi beberapa perintah\.');
-        } else {
-          await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
-          totalProcessed += ids.length;
+        return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
+      }
+
+      const updates = data.result ?? [];
+      if (updates.length === 0) {
+        continue;
+      }
+
+      const rows = updates
+        .filter((u: any) => u.message)
+        .map((u: any) => ({
+          update_id: u.update_id,
+          chat_id: u.message.chat.id,
+          text: u.message.text ?? null,
+          raw_update: u,
+          processed: false,
+        }));
+
+      if (rows.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('telegram_messages')
+          .upsert(rows, { onConflict: 'update_id' });
+
+        if (upsertError) {
+          return errorResponse(`telegram_messages upsert failed: ${upsertError.message}`);
         }
       }
 
-      await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
-    }
-  }
+      const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
+      const { error: offsetError } = await supabase
+        .from('telegram_bot_state')
+        .update({
+          update_offset: newOffset,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1);
 
-  await touchState(supabase, { updated_at: new Date().toISOString() });
-  return jsonResponse({ ok: true, processed: totalProcessed, finalOffset: currentOffset });
+      if (offsetError) {
+        return errorResponse(`telegram_bot_state update failed: ${offsetError.message}`);
+      }
+
+      currentOffset = newOffset;
+
+      const adminMessages = rows.filter((r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text);
+
+      for (const msg of adminMessages) {
+        const rawText = (msg.text as string).trim();
+        const text = rawText.toUpperCase();
+        const yaMatch = text.match(/^YA\s+(.+)$/);
+        const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
+        const resetMatch = text.match(/^RESET\s+(.+)$/);
+        const tolakResetMatch = text.match(/^TOLAK_RESET\s+(.+)$/);
+        const isStatus = rawText === '/status' || text === '/STATUS';
+
+        if (isStatus) {
+          await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
+          totalProcessed++;
+        } else if (resetMatch) {
+          const shortId = resetMatch[1].trim().toLowerCase();
+          await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'approve');
+          totalProcessed++;
+        } else if (tolakResetMatch) {
+          const shortId = tolakResetMatch[1].trim().toLowerCase();
+          await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'reject');
+          totalProcessed++;
+        } else if (yaMatch) {
+          const ids = yaMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+          if (ids.length > 10) {
+            await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk konfirmasi\. Silakan bagi menjadi beberapa perintah\.');
+          } else {
+            await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
+            totalProcessed += ids.length;
+          }
+        } else if (tidakMatch) {
+          const ids = tidakMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+          if (ids.length > 10) {
+            await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk tolak\. Silakan bagi menjadi beberapa perintah\.');
+          } else {
+            await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
+            totalProcessed += ids.length;
+          }
+        }
+
+        await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
+      }
+    }
+
+    return jsonResponse({ ok: true, processed: totalProcessed, finalOffset: currentOffset });
+  } finally {
+    await releaseLock(supabase);
+  }
 });
 
 async function processBulkOrders(
@@ -642,9 +641,45 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
   }
 }
 
-async function touchState(supabase: any, payload: Record<string, unknown>) {
-  const { error } = await supabase.from('telegram_bot_state').update(payload).eq('id', 1);
-  if (error) throw new Error(`telegram_bot_state update failed: ${error.message}`);
+async function acquireLock(supabase: any): Promise<{ acquired: boolean; update_offset: number }> {
+  const nowIso = new Date().toISOString();
+  const staleBeforeIso = new Date(Date.now() - LOCK_WINDOW_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from('telegram_bot_state')
+    .update({ updated_at: nowIso })
+    .eq('id', 1)
+    .lt('updated_at', staleBeforeIso)
+    .select('update_offset')
+    .maybeSingle();
+
+  if (error) throw new Error(`telegram_bot_state lock failed: ${error.message}`);
+  if (!data) return { acquired: false, update_offset: 0 };
+
+  return {
+    acquired: true,
+    update_offset: Number(data.update_offset ?? 0),
+  };
+}
+
+async function touchState(supabase: any) {
+  const { error } = await supabase
+    .from('telegram_bot_state')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', 1);
+
+  if (error) throw new Error(`telegram_bot_state heartbeat failed: ${error.message}`);
+}
+
+async function releaseLock(supabase: any) {
+  const { error } = await supabase
+    .from('telegram_bot_state')
+    .update({ updated_at: new Date(0).toISOString() })
+    .eq('id', 1);
+
+  if (error) {
+    console.error('telegram-poll releaseLock error:', error.message);
+  }
 }
 
 function jsonResponse(body: unknown, status = 200) {
