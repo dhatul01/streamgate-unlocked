@@ -103,56 +103,67 @@ const CoinShop = () => {
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast({ title: "Format tidak didukung", variant: "destructive" }); return; }
+    
+    // More lenient type check for mobile
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/heic", "image/heif"];
+    if (file.type && !allowedTypes.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
+      toast({ title: "Format tidak didukung", description: "Gunakan file gambar (JPEG, PNG, WebP)", variant: "destructive" });
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) { toast({ title: "File terlalu besar (maks 5MB)", variant: "destructive" }); return; }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "coin");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "coin");
 
-    console.log("Uploading payment proof for coin order...");
-    const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
-    console.log("Upload result:", { data, error });
-    if (error || !data?.path) { 
-      console.error("Upload failed:", error, data);
-      toast({ title: "Upload gagal", description: error?.message || "Coba lagi", variant: "destructive" }); 
-      setUploading(false); 
-      return; 
-    }
-
-    setUploading(false);
-    setPurchaseStep("done");
-
-    console.log("Inserting coin order...");
-    const { data: orderData, error: insertError } = await supabase.from("coin_orders").insert({
-      user_id: user.id, package_id: selectedPkg!.id,
-      coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
-      payment_proof_url: data.path, status: "pending",
-      phone: buyerPhone.trim(),
-    }).select("id").single();
-    console.log("Insert result:", { orderData, insertError });
-    
-    if (insertError) {
-      console.error("Insert coin order failed:", insertError);
-      toast({ title: "Order gagal disimpan", description: insertError.message, variant: "destructive" });
-      return;
-    }
-    
-    toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
-
-    // Send WhatsApp notification to admin
-    if (orderData?.id) {
-      supabase.functions.invoke("notify-coin-order", {
-        body: {
-          order_id: orderData.id,
-          username: username || "User",
-          package_name: selectedPkg!.name,
-          coin_amount: selectedPkg!.coin_amount,
-          price: selectedPkg!.price,
-          payment_proof_url: data.path,
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-payment-proof`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-      }).catch(() => {});
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        toast({ title: "Upload gagal", description: data?.error || "Coba lagi", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+
+      setUploading(false);
+      setPurchaseStep("done");
+
+      const { data: orderData, error: insertError } = await supabase.from("coin_orders").insert({
+        user_id: user.id, package_id: selectedPkg!.id,
+        coin_amount: selectedPkg!.coin_amount, price: selectedPkg!.price,
+        payment_proof_url: data.path, status: "pending",
+        phone: buyerPhone.trim(),
+      }).select("id").single();
+      
+      if (insertError) {
+        toast({ title: "Order gagal disimpan", description: insertError.message, variant: "destructive" });
+        return;
+      }
+      
+      toast({ title: "Order terkirim!", description: "Menunggu konfirmasi admin." });
+
+      if (orderData?.id) {
+        supabase.functions.invoke("notify-coin-order", {
+          body: {
+            order_id: orderData.id,
+            username: username || "User",
+            package_name: selectedPkg!.name,
+            coin_amount: selectedPkg!.coin_amount,
+            price: selectedPkg!.price,
+            payment_proof_url: data.path,
+          },
+        }).catch(() => {});
+      }
+    } catch (err) {
+      toast({ title: "Upload gagal", description: "Terjadi kesalahan, coba lagi", variant: "destructive" });
+      setUploading(false);
     }
   };
 
