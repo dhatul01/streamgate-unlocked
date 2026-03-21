@@ -11,7 +11,7 @@ const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
 const LivePoll = lazy(() => import("@/components/viewer/LivePoll"));
 const PipButton = lazy(() => import("@/components/viewer/PipButton"));
-const WatchParty = lazy(() => import("@/components/viewer/WatchParty"));
+
 
 type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
@@ -731,11 +731,6 @@ const LivePage = () => {
               <PipButton />
             </Suspense>
             <div className="flex-1" />
-            {username && (
-              <Suspense fallback={null}>
-                <WatchParty username={username} playerRef={playerRef} isLive={isLive} />
-              </Suspense>
-            )}
           </div>
         )}
 

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, ExternalLink, Clock, Trash2, Send, Image, SendHorizonal } from "lucide-react";
+import { CheckCircle, XCircle, ExternalLink, Clock, Trash2, Send, Image, SendHorizonal, Coins, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,9 @@ interface Order {
   phone: string;
   email: string;
   payment_proof_url: string;
+  payment_method: string;
   status: string;
   created_at: string;
-  show_title?: string;
 }
 
 const SubscriptionOrderManager = () => {
@@ -31,6 +31,7 @@ const SubscriptionOrderManager = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [bulkMessage, setBulkMessage] = useState("");
   const [showBulk, setShowBulk] = useState(false);
+  const [copiedField, setCopiedField] = useState("");
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -54,7 +55,6 @@ const SubscriptionOrderManager = () => {
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
 
-    // Auto-send WhatsApp notification via Fonnte
     if (order?.phone) {
       const show = shows[order.show_id];
       let msg = "";
@@ -104,6 +104,15 @@ const SubscriptionOrderManager = () => {
     setShowBulk(false);
   };
 
+  const copyBulkData = (field: "phone" | "email") => {
+    const targetOrders = filter === "all" ? orders : orders.filter((o) => o.status === filter);
+    const data = targetOrders.map((o) => field === "phone" ? o.phone : o.email).filter(Boolean).join("\n");
+    navigator.clipboard.writeText(data);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(""), 2000);
+    toast({ title: `${targetOrders.length} ${field === "phone" ? "nomor HP" : "email"} disalin` });
+  };
+
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
   const confirmedCount = orders.filter((o) => o.status === "confirmed").length;
 
@@ -118,7 +127,7 @@ const SubscriptionOrderManager = () => {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(["pending", "confirmed", "rejected", "all"] as const).map((f) => (
           <button
             key={f}
@@ -133,12 +142,24 @@ const SubscriptionOrderManager = () => {
         ))}
       </div>
 
+      {/* Bulk copy buttons */}
+      {filtered.length > 0 && (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => copyBulkData("phone")} className="gap-1.5 text-xs">
+            <Copy className="h-3 w-3" /> {copiedField === "phone" ? "✓ Disalin!" : `Salin Semua HP (${filtered.length})`}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => copyBulkData("email")} className="gap-1.5 text-xs">
+            <Copy className="h-3 w-3" /> {copiedField === "email" ? "✓ Disalin!" : `Salin Semua Email (${filtered.length})`}
+          </Button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {filtered.map((order) => (
           <div key={order.id} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-1.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-foreground">{shows[order.show_id]?.title || "Unknown"}</p>
                   <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                     order.status === "pending" ? "bg-warning/20 text-warning"
@@ -150,6 +171,11 @@ const SubscriptionOrderManager = () => {
                     : <XCircle className="h-2.5 w-2.5" />}
                     {order.status.toUpperCase()}
                   </span>
+                  {order.payment_method === "coin" && (
+                    <span className="flex items-center gap-1 rounded-sm bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                      <Coins className="h-2.5 w-2.5" /> KOIN
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">📞 {order.phone} · 📧 {order.email}</p>
                 <p className="text-[10px] text-muted-foreground">
@@ -159,24 +185,23 @@ const SubscriptionOrderManager = () => {
 
               <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-1">
-                  <button
-                    onClick={async () => {
-                      // Extract file path from the stored URL
-                      const url = order.payment_proof_url;
-                      const pathMatch = url.match(/payment-proofs\/(.+)$/);
-                      if (pathMatch) {
-                        const { data } = await supabase.storage
-                          .from("payment-proofs")
-                          .createSignedUrl(pathMatch[1], 300); // 5 min
-                        if (data?.signedUrl) setPreviewImage(data.signedUrl);
-                      } else {
-                        setPreviewImage(url); // fallback for old URLs
-                      }
-                    }}
-                    className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
-                  >
-                    <Image className="h-3 w-3" /> Lihat Bukti
-                  </button>
+                  {order.payment_method !== "coin" && order.payment_proof_url && (
+                    <button
+                      onClick={async () => {
+                        const url = order.payment_proof_url;
+                        const pathMatch = url.match(/payment-proofs\/(.+)$/);
+                        if (pathMatch) {
+                          const { data } = await supabase.storage.from("payment-proofs").createSignedUrl(pathMatch[1], 300);
+                          if (data?.signedUrl) setPreviewImage(data.signedUrl);
+                        } else {
+                          setPreviewImage(url);
+                        }
+                      }}
+                      className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
+                    >
+                      <Image className="h-3 w-3" /> Lihat Bukti
+                    </button>
+                  )}
                   <button
                     onClick={() => deleteOrder(order.id)}
                     className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
@@ -203,9 +228,7 @@ const SubscriptionOrderManager = () => {
                       className="h-16 bg-background text-xs"
                     />
                     <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-full gap-1 text-xs"
+                      size="sm" variant="outline" className="h-7 w-full gap-1 text-xs"
                       disabled={!waMessages[order.id]?.trim()}
                       onClick={() => sendWhatsApp(order.phone, waMessages[order.id])}
                     >
@@ -220,7 +243,6 @@ const SubscriptionOrderManager = () => {
         {filtered.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Tidak ada order</p>}
       </div>
 
-      {/* Image Preview Dialog */}
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -230,12 +252,8 @@ const SubscriptionOrderManager = () => {
           {previewImage && (
             <div className="space-y-3">
               <img src={previewImage} alt="Bukti Pembayaran" className="w-full rounded-lg" />
-              <a
-                href={previewImage}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
-              >
+              <a href={previewImage} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground hover:bg-secondary/80">
                 <ExternalLink className="h-3 w-3" /> Buka di tab baru
               </a>
             </div>
@@ -243,27 +261,17 @@ const SubscriptionOrderManager = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Message Dialog */}
       <Dialog open={showBulk} onOpenChange={setShowBulk}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Kirim Pesan Massal</DialogTitle>
             <DialogDescription>
               Pesan akan dikirim ke {confirmedCount} user yang telah dikonfirmasi via WhatsApp.
-              Anda juga bisa menulis pesan berbeda per user di kartu masing-masing.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Textarea
-              value={bulkMessage}
-              onChange={(e) => setBulkMessage(e.target.value)}
-              placeholder="Tulis pesan default untuk semua user..."
-              className="bg-background"
-              rows={4}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              * User yang sudah memiliki pesan individual akan menerima pesan tersebut, bukan pesan default.
-            </p>
+            <Textarea value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)}
+              placeholder="Tulis pesan default untuk semua user..." className="bg-background" rows={4} />
             <Button onClick={sendBulkWhatsApp} disabled={!bulkMessage.trim()} className="w-full gap-2">
               <SendHorizonal className="h-4 w-4" /> Kirim ke Semua ({confirmedCount})
             </Button>
