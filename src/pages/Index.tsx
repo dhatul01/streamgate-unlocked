@@ -774,15 +774,6 @@ const Index = () => {
               <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />
               <p className="text-lg font-medium text-foreground tv:text-2xl">Belum ada show tersedia</p>
               <p className="mt-2 text-muted-foreground tv:text-lg">{settings.purchase_message}</p>
-              {settings.whatsapp_number && (
-                <a
-                  href={`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo, saya ingin bertanya tentang streaming")}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
-                >
-                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Hubungi WhatsApp
-                </a>
-              )}
             </div>
           ) : (
             <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
