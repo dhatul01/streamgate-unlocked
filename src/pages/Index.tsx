@@ -470,8 +470,9 @@ const Index = () => {
           <div className="flex items-center gap-2">
             {/* Coin Shop shortcut - hidden when sheet is open */}
             {!sheetOpen && (
-              <a href="/coins" className="rounded-lg bg-warning/10 p-2 tv:p-3 text-warning transition hover:bg-warning/20" title="Coin Shop">
-                <Coins className="h-5 w-5 tv:h-7 tv:w-7" />
+              <a href="/coins" className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5 tv:px-4 tv:py-2 text-warning transition hover:bg-warning/20" title="Coin Shop">
+                <Coins className="h-4 w-4 tv:h-5 tv:w-5" />
+                <span className="text-xs font-semibold tv:text-sm">Beli Koin</span>
               </a>
             )}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
