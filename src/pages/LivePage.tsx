@@ -446,8 +446,9 @@ const LivePage = () => {
     localStorage.setItem("rt48_username", name);
     setShowUsernameModal(false);
     // Save username to profile if authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const user = session.user;
       await supabase.from("profiles").upsert({ id: user.id, username: name }, { onConflict: "id" });
     }
   };
