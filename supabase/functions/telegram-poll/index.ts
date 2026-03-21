@@ -369,10 +369,6 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
-      if (order.phone) {
-        const waMsg = `❌ Maaf, pembayaran kamu untuk *${showTitle}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       if (!isBulk) {
         await sendTelegramMessage(botToken, chatId,
