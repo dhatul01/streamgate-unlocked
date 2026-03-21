@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download } from "lucide-react";
 import {
@@ -15,14 +16,30 @@ interface SharedNavbarProps {
 }
 
 const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
+  const { toast } = useToast();
   const [coinUser, setCoinUser] = useState<any>(null);
   const [coinBalance, setCoinBalance] = useState(0);
   const [coinUsername, setCoinUsername] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setAuthChecked(true);
+      if (!user) {
+        // Show login prompt for unauthenticated users
+        const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
+        if (!hasSeenPrompt) {
+          sessionStorage.setItem("login_prompt_shown", "1");
+          toast({
+            title: "👋 Selamat datang!",
+            description: "Login atau daftar untuk menikmati fitur lengkap.",
+            duration: 4000,
+          });
+        }
+        return;
+      }
       setCoinUser(user);
 
       const [profileRes, balRes] = await Promise.all([
@@ -34,7 +51,6 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
     };
     loadUser();
 
-    // Realtime coin balance updates
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
         setCoinUser(session.user);
@@ -44,7 +60,6 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  // Realtime subscription to coin_balances
   useEffect(() => {
     if (!coinUser) return;
 
@@ -92,7 +107,13 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
               <span className="text-sm font-bold text-warning">{coinBalance}</span>
             </div>
           )}
-          <Sheet>
+          {/* Coin Shop shortcut - hidden when sheet is open */}
+          {!sheetOpen && (
+            <a href="/coins" className="rounded-lg bg-warning/10 p-2 text-warning transition hover:bg-warning/20" title="Coin Shop">
+              <Coins className="h-5 w-5" />
+            </a>
+          )}
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button className="rounded-lg bg-secondary p-2 text-secondary-foreground transition hover:bg-secondary/80">
                 <Menu className="h-5 w-5" />

@@ -86,6 +86,7 @@ const Index = () => {
   const [accessPasswords, setAccessPasswords] = useState<Record<string, string>>({});
   const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
   const [replayCopied, setReplayCopied] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
@@ -171,6 +172,18 @@ const Index = () => {
     // Fetch coin user & balance & redeemed tokens
     const fetchCoinUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
+        if (!hasSeenPrompt) {
+          sessionStorage.setItem("login_prompt_shown", "1");
+          toast({
+            title: "👋 Selamat datang!",
+            description: "Login atau daftar untuk menikmati fitur lengkap.",
+            duration: 4000,
+          });
+        }
+        return;
+      }
       if (user) {
         setCoinUser(user);
         const [balRes, profileRes] = await Promise.all([
@@ -455,7 +468,13 @@ const Index = () => {
             <span className="text-sm font-bold text-foreground tv:text-xl">Real<span className="text-primary">Time48</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <Sheet>
+            {/* Coin Shop shortcut - hidden when sheet is open */}
+            {!sheetOpen && (
+              <a href="/coins" className="rounded-lg bg-warning/10 p-2 tv:p-3 text-warning transition hover:bg-warning/20" title="Coin Shop">
+                <Coins className="h-5 w-5 tv:h-7 tv:w-7" />
+              </a>
+            )}
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button className="rounded-lg bg-secondary p-2 tv:p-3 text-secondary-foreground transition hover:bg-secondary/80">
                 <Menu className="h-5 w-5 tv:h-7 tv:w-7" />
