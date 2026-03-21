@@ -54,10 +54,9 @@ const Index = () => {
   const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
-    whatsapp_number: "",
     purchase_message: "",
     site_title: "RealTime48 Streaming",
-    whatsapp_channel: "",
+    subscription_info: "",
     subscription_info: "",
     landing_description_width: "medium",
     landing_desc_subtitle: "",
