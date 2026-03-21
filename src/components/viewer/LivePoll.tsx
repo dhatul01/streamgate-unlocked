@@ -78,9 +78,12 @@ const LivePoll = ({ voterId }: LivePollProps) => {
           if (poll?.id === payload.old?.id) setPoll(null);
         }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (payload) => {
-        // Re-fetch all votes on any change for accuracy
-        if (poll?.id) fetchVotes(poll.id);
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, () => {
+        // Debounce re-fetch to avoid rapid updates during vote changes
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          if (poll?.id) fetchVotes(poll.id);
+        }, 500);
       })
       .subscribe();
 
