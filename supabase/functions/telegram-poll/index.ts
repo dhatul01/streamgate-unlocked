@@ -355,13 +355,6 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
-      if (order.phone) {
-        let waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
-        if (show?.group_link) {
-          waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
-        }
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       if (!isBulk) {
         await sendTelegramMessage(botToken, chatId,
