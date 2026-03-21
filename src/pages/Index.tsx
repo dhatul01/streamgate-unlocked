@@ -45,6 +45,8 @@ interface SiteSettings {
   landing_desc_title: string;
   landing_desc_quote: string;
   landing_desc_layout: string;
+  announcement_text: string;
+  announcement_enabled: string;
   [key: string]: string;
 }
 
