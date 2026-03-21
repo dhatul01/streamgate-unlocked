@@ -75,11 +75,6 @@ const SubscriptionOrderManager = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">📋 Order Langganan</h2>
-        {confirmedCount > 0 && (
-          <Button size="sm" variant="outline" onClick={() => setShowBulk(true)} className="gap-1.5">
-            <SendHorizonal className="h-3.5 w-3.5" /> Kirim Massal ({confirmedCount})
-          </Button>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
