@@ -47,14 +47,6 @@ const CoinOrderManager = () => {
     await (supabase.from as any)("coin_orders").update({ status: "rejected" }).eq("id", id);
     await fetchOrders();
     toast({ title: "Order ditolak" });
-    // Send WA notification
-    if (order?.phone) {
-      const pkg = packages[order.package_id] || "Paket Koin";
-      const msg = `❌ Maaf, pembayaran kamu untuk *${pkg}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-      supabase.functions.invoke("send-whatsapp", {
-        body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-      }).catch((e: any) => console.error("WA send error:", e));
-    }
   };
 
   const deleteOrder = async (id: string) => {
