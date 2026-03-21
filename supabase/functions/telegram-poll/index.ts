@@ -326,10 +326,6 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
-      if (order.phone) {
-        const waMsg = `❌ Maaf, pembayaran kamu untuk pembelian koin tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
     }
