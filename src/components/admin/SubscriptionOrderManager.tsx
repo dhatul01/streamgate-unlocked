@@ -69,7 +69,7 @@ const SubscriptionOrderManager = () => {
   };
 
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
-  const confirmedCount = orders.filter((o) => o.status === "confirmed").length;
+  
 
   return (
     <div className="space-y-6">

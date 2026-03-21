@@ -32,7 +32,6 @@ const CoinOrderManager = () => {
   useEffect(() => { fetchOrders(); }, []);
 
   const confirmOrder = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
     const { data, error } = await (supabase.rpc as any)("confirm_coin_order", { _order_id: id });
     if (error || !data?.success) {
       toast({ title: "Gagal konfirmasi", description: data?.error || error?.message, variant: "destructive" });
