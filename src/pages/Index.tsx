@@ -689,7 +689,7 @@ const Index = () => {
               /* List Layout (original) */
               <div className="space-y-6 tv:space-y-8">
                 {descriptions.map((desc, i) => {
-                  const alignClass = desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : "text-center";
+                  const alignClass = desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : desc.text_align === "justify" ? "text-justify" : "text-center";
                   return (
                     <motion.div
                       key={desc.id}

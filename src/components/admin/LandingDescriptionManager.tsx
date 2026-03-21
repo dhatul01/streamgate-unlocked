@@ -184,6 +184,7 @@ const LandingDescriptionManager = () => {
                 { value: "left", icon: <AlignLeft className="h-3.5 w-3.5" />, label: "Kiri" },
                 { value: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, label: "Tengah" },
                 { value: "right", icon: <AlignRight className="h-3.5 w-3.5" />, label: "Kanan" },
+                { value: "justify", icon: <AlignJustify className="h-3.5 w-3.5" />, label: "Rata Kiri Kanan" },
               ].map((opt) => (
                 <Button
                   key={opt.value}
