@@ -54,28 +54,6 @@ const SubscriptionOrderManager = () => {
     await supabase.from("subscription_orders").update({ status }).eq("id", id);
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
-
-    if (order?.phone) {
-      const show = shows[order.show_id];
-      let msg = "";
-      if (status === "confirmed") {
-        msg = show?.group_link
-          ? `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`
-          : `✅ Pembayaran kamu untuk *${show?.title || "show"}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
-      } else if (status === "rejected") {
-        msg = `❌ Maaf, pembayaran kamu untuk *${show?.title || "show"}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-      }
-      if (msg) {
-        try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-          });
-          toast({ title: "Notifikasi WA terkirim ke user" });
-        } catch (e) {
-          console.error("Failed to send WA:", e);
-        }
-      }
-    }
   };
 
   const deleteOrder = async (id: string) => {
