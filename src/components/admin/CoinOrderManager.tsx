@@ -42,7 +42,7 @@ const CoinOrderManager = () => {
   };
 
   const rejectOrder = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
+    
     await (supabase.from as any)("coin_orders").update({ status: "rejected" }).eq("id", id);
     await fetchOrders();
     toast({ title: "Order ditolak" });
