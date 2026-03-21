@@ -313,8 +313,11 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
+      if (order.phone) {
+        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\nSaldo saat ini: ${newBalance} koin.\n\nTerima kasih! 🎉`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
 
-      const username = escapeMarkdown(profile?.username || 'User');
       await sendTelegramMessage(botToken, chatId,
         `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${username}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
     } else {
@@ -326,8 +329,11 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
+      if (order.phone) {
+        const waMsg = `❌ Maaf, pembayaran kamu untuk pembelian koin tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
+        await sendFonnteWhatsApp(order.phone, waMsg);
+      }
 
-      await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
     }
   } catch (e) {
     console.error('processCoinOrder error:', e);
@@ -443,8 +449,23 @@ function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
+async function sendFonnteWhatsApp(phone: string, message: string) {
+  const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
+  if (!FONNTE_TOKEN) return;
+  const cleanPhone = phone.replace(/^0/, '62').replace(/[^0-9]/g, '');
+  try {
+    const res = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: { 'Authorization': FONNTE_TOKEN },
+      body: new URLSearchParams({ target: cleanPhone, message }),
+    });
+    const data = await res.json();
+    console.log('Fonnte WA sent:', JSON.stringify(data));
+  } catch (e) {
+    console.error('sendFonnteWhatsApp error:', e);
+  }
+}
 
-async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

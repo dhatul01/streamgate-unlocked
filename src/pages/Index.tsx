@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock, Film } from "lucide-react";
+import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock, Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -35,8 +35,10 @@ interface LandingDescription {
 }
 
 interface SiteSettings {
+  whatsapp_number: string;
   purchase_message: string;
   site_title: string;
+  whatsapp_channel: string;
   subscription_info: string;
   landing_description_width: string;
   landing_desc_subtitle: string;
@@ -54,8 +56,10 @@ const Index = () => {
   const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
+    whatsapp_number: "",
     purchase_message: "",
     site_title: "RealTime48 Streaming",
+    whatsapp_channel: "",
     subscription_info: "",
     landing_description_width: "medium",
     landing_desc_subtitle: "",
@@ -392,8 +396,25 @@ const Index = () => {
   };
 
   const handleConfirmRegular = () => {
-    if (!selectedShow) return;
-    toast({ title: "Pesanan diterima", description: `Pesanan untuk ${selectedShow.title} telah dicatat.` });
+    if (!selectedShow || !settings.whatsapp_number) return;
+    const now = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
+    const msg = encodeURIComponent(
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🎬 *PESANAN TIKET BARU*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `🎭 *Show:* ${selectedShow.title}\n` +
+      `💰 *Harga:* ${selectedShow.price}\n` +
+      `${selectedShow.schedule_date ? `📅 *Jadwal:* ${selectedShow.schedule_date} ${selectedShow.schedule_time}\n` : ""}` +
+      `${selectedShow.lineup ? `👥 *Lineup:* ${selectedShow.lineup}\n` : ""}` +
+      `\n` +
+      `📋 *DATA PEMBELI*\n` +
+      `📧 Email: ${email}\n` +
+      `🕐 Waktu Order: ${now}\n\n` +
+      `📸 *Bukti pembayaran akan dikirim menyusul*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Dikirim dari RealTime48_ ✨`
+    );
+    window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
     setSelectedShow(null);
   };
 
@@ -408,6 +429,18 @@ const Index = () => {
       description: "Tonton ulang show yang sudah berlalu",
       action: () => { window.location.href = "/replay"; },
     },
+    ...(settings.whatsapp_channel ? [{
+      icon: <Radio className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
+      label: "Saluran WhatsApp",
+      description: "Ikuti saluran info terbaru",
+      action: () => window.open(settings.whatsapp_channel, "_blank"),
+    }] : []),
+    ...(settings.whatsapp_number ? [{
+      icon: <Phone className="h-5 w-5 tv:h-7 tv:w-7 text-success" />,
+      label: "Hubungi Admin",
+      description: "Chat langsung via WhatsApp",
+      action: () => window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo admin")}`, "_blank"),
+    }] : []),
     {
       icon: <CreditCard className="h-5 w-5 tv:h-7 tv:w-7 text-yellow-500" />,
       label: "Informasi Langganan",
@@ -773,6 +806,15 @@ const Index = () => {
               <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />
               <p className="text-lg font-medium text-foreground tv:text-2xl">Belum ada show tersedia</p>
               <p className="mt-2 text-muted-foreground tv:text-lg">{settings.purchase_message}</p>
+              {settings.whatsapp_number && (
+                <a
+                  href={`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo, saya ingin bertanya tentang streaming")}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-success px-6 py-3 tv:px-10 tv:py-4 font-semibold text-primary-foreground transition hover:bg-success/90 tv:text-lg"
+                >
+                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Hubungi WhatsApp
+                </a>
+              )}
             </div>
           ) : (
             <div className="grid gap-6 tv:gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -849,10 +891,13 @@ const Index = () => {
                 <Button
                   onClick={handleConfirmRegular}
                   disabled={!email.trim()}
-                  className="w-full gap-2 tv:py-6 tv:text-lg"
+                  className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg"
                 >
-                  <CheckCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan
+                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan via WhatsApp
                 </Button>
+                <p className="text-[10px] text-center text-muted-foreground tv:text-xs">
+                  * Anda akan diarahkan ke WhatsApp untuk mengirim data pesanan dan bukti transfer secara manual ke admin
+                </p>
               </div>
             )}
 
