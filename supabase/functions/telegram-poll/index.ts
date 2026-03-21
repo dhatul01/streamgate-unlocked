@@ -412,10 +412,6 @@ async function processPasswordReset(
         .eq('id', request.id);
 
       const resetLink = `https://realstream48.lovable.app/reset-password?token=${request.short_id}`;
-      if (request.phone) {
-        const waMsg = `✅ Permintaan reset password kamu telah disetujui!\n\nKlik link berikut untuk membuat password baru:\n${resetLink}\n\n⚠️ Link ini hanya bisa digunakan 1 kali.`;
-        await sendFonnteWhatsApp(request.phone, waMsg);
-      }
 
       await supabase.from('admin_notifications').insert({
         title: '🔑 Password Reset Disetujui',
