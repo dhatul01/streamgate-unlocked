@@ -25,8 +25,9 @@ const ViewerProfile = () => {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/auth"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { navigate("/auth"); return; }
+      const user = session.user;
       setUser(user);
 
       const [profileRes, balRes, txRes] = await Promise.all([
