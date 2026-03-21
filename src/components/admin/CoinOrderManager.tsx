@@ -40,14 +40,6 @@ const CoinOrderManager = () => {
     }
     await fetchOrders();
     toast({ title: `Dikonfirmasi! Saldo baru: ${data.new_balance} koin` });
-    // Send WA notification
-    if (order?.phone) {
-      const pkg = packages[order.package_id] || "Paket Koin";
-      const msg = `✅ Pembayaran kamu untuk *${pkg}* (${order.coin_amount} koin) telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
-      supabase.functions.invoke("send-whatsapp", {
-        body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-      }).catch((e: any) => console.error("WA send error:", e));
-    }
   };
 
   const rejectOrder = async (id: string) => {
