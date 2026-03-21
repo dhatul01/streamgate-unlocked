@@ -32,6 +32,7 @@ const AdminLogin = () => {
       setLoading(false);
       return;
     }
+    const user = session.user;
 
     const { data: roles } = await supabase
       .from("user_roles")
