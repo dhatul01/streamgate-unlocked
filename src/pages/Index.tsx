@@ -57,7 +57,6 @@ const Index = () => {
     purchase_message: "",
     site_title: "RealTime48 Streaming",
     subscription_info: "",
-    subscription_info: "",
     landing_description_width: "medium",
     landing_desc_subtitle: "",
     landing_desc_title: "",
