@@ -426,10 +426,6 @@ async function processPasswordReset(
         .update({ status: 'rejected', processed_at: new Date().toISOString() })
         .eq('id', request.id);
 
-      if (request.phone) {
-        const waMsg = `❌ Maaf, permintaan reset password kamu tidak disetujui.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(request.phone, waMsg);
-      }
 
       await sendTelegramMessage(botToken, chatId,
         `❌ Reset password \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} ditolak\\.`);
