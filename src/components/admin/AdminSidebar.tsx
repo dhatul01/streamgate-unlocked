@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.png";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
