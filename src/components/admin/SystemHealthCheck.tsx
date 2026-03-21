@@ -268,8 +268,90 @@ const SystemHealthCheck = () => {
           );
         })}
       </div>
+
+      {/* Troubleshooting Guide */}
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <h3 className="text-lg font-bold text-foreground">🛠️ Panduan Troubleshooting</h3>
+        <p className="text-sm text-muted-foreground">Solusi cepat jika website mengalami masalah:</p>
+
+        <div className="space-y-3">
+          <TroubleshootItem
+            title="❌ Admin tidak bisa login"
+            solutions={[
+              "Pastikan email dan password benar",
+              "Cek apakah user memiliki role 'admin' di database",
+              "Clear cache browser & cookies, lalu coba lagi",
+              "Cek System Health di atas — jika Auth error, backend mungkin sedang restart",
+              "Tunggu 2-3 menit lalu coba lagi (auto-recovery)"
+            ]}
+          />
+          <TroubleshootItem
+            title="📺 Live streaming tidak bisa diakses"
+            solutions={[
+              "Pastikan token masih valid dan belum expired",
+              "Cek apakah stream sedang aktif (is_live = true)",
+              "Pastikan playlist sudah diatur di admin panel",
+              "Coba refresh halaman atau gunakan browser lain",
+              "Periksa koneksi internet — streaming butuh bandwidth stabil"
+            ]}
+          />
+          <TroubleshootItem
+            title="🔴 Website down / semua fitur error"
+            solutions={[
+              "Cek System Health — jika Database merah, tunggu 2-5 menit untuk auto-recovery",
+              "Clear localStorage browser: buka Console → ketik localStorage.clear()",
+              "Hard refresh: Ctrl+Shift+R (Windows) atau Cmd+Shift+R (Mac)",
+              "Jika masih error, kemungkinan backend sedang maintenance — tunggu 5-10 menit",
+              "Cek edge function logs di admin panel untuk detail error"
+            ]}
+          />
+          <TroubleshootItem
+            title="📤 Upload bukti transfer gagal"
+            solutions={[
+              "Pastikan file berformat JPEG, PNG, atau WebP",
+              "Ukuran file maksimal 5 MB",
+              "Di HP: gunakan kamera langsung atau pilih dari galeri",
+              "Coba compress gambar terlebih dahulu sebelum upload",
+              "Jika tetap gagal, coba dari browser desktop"
+            ]}
+          />
+          <TroubleshootItem
+            title="🤖 Bot Telegram tidak merespon"
+            solutions={[
+              "Kirim /status ke bot untuk mengecek apakah aktif",
+              "Pastikan TELEGRAM_BOT_TOKEN dan ADMIN_TELEGRAM_CHAT_ID sudah benar",
+              "Cron job mungkin tertunda — bot polling setiap 1 menit",
+              "Jika ada error 409, tunggu 1-2 menit untuk auto-resolve",
+              "Cek edge function logs telegram-poll untuk detail"
+            ]}
+          />
+          <TroubleshootItem
+            title="💰 Koin tidak bertambah setelah dikonfirmasi"
+            solutions={[
+              "Pastikan order berstatus 'pending' sebelum konfirmasi",
+              "Kirim YA [short_id] ke bot Telegram untuk approve",
+              "Cek coin_balances dan coin_transactions di database",
+              "Jika confirm via admin panel, pastikan RPC confirm_coin_order berhasil",
+              "User perlu refresh halaman untuk melihat saldo terbaru"
+            ]}
+          />
+        </div>
+      </div>
     </div>
   );
 };
+
+const TroubleshootItem = ({ title, solutions }: { title: string; solutions: string[] }) => (
+  <details className="group rounded-lg border border-border bg-background p-3">
+    <summary className="cursor-pointer text-sm font-semibold text-foreground hover:text-primary transition-colors">
+      {title}
+    </summary>
+    <ol className="mt-2 ml-4 space-y-1 list-decimal">
+      {solutions.map((s, i) => (
+        <li key={i} className="text-xs text-muted-foreground">{s}</li>
+      ))}
+    </ol>
+  </details>
+);
 
 export default SystemHealthCheck;
