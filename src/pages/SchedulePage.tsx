@@ -36,11 +36,6 @@ const SchedulePage = () => {
         });
         setShows(upcoming);
       }
-      if (settingsRes.data) {
-        const s: any = {};
-        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-        setSettings(prev => ({ ...prev, ...s }));
-      }
       setLoading(false);
     };
     fetchData();
