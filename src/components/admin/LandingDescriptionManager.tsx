@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Eye, EyeOff, Upload, Image, AlignLeft, AlignCenter, AlignRight, X } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Upload, Image, AlignLeft, AlignCenter, AlignRight, AlignJustify, X } from "lucide-react";
 
 interface Description {
   id: string;
@@ -184,6 +184,7 @@ const LandingDescriptionManager = () => {
                 { value: "left", icon: <AlignLeft className="h-3.5 w-3.5" />, label: "Kiri" },
                 { value: "center", icon: <AlignCenter className="h-3.5 w-3.5" />, label: "Tengah" },
                 { value: "right", icon: <AlignRight className="h-3.5 w-3.5" />, label: "Kanan" },
+                { value: "justify", icon: <AlignJustify className="h-3.5 w-3.5" />, label: "Rata Kiri Kanan" },
               ].map((opt) => (
                 <Button
                   key={opt.value}
