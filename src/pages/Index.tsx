@@ -35,8 +35,10 @@ interface LandingDescription {
 }
 
 interface SiteSettings {
+  whatsapp_number: string;
   purchase_message: string;
   site_title: string;
+  whatsapp_channel: string;
   subscription_info: string;
   landing_description_width: string;
   landing_desc_subtitle: string;
