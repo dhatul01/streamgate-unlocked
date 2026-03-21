@@ -19,6 +19,32 @@ serve(async () => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // Mutex: prevent overlapping runs
+  const { data: lockCheck } = await supabase
+    .from('telegram_bot_state')
+    .select('update_offset, updated_at')
+    .eq('id', 1)
+    .single();
+
+  if (lockCheck) {
+    const lastRun = new Date(lockCheck.updated_at).getTime();
+    const now = Date.now();
+    // If another instance updated less than 50s ago, skip this run
+    if (now - lastRun < 50_000) {
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'another instance running' }));
+    }
+  }
+
+  // Delete any existing webhook to prevent conflicts
+  try {
+    await fetch(`${TELEGRAM_API}${BOT_TOKEN}/deleteWebhook`, { method: 'POST' });
+  } catch (_) { /* ignore */ }
+
+  // Mark as running
+  await supabase.from('telegram_bot_state')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', 1);
+
   let totalProcessed = 0;
 
   const { data: state, error: stateErr } = await supabase
@@ -46,7 +72,15 @@ serve(async () => {
     });
 
     const data = await response.json();
-    if (!response.ok) return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
+    if (!response.ok) {
+      // On 409 conflict, wait and retry instead of failing
+      if (data?.error_code === 409) {
+        console.warn('409 conflict, waiting 3s before retry...');
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
+      }
+      return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
+    }
 
     const updates = data.result ?? [];
     if (updates.length === 0) continue;
