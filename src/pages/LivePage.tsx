@@ -731,11 +731,6 @@ const LivePage = () => {
               <PipButton />
             </Suspense>
             <div className="flex-1" />
-            {username && (
-              <Suspense fallback={null}>
-                <WatchParty username={username} playerRef={playerRef} isLive={isLive} />
-              </Suspense>
-            )}
           </div>
         )}
 
