@@ -30,8 +30,9 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/admin"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { navigate("/admin"); return; }
+      const user = session.user;
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")

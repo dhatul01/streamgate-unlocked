@@ -175,7 +175,8 @@ const Index = () => {
 
     // Fetch coin user & balance & redeemed tokens
     const fetchCoinUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
         if (!hasSeenPrompt) {

@@ -25,9 +25,9 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       setAuthChecked(true);
-      if (!user) {
+      if (!session?.user) {
         // Show login prompt for unauthenticated users
         const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
         if (!hasSeenPrompt) {
