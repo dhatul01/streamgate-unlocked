@@ -4,7 +4,7 @@ import { BarChart3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface LivePollProps {
-  voterId: string; // tokenId or username
+  voterId: string;
 }
 
 const COLORS = [
@@ -17,6 +17,7 @@ const LivePoll = ({ voterId }: LivePollProps) => {
   const [votes, setVotes] = useState<Record<number, number>>({});
   const [myVote, setMyVote] = useState<number | null>(null);
   const [totalVotes, setTotalVotes] = useState(0);
+  const [changing, setChanging] = useState(false);
 
   const processVotes = useCallback((voteList: any[]) => {
     const counts: Record<number, number> = {};
@@ -32,6 +33,14 @@ const LivePoll = ({ voterId }: LivePollProps) => {
     setMyVote(mine);
   }, [voterId]);
 
+  const fetchVotes = useCallback(async (pollId: string) => {
+    const { data: voteData } = await supabase
+      .from("poll_votes")
+      .select("*")
+      .eq("poll_id", pollId);
+    if (voteData) processVotes(voteData);
+  }, [processVotes]);
+
   useEffect(() => {
     const fetchPoll = async () => {
       const { data } = await supabase
@@ -44,11 +53,7 @@ const LivePoll = ({ voterId }: LivePollProps) => {
       
       if (data) {
         setPoll(data);
-        const { data: voteData } = await supabase
-          .from("poll_votes")
-          .select("*")
-          .eq("poll_id", data.id);
-        if (voteData) processVotes(voteData);
+        await fetchVotes(data.id);
       }
     };
 
@@ -64,6 +69,7 @@ const LivePoll = ({ voterId }: LivePollProps) => {
             setVotes({});
             setTotalVotes(0);
             setMyVote(null);
+            fetchVotes(p.id);
           } else if (poll?.id === p.id) {
             setPoll(null);
           }
@@ -71,30 +77,46 @@ const LivePoll = ({ voterId }: LivePollProps) => {
           if (poll?.id === payload.old?.id) setPoll(null);
         }
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "poll_votes" }, (payload) => {
-        const v = payload.new as any;
-        if (v.poll_id === poll?.id || !poll) {
-          setVotes(prev => ({ ...prev, [v.option_index]: (prev[v.option_index] || 0) + 1 }));
-          setTotalVotes(prev => prev + 1);
-          if (v.voter_id === voterId) setMyVote(v.option_index);
-        }
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (payload) => {
+        // Re-fetch all votes on any change for accuracy
+        if (poll?.id) fetchVotes(poll.id);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(pollChannel); };
-  }, [voterId, processVotes]);
+  }, [voterId, processVotes, fetchVotes]);
 
   const handleVote = async (optionIndex: number) => {
-    if (!poll || myVote !== null) return;
+    if (!poll || changing) return;
+    
+    // If changing vote, delete old vote first
+    if (myVote !== null) {
+      setChanging(true);
+      await supabase.from("poll_votes").delete()
+        .eq("poll_id", poll.id)
+        .eq("voter_id", voterId);
+    }
+
+    // Optimistic update
+    if (myVote !== null) {
+      setVotes(prev => {
+        const updated = { ...prev };
+        updated[myVote] = Math.max((updated[myVote] || 1) - 1, 0);
+        updated[optionIndex] = (updated[optionIndex] || 0) + 1;
+        return updated;
+      });
+    } else {
+      setVotes(prev => ({ ...prev, [optionIndex]: (prev[optionIndex] || 0) + 1 }));
+      setTotalVotes(prev => prev + 1);
+    }
     setMyVote(optionIndex);
-    setVotes(prev => ({ ...prev, [optionIndex]: (prev[optionIndex] || 0) + 1 }));
-    setTotalVotes(prev => prev + 1);
 
     await supabase.from("poll_votes").insert({
       poll_id: poll.id,
       voter_id: voterId,
       option_index: optionIndex,
     });
+    setChanging(false);
   };
 
   if (!poll) return null;
@@ -125,12 +147,10 @@ const LivePoll = ({ voterId }: LivePollProps) => {
               <button
                 key={i}
                 onClick={() => handleVote(i)}
-                disabled={myVote !== null}
+                disabled={changing}
                 className={`relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
                   isMyVote
                     ? "border-primary bg-primary/10 text-primary"
-                    : myVote !== null
-                    ? "border-border bg-background text-muted-foreground"
                     : "border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary/5"
                 }`}
               >
@@ -150,6 +170,9 @@ const LivePoll = ({ voterId }: LivePollProps) => {
             );
           })}
         </div>
+        {myVote !== null && (
+          <p className="mt-1.5 text-center text-[10px] text-muted-foreground">Klik opsi lain untuk mengganti pilihan</p>
+        )}
       </motion.div>
     </AnimatePresence>
   );
