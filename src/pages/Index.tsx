@@ -66,6 +66,8 @@ const Index = () => {
     landing_desc_title: "",
     landing_desc_quote: "",
     landing_desc_layout: "list",
+    announcement_text: "",
+    announcement_enabled: "",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
