@@ -194,23 +194,6 @@ const SubscriptionOrderManager = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showBulk} onOpenChange={setShowBulk}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Kirim Pesan Massal</DialogTitle>
-            <DialogDescription>
-              Pesan akan dikirim ke {confirmedCount} user yang telah dikonfirmasi via WhatsApp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)}
-              placeholder="Tulis pesan default untuk semua user..." className="bg-background" rows={4} />
-            <Button onClick={sendBulkWhatsApp} disabled={!bulkMessage.trim()} className="w-full gap-2">
-              <SendHorizonal className="h-4 w-4" /> Kirim ke Semua ({confirmedCount})
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
