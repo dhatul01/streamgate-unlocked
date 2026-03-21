@@ -103,23 +103,34 @@ const CoinShop = () => {
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast({ title: "Format tidak didukung", variant: "destructive" }); return; }
+    
+    // More lenient type check for mobile
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/heic", "image/heif"];
+    if (file.type && !allowedTypes.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
+      toast({ title: "Format tidak didukung", description: "Gunakan file gambar (JPEG, PNG, WebP)", variant: "destructive" });
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) { toast({ title: "File terlalu besar (maks 5MB)", variant: "destructive" }); return; }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", "coin");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "coin");
 
-    console.log("Uploading payment proof for coin order...");
-    const { data, error } = await supabase.functions.invoke("upload-payment-proof", { body: formData });
-    console.log("Upload result:", { data, error });
-    if (error || !data?.path) { 
-      console.error("Upload failed:", error, data);
-      toast({ title: "Upload gagal", description: error?.message || "Coba lagi", variant: "destructive" }); 
-      setUploading(false); 
-      return; 
-    }
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-payment-proof`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        toast({ title: "Upload gagal", description: data?.error || "Coba lagi", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
 
     setUploading(false);
     setPurchaseStep("done");
