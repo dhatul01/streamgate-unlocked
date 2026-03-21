@@ -466,6 +466,7 @@ async function sendFonnteWhatsApp(phone: string, message: string) {
   }
 }
 
+async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
