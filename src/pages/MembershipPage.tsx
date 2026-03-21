@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
-import { Crown, Sparkles, CheckCircle, Star, Upload, Users, Calendar } from "lucide-react";
+import { Crown, Sparkles, CheckCircle, Star, Upload, Users, Calendar, Coins } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
@@ -22,6 +22,7 @@ interface Show {
   subscription_benefits: string;
   group_link?: string;
   is_order_closed: boolean;
+  coin_price: number;
 }
 
 const MembershipPage = () => {
@@ -29,11 +30,15 @@ const MembershipPage = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
-  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
+  const [purchaseMethod, setPurchaseMethod] = useState<"qris" | "coin" | null>(null);
+  const [purchaseStep, setPurchaseStep] = useState<"choose" | "qris" | "upload" | "info" | "coin_info" | "done">("choose");
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [resultGroupLink, setResultGroupLink] = useState("");
 
   const fetchData = async () => {
     const { data: allShows } = await supabase.rpc("get_public_shows");
@@ -48,16 +53,23 @@ const MembershipPage = () => {
     setSubscriberCounts(counts);
   };
 
+  const fetchBalance = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
+      setCoinBalance(data?.balance || 0);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchBalance();
 
-    // Realtime subscription for shows changes
     const showChannel = supabase
       .channel("membership-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
       .subscribe();
 
-    // Realtime subscription for order count changes
     const orderChannel = supabase
       .channel("membership-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
@@ -71,10 +83,23 @@ const MembershipPage = () => {
 
   const handleBuy = (show: Show) => {
     setSelectedShow(show);
-    setPurchaseStep("qris");
+    setPurchaseMethod(null);
+    setPurchaseStep("choose");
     setProofUrl("");
     setPhone("");
     setEmail("");
+    setResultGroupLink("");
+    fetchBalance();
+  };
+
+  const handleChooseQris = () => {
+    setPurchaseMethod("qris");
+    setPurchaseStep("qris");
+  };
+
+  const handleChooseCoin = () => {
+    setPurchaseMethod("coin");
+    setPurchaseStep("coin_info");
   };
 
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,15 +133,18 @@ const MembershipPage = () => {
 
   const handleSubmitSubscription = async () => {
     if (!selectedShow || !proofUrl) return;
+    setSubmitting(true);
     const { data: orderData } = await supabase.from("subscription_orders").insert({
       show_id: selectedShow.id,
       phone,
       email,
       payment_proof_url: proofUrl,
+      payment_method: "qris",
     }).select("id").single();
+    setResultGroupLink(selectedShow.group_link || "");
     setPurchaseStep("done");
+    setSubmitting(false);
 
-    // Send Telegram notification
     if (orderData?.id) {
       supabase.functions.invoke("notify-subscription-order", {
         body: {
@@ -128,6 +156,26 @@ const MembershipPage = () => {
         },
       }).catch(() => {});
     }
+  };
+
+  const handleCoinPurchase = async () => {
+    if (!selectedShow || !phone || !email) return;
+    setSubmitting(true);
+    const { data, error } = await supabase.rpc("redeem_coins_for_membership", {
+      _show_id: selectedShow.id,
+      _phone: phone,
+      _email: email,
+    });
+    setSubmitting(false);
+
+    if (error || !(data as any)?.success) {
+      toast({ title: (data as any)?.error || "Gagal menukar koin", variant: "destructive" });
+      return;
+    }
+
+    setResultGroupLink((data as any).group_link || selectedShow.group_link || "");
+    setCoinBalance((data as any).remaining_balance || 0);
+    setPurchaseStep("done");
   };
 
   return (
@@ -167,7 +215,6 @@ const MembershipPage = () => {
                     : "border-yellow-500/50 bg-gradient-to-b from-yellow-500/5 to-card hover:border-yellow-500 hover:shadow-2xl hover:shadow-yellow-500/10"
                 }`}
               >
-                {/* Badge */}
                 <div className={`absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
                   isFull ? "bg-destructive text-destructive-foreground" : "bg-yellow-500 text-background"
                 }`}>
@@ -175,7 +222,6 @@ const MembershipPage = () => {
                   {show.is_order_closed ? "PENDAFTARAN DITUTUP" : isFull ? "MEMBERSHIP PENUH !!!" : "MEMBERSHIP"}
                 </div>
 
-                {/* Image */}
                 <div className="relative h-48 overflow-hidden">
                   {show.background_image_url ? (
                     <img src={show.background_image_url} alt={show.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -198,13 +244,16 @@ const MembershipPage = () => {
                     )}
                   </div>
 
-                  {/* Progress bar */}
+                  {show.coin_price > 0 && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                      <Coins className="h-3.5 w-3.5" /> atau {show.coin_price} Koin
+                    </div>
+                  )}
+
                   {show.max_subscribers > 0 && (
                     <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          isFull ? "bg-destructive" : "bg-yellow-500"
-                        }`}
+                        className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-destructive" : "bg-yellow-500"}`}
                         style={{ width: `${Math.min((confirmed / show.max_subscribers) * 100, 100)}%` }}
                       />
                     </div>
@@ -270,15 +319,47 @@ const MembershipPage = () => {
             <h3 className="mb-1 text-lg font-bold text-foreground">{selectedShow.title}</h3>
             <p className="mb-4 text-sm text-muted-foreground">{selectedShow.price}</p>
 
+            {/* Step: Choose payment method */}
+            {purchaseStep === "choose" && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Pilih metode pembayaran:</p>
+                <button
+                  onClick={handleChooseQris}
+                  className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-yellow-500 hover:bg-yellow-500/5"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
+                    <Upload className="h-5 w-5 text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Bayar via QRIS</p>
+                    <p className="text-xs text-muted-foreground">Scan QRIS & upload bukti pembayaran</p>
+                  </div>
+                </button>
+                {selectedShow.coin_price > 0 && (
+                  <button
+                    onClick={handleChooseCoin}
+                    className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15">
+                      <Coins className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Bayar dengan Koin</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedShow.coin_price} koin · Saldo: {coinBalance} koin
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Step: QRIS */}
             {purchaseStep === "qris" && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">Scan QRIS untuk pembayaran:</p>
                 {selectedShow.qris_image_url ? (
-                  <img
-                    src={selectedShow.qris_image_url}
-                    alt="QRIS"
-                    className="mx-auto w-full max-w-sm rounded-lg object-contain"
-                  />
+                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto w-full max-w-sm rounded-lg object-contain" />
                 ) : (
                   <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">
                     QRIS belum tersedia
@@ -289,9 +370,13 @@ const MembershipPage = () => {
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
                   <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
                 </label>
+                <button onClick={() => setPurchaseStep("choose")} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+                  ← Kembali
+                </button>
               </div>
             )}
 
+            {/* Step: Info (QRIS) */}
             {purchaseStep === "info" && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm text-success">
@@ -305,20 +390,59 @@ const MembershipPage = () => {
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
                   <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background" />
                 </div>
-                <Button onClick={handleSubmitSubscription} disabled={!phone || !email} className="w-full">
-                  Kirim Data Langganan
+                <Button onClick={handleSubmitSubscription} disabled={!phone || !email || submitting} className="w-full">
+                  {submitting ? "Mengirim..." : "Kirim Data Langganan"}
                 </Button>
               </div>
             )}
 
+            {/* Step: Coin info */}
+            {purchaseStep === "coin_info" && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-primary/10 p-3 text-center">
+                  <p className="text-lg font-bold text-primary">{selectedShow.coin_price} Koin</p>
+                  <p className="text-xs text-muted-foreground">Saldo kamu: {coinBalance} koin</p>
+                </div>
+                {coinBalance < selectedShow.coin_price && (
+                  <p className="text-center text-xs text-destructive font-medium">Koin tidak cukup. Silakan top up terlebih dahulu.</p>
+                )}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP</label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background" />
+                </div>
+                <Button
+                  onClick={handleCoinPurchase}
+                  disabled={!phone || !email || coinBalance < selectedShow.coin_price || submitting}
+                  className="w-full gap-2"
+                >
+                  <Coins className="h-4 w-4" />
+                  {submitting ? "Memproses..." : `Tukar ${selectedShow.coin_price} Koin`}
+                </Button>
+                <button onClick={() => setPurchaseStep("choose")} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+                  ← Kembali
+                </button>
+              </div>
+            )}
+
+            {/* Step: Done */}
             {purchaseStep === "done" && (
               <div className="space-y-4 text-center">
                 <CheckCircle className="mx-auto h-12 w-12 text-yellow-500" />
-                <h4 className="text-lg font-bold text-foreground">Pendaftaran Berhasil!</h4>
-                <p className="text-sm text-muted-foreground">Terima kasih! Silakan bergabung ke grup membership:</p>
-                {selectedShow?.group_link ? (
+                <h4 className="text-lg font-bold text-foreground">
+                  {purchaseMethod === "coin" ? "Pembelian Berhasil!" : "Pendaftaran Berhasil!"}
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  {purchaseMethod === "coin"
+                    ? "Koin berhasil ditukar! Silakan bergabung ke grup membership:"
+                    : "Terima kasih! Silakan bergabung ke grup membership:"}
+                </p>
+                {resultGroupLink ? (
                   <a
-                    href={selectedShow.group_link}
+                    href={resultGroupLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-3 font-bold text-background transition hover:shadow-lg hover:shadow-yellow-500/25"
