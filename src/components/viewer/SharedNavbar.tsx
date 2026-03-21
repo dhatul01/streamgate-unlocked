@@ -40,6 +40,7 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
         }
         return;
       }
+      const user = session.user;
       setCoinUser(user);
 
       const [profileRes, balRes] = await Promise.all([
