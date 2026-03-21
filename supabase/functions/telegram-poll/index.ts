@@ -319,7 +319,7 @@ async function processCoinOrder(
       }
 
       await sendTelegramMessage(botToken, chatId,
-        `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${username}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
+        `✅ Order koin \`${escapeMarkdown(sid)}\` berhasil dikonfirmasi\\!\n👤 User: ${escapeMarkdown(profile?.username || 'User')}\n💰 \\+${order.coin_amount} koin\n🏦 Saldo baru: ${newBalance} koin`);
     } else {
       await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
 
@@ -466,6 +466,7 @@ async function sendFonnteWhatsApp(phone: string, message: string) {
   }
 }
 
+async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
