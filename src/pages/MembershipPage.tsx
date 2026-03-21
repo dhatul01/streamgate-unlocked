@@ -54,8 +54,9 @@ const MembershipPage = () => {
   };
 
   const fetchBalance = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const user = session.user;
       const { data } = await supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
       setCoinBalance(data?.balance || 0);
     }

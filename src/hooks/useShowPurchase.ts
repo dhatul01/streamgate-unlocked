@@ -33,8 +33,9 @@ export function useShowPurchase() {
   useEffect(() => {
     let balChannel: any;
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const user = session.user;
       setCoinUser(user);
 
       const [balRes, profileRes] = await Promise.all([

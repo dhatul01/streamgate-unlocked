@@ -26,12 +26,13 @@ const AdminLogin = () => {
     }
 
     // Check admin role
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
       toast({ title: "Error", description: "User not found", variant: "destructive" });
       setLoading(false);
       return;
     }
+    const user = session.user;
 
     const { data: roles } = await supabase
       .from("user_roles")

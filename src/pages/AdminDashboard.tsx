@@ -19,6 +19,7 @@ import CoinPackageManager from "@/components/admin/CoinPackageManager";
 import CoinOrderManager from "@/components/admin/CoinOrderManager";
 import PollManager from "@/components/admin/PollManager";
 import SecurityLogManager from "@/components/admin/SecurityLogManager";
+import SystemHealthCheck from "@/components/admin/SystemHealthCheck";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -29,8 +30,9 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/admin"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { navigate("/admin"); return; }
+      const user = session.user;
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -75,6 +77,7 @@ const AdminDashboard = () => {
       case "descriptions": return <LandingDescriptionManager />;
       case "polls": return <PollManager />;
       case "security": return userRole === "admin" ? <SecurityLogManager /> : null;
+      case "health": return userRole === "admin" ? <SystemHealthCheck /> : null;
       case "monitor": return <MonitorView />;
       case "site": return (
         <div className="space-y-6">

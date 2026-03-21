@@ -99,8 +99,9 @@ const ReplayPage = () => {
     fetchData();
 
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const user = session.user;
         setCoinUser(user);
         const { data: bal } = await supabase.from("coin_balances").select("balance").eq("user_id", user.id).maybeSingle();
         setCoinBalance(bal?.balance || 0);

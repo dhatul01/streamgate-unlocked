@@ -33,19 +33,23 @@ const CoinShop = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/auth"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { navigate("/auth"); return; }
+      if (cancelled) return;
+      const user = session.user;
       setUser(user);
 
-      // Get username from profiles
       const { data: profile } = await supabase.from("profiles").select("username").eq("id", user.id).maybeSingle();
+      if (cancelled) return;
       setUsername(profile?.username || user.user_metadata?.username || "User");
 
       await fetchData(user.id);
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     init();
+    return () => { cancelled = true; };
   }, [navigate]);
 
   // Realtime coin balance & transactions updates
