@@ -20,6 +20,7 @@ import CoinOrderManager from "@/components/admin/CoinOrderManager";
 import PollManager from "@/components/admin/PollManager";
 import SecurityLogManager from "@/components/admin/SecurityLogManager";
 import SystemHealthCheck from "@/components/admin/SystemHealthCheck";
+import AdminLiveLogs from "@/components/admin/AdminLiveLogs";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
