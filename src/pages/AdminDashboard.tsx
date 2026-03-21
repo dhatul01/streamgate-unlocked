@@ -76,6 +76,7 @@ const AdminDashboard = () => {
       case "descriptions": return <LandingDescriptionManager />;
       case "polls": return <PollManager />;
       case "security": return userRole === "admin" ? <SecurityLogManager /> : null;
+      case "health": return userRole === "admin" ? <SystemHealthCheck /> : null;
       case "monitor": return <MonitorView />;
       case "site": return (
         <div className="space-y-6">
