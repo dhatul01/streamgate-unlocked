@@ -9,6 +9,8 @@ import { ANIMATION_OPTIONS, type AnimationType } from "@/components/viewer/Playe
 
 const settingsKeys = [
   { key: "site_title", label: "Judul Website", placeholder: "RealTime48 Streaming", type: "input" as const },
+  { key: "whatsapp_number", label: "Nomor WhatsApp Admin (dengan kode negara)", placeholder: "6281234567890", type: "input" as const, hint: "Contoh: 6281234567890 (tanpa +)" },
+  { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input" as const, hint: "Link saluran WhatsApp untuk info publik" },
   { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" as const },
   { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" as const },
   { key: "announcement_text", label: "Teks Pengumuman (tampil di landing page)", placeholder: "Pembelian membership Bulan April akan dibuka...", type: "textarea" as const, hint: "Teks pengumuman yang akan ditampilkan di landing page jika diaktifkan" },
