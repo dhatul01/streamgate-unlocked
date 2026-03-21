@@ -672,12 +672,12 @@ const Index = () => {
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: i * 0.1 }}
-                    className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-card/90 backdrop-blur-sm p-6 md:p-8 tv:p-10 transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10"
+                    className={`group relative overflow-hidden rounded-2xl border border-primary/20 bg-card/90 backdrop-blur-sm p-6 md:p-8 tv:p-10 transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 ${desc.text_align === "left" ? "text-left" : desc.text_align === "right" ? "text-right" : desc.text_align === "justify" ? "text-justify" : "text-center"}`}
                   >
                     {desc.image_url && (
                       <img src={desc.image_url} alt={desc.title} className="mb-4 h-40 w-full rounded-xl object-cover" />
                     )}
-                    <span className="mb-4 flex h-12 w-12 tv:h-16 tv:w-16 items-center justify-center rounded-xl bg-primary/15 text-2xl tv:text-3xl">
+                    <span className={`mb-4 flex h-12 w-12 tv:h-16 tv:w-16 items-center justify-center rounded-xl bg-primary/15 text-2xl tv:text-3xl ${desc.text_align === "center" ? "mx-auto" : desc.text_align === "right" ? "ml-auto" : ""}`}>
                       {desc.icon}
                     </span>
                     <h3 className="mb-3 text-lg font-bold text-foreground md:text-xl tv:text-2xl">{desc.title}</h3>
