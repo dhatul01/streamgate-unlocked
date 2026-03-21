@@ -31,7 +31,7 @@ const MembershipPage = () => {
   const [subscriberCounts, setSubscriberCounts] = useState<Record<string, number>>({});
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [purchaseMethod, setPurchaseMethod] = useState<"qris" | "coin" | null>(null);
-  const [purchaseStep, setPurchaseStep] = useState<"choose" | "qris" | "upload" | "info" | "coin_info" | "done">("choose");
+  const [purchaseStep, setPurchaseStep] = useState<"choose" | "qris" | "upload" | "info" | "coin_info" | "coin_insufficient" | "done">("choose");
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
   const [phone, setPhone] = useState("");
@@ -98,6 +98,11 @@ const MembershipPage = () => {
   };
 
   const handleChooseCoin = () => {
+    if (coinBalance < (selectedShow?.coin_price || 0)) {
+      setPurchaseMethod("coin");
+      setPurchaseStep("coin_insufficient");
+      return;
+    }
     setPurchaseMethod("coin");
     setPurchaseStep("coin_info");
   };
@@ -436,7 +441,28 @@ const MembershipPage = () => {
               </div>
             )}
 
-            {/* Step: Done */}
+            {/* Step: Coin Insufficient */}
+            {purchaseStep === "coin_insufficient" && selectedShow && (
+              <div className="space-y-4 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15">
+                  <Coins className="h-7 w-7 text-destructive" />
+                </div>
+                <h4 className="text-lg font-bold text-foreground">Koin Tidak Cukup</h4>
+                <p className="text-sm text-muted-foreground">
+                  Kamu butuh <span className="font-bold text-primary">{selectedShow.coin_price} koin</span> untuk membership ini, tapi saldo kamu hanya <span className="font-bold text-warning">{coinBalance} koin</span>.
+                </p>
+                <a
+                  href="/coins"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-warning/15 py-3 text-sm font-bold text-warning transition hover:bg-warning/25"
+                >
+                  <Coins className="h-4 w-4" /> Beli Koin di Coin Shop
+                </a>
+                <button onClick={() => setPurchaseStep("choose")} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+                  ← Kembali
+                </button>
+              </div>
+            )}
+
             {purchaseStep === "done" && (
               <div className="space-y-4 text-center">
                 <CheckCircle className="mx-auto h-12 w-12 text-yellow-500" />
