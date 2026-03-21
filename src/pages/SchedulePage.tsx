@@ -12,7 +12,7 @@ import CoinDialog from "@/components/viewer/CoinDialog";
 const SchedulePage = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<{ whatsapp_number: string }>({ whatsapp_number: "" });
+  
 
   const purchase = useShowPurchase();
 
