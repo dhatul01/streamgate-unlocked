@@ -313,10 +313,6 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
-      if (order.phone) {
-        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\nSaldo saat ini: ${newBalance} koin.\n\nTerima kasih! 🎉`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       const username = escapeMarkdown(profile?.username || 'User');
       await sendTelegramMessage(botToken, chatId,
@@ -330,10 +326,6 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
-      if (order.phone) {
-        const waMsg = `❌ Maaf, pembayaran kamu untuk pembelian koin tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       await sendTelegramMessage(botToken, chatId, `❌ Order koin \`${escapeMarkdown(sid)}\` telah ditolak\\.`);
     }
@@ -363,13 +355,6 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
-      if (order.phone) {
-        let waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
-        if (show?.group_link) {
-          waMsg = `✅ Pembayaran kamu untuk *${showTitle}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`;
-        }
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       if (!isBulk) {
         await sendTelegramMessage(botToken, chatId,
@@ -384,10 +369,6 @@ async function processSubscriptionOrder(
         type: 'subscription_order',
       });
 
-      if (order.phone) {
-        const waMsg = `❌ Maaf, pembayaran kamu untuk *${showTitle}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       if (!isBulk) {
         await sendTelegramMessage(botToken, chatId,
@@ -431,10 +412,6 @@ async function processPasswordReset(
         .eq('id', request.id);
 
       const resetLink = `https://realstream48.lovable.app/reset-password?token=${request.short_id}`;
-      if (request.phone) {
-        const waMsg = `✅ Permintaan reset password kamu telah disetujui!\n\nKlik link berikut untuk membuat password baru:\n${resetLink}\n\n⚠️ Link ini hanya bisa digunakan 1 kali.`;
-        await sendFonnteWhatsApp(request.phone, waMsg);
-      }
 
       await supabase.from('admin_notifications').insert({
         title: '🔑 Password Reset Disetujui',
@@ -449,10 +426,6 @@ async function processPasswordReset(
         .update({ status: 'rejected', processed_at: new Date().toISOString() })
         .eq('id', request.id);
 
-      if (request.phone) {
-        const waMsg = `❌ Maaf, permintaan reset password kamu tidak disetujui.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-        await sendFonnteWhatsApp(request.phone, waMsg);
-      }
 
       await sendTelegramMessage(botToken, chatId,
         `❌ Reset password \`${escapeMarkdown(shortId)}\` untuk ${escapeMarkdown(username)} ditolak\\.`);
@@ -470,22 +443,6 @@ function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
-async function sendFonnteWhatsApp(phone: string, message: string) {
-  const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
-  if (!FONNTE_TOKEN) return;
-  const cleanPhone = phone.replace(/^0/, '62').replace(/[^0-9]/g, '');
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { 'Authorization': FONNTE_TOKEN },
-      body: new URLSearchParams({ target: cleanPhone, message }),
-    });
-    const data = await res.json();
-    console.log('Fonnte WA sent:', JSON.stringify(data));
-  } catch (e) {
-    console.error('sendFonnteWhatsApp error:', e);
-  }
-}
 
 async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {

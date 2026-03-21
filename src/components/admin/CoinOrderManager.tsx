@@ -32,7 +32,6 @@ const CoinOrderManager = () => {
   useEffect(() => { fetchOrders(); }, []);
 
   const confirmOrder = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
     const { data, error } = await (supabase.rpc as any)("confirm_coin_order", { _order_id: id });
     if (error || !data?.success) {
       toast({ title: "Gagal konfirmasi", description: data?.error || error?.message, variant: "destructive" });
@@ -40,29 +39,13 @@ const CoinOrderManager = () => {
     }
     await fetchOrders();
     toast({ title: `Dikonfirmasi! Saldo baru: ${data.new_balance} koin` });
-    // Send WA notification
-    if (order?.phone) {
-      const pkg = packages[order.package_id] || "Paket Koin";
-      const msg = `✅ Pembayaran kamu untuk *${pkg}* (${order.coin_amount} koin) telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\n\nTerima kasih! 🎉`;
-      supabase.functions.invoke("send-whatsapp", {
-        body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-      }).catch((e: any) => console.error("WA send error:", e));
-    }
   };
 
   const rejectOrder = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
+    
     await (supabase.from as any)("coin_orders").update({ status: "rejected" }).eq("id", id);
     await fetchOrders();
     toast({ title: "Order ditolak" });
-    // Send WA notification
-    if (order?.phone) {
-      const pkg = packages[order.package_id] || "Paket Koin";
-      const msg = `❌ Maaf, pembayaran kamu untuk *${pkg}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-      supabase.functions.invoke("send-whatsapp", {
-        body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-      }).catch((e: any) => console.error("WA send error:", e));
-    }
   };
 
   const deleteOrder = async (id: string) => {

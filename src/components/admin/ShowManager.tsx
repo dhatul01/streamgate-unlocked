@@ -289,15 +289,7 @@ const ShowManager = () => {
                     setEditing(u);
                     await updateShow(u);
                     if (v) {
-                      // Send WhatsApp notifications to buyers
-                      try {
-                        await supabase.functions.invoke("notify-replay-available", {
-                          body: { show_id: editing.id, show_title: editing.title },
-                        });
-                        toast({ title: "🎬 Mode Replay Aktif", description: "Notifikasi WA dikirim ke pembeli." });
-                      } catch {
-                        toast({ title: "🎬 Mode Replay Aktif", description: "Notifikasi gagal dikirim." });
-                      }
+                      toast({ title: "🎬 Mode Replay Aktif" });
                     }
                   }}
                 />

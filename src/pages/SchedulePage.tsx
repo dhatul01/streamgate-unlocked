@@ -12,15 +12,14 @@ import CoinDialog from "@/components/viewer/CoinDialog";
 const SchedulePage = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<{ whatsapp_number: string }>({ whatsapp_number: "" });
+  
 
   const purchase = useShowPurchase();
 
   useEffect(() => {
     const fetchData = async () => {
-      const [showsRes, settingsRes] = await Promise.all([
+      const [showsRes] = await Promise.all([
         supabase.rpc("get_public_shows"),
-        supabase.from("site_settings").select("*").in("key", ["whatsapp_number"]),
       ]);
       if (showsRes.data) {
         const allShows = showsRes.data as Show[];
@@ -37,11 +36,6 @@ const SchedulePage = () => {
         });
         setShows(upcoming);
       }
-      if (settingsRes.data) {
-        const s: any = {};
-        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-        setSettings(prev => ({ ...prev, ...s }));
-      }
       setLoading(false);
     };
     fetchData();
@@ -53,13 +47,7 @@ const SchedulePage = () => {
   }, []);
 
   const handleConfirmRegular = () => {
-    if (!purchase.selectedShow || !settings.whatsapp_number) return;
-    const now = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
-    const show = purchase.selectedShow;
-    const msg = encodeURIComponent(
-      `━━━━━━━━━━━━━━━━━━━━\n🎬 *PESANAN TIKET BARU*\n━━━━━━━━━━━━━━━━━━━━\n\n🎭 *Show:* ${show.title}\n💰 *Harga:* ${show.price}\n${show.schedule_date ? `📅 *Jadwal:* ${show.schedule_date} ${show.schedule_time}\n` : ""}${show.lineup ? `👥 *Lineup:* ${show.lineup}\n` : ""}\n📋 *DATA PEMBELI*\n📧 Email: ${purchase.email}\n🕐 Waktu Order: ${now}\n\n📸 *Bukti pembayaran akan dikirim menyusul*\n\n━━━━━━━━━━━━━━━━━━━━\n_Dikirim dari RealTime48_ ✨`
-    );
-    window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
+    if (!purchase.selectedShow) return;
     purchase.setSelectedShow(null);
   };
 

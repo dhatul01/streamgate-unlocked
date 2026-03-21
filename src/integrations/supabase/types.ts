@@ -552,7 +552,6 @@ export type Database = {
           created_at: string
           id: string
           identifier: string
-          new_password: string | null
           phone: string
           processed_at: string | null
           short_id: string
@@ -563,7 +562,6 @@ export type Database = {
           created_at?: string
           id?: string
           identifier?: string
-          new_password?: string | null
           phone?: string
           processed_at?: string | null
           short_id?: string
@@ -574,7 +572,6 @@ export type Database = {
           created_at?: string
           id?: string
           identifier?: string
-          new_password?: string | null
           phone?: string
           processed_at?: string | null
           short_id?: string
@@ -742,6 +739,33 @@ export type Database = {
           reward_coins?: number
           user_id?: string
           uses?: number
+        }
+        Relationships: []
+      }
+      security_events: {
+        Row: {
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          severity?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          severity?: string
         }
         Relationships: []
       }
@@ -1260,6 +1284,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          _description: string
+          _ip?: string
+          _severity?: string
+          _type: string
+        }
+        Returns: undefined
       }
       moderator_create_token: {
         Args: {

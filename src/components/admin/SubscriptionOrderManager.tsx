@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, ExternalLink, Clock, Trash2, Send, Image, SendHorizonal, Coins, Copy } from "lucide-react";
+import { CheckCircle, XCircle, ExternalLink, Clock, Trash2, Image, Coins, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,10 +26,7 @@ const SubscriptionOrderManager = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [shows, setShows] = useState<Record<string, { title: string; group_link: string }>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "rejected">("pending");
-  const [waMessages, setWaMessages] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [bulkMessage, setBulkMessage] = useState("");
-  const [showBulk, setShowBulk] = useState(false);
   const [copiedField, setCopiedField] = useState("");
   const { toast } = useToast();
 
@@ -54,28 +50,6 @@ const SubscriptionOrderManager = () => {
     await supabase.from("subscription_orders").update({ status }).eq("id", id);
     await fetchOrders();
     toast({ title: `Order ${status === "confirmed" ? "dikonfirmasi" : "ditolak"}` });
-
-    if (order?.phone) {
-      const show = shows[order.show_id];
-      let msg = "";
-      if (status === "confirmed") {
-        msg = show?.group_link
-          ? `✅ Pembayaran kamu untuk *${show.title}* telah dikonfirmasi!\n\nSilakan bergabung ke grup membership melalui link berikut:\n${show.group_link}\n\nTerima kasih! 🎉`
-          : `✅ Pembayaran kamu untuk *${show?.title || "show"}* telah dikonfirmasi!\n\nTerima kasih! 🎉`;
-      } else if (status === "rejected") {
-        msg = `❌ Maaf, pembayaran kamu untuk *${show?.title || "show"}* tidak dapat dikonfirmasi.\n\nSilakan hubungi admin jika ada pertanyaan.`;
-      }
-      if (msg) {
-        try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: { target: order.phone.replace(/^0/, "62").replace(/[^0-9]/g, ""), message: msg },
-          });
-          toast({ title: "Notifikasi WA terkirim ke user" });
-        } catch (e) {
-          console.error("Failed to send WA:", e);
-        }
-      }
-    }
   };
 
   const deleteOrder = async (id: string) => {
@@ -84,25 +58,6 @@ const SubscriptionOrderManager = () => {
     toast({ title: "Order dihapus" });
   };
 
-  const sendWhatsApp = (phone: string, message: string) => {
-    const cleanPhone = phone.replace(/^0/, "62").replace(/[^0-9]/g, "");
-    const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
-  };
-
-  const sendBulkWhatsApp = () => {
-    const confirmedOrders = orders.filter((o) => o.status === "confirmed");
-    confirmedOrders.forEach((order) => {
-      const msg = waMessages[order.id] || bulkMessage;
-      if (msg.trim()) {
-        const cleanPhone = order.phone.replace(/^0/, "62").replace(/[^0-9]/g, "");
-        const encoded = encodeURIComponent(msg);
-        window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
-      }
-    });
-    toast({ title: `Mengirim ke ${confirmedOrders.length} user` });
-    setShowBulk(false);
-  };
 
   const copyBulkData = (field: "phone" | "email") => {
     const targetOrders = filter === "all" ? orders : orders.filter((o) => o.status === filter);
@@ -114,17 +69,12 @@ const SubscriptionOrderManager = () => {
   };
 
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
-  const confirmedCount = orders.filter((o) => o.status === "confirmed").length;
+  
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">📋 Order Langganan</h2>
-        {confirmedCount > 0 && (
-          <Button size="sm" variant="outline" onClick={() => setShowBulk(true)} className="gap-1.5">
-            <SendHorizonal className="h-3.5 w-3.5" /> Kirim Massal ({confirmedCount})
-          </Button>
-        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -219,23 +169,6 @@ const SubscriptionOrderManager = () => {
                     </Button>
                   </div>
                 )}
-                {order.status === "confirmed" && (
-                  <div className="w-full space-y-1">
-                    <Textarea
-                      value={waMessages[order.id] || ""}
-                      onChange={(e) => setWaMessages((prev) => ({ ...prev, [order.id]: e.target.value }))}
-                      placeholder="Tulis pesan untuk user ini..."
-                      className="h-16 bg-background text-xs"
-                    />
-                    <Button
-                      size="sm" variant="outline" className="h-7 w-full gap-1 text-xs"
-                      disabled={!waMessages[order.id]?.trim()}
-                      onClick={() => sendWhatsApp(order.phone, waMessages[order.id])}
-                    >
-                      <Send className="h-3 w-3" /> Kirim via WA
-                    </Button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -261,23 +194,6 @@ const SubscriptionOrderManager = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showBulk} onOpenChange={setShowBulk}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Kirim Pesan Massal</DialogTitle>
-            <DialogDescription>
-              Pesan akan dikirim ke {confirmedCount} user yang telah dikonfirmasi via WhatsApp.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)}
-              placeholder="Tulis pesan default untuk semua user..." className="bg-background" rows={4} />
-            <Button onClick={sendBulkWhatsApp} disabled={!bulkMessage.trim()} className="w-full gap-2">
-              <SendHorizonal className="h-4 w-4" /> Kirim ke Semua ({confirmedCount})
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
