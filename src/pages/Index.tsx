@@ -172,6 +172,18 @@ const Index = () => {
     // Fetch coin user & balance & redeemed tokens
     const fetchCoinUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
+        if (!hasSeenPrompt) {
+          sessionStorage.setItem("login_prompt_shown", "1");
+          toast({
+            title: "👋 Selamat datang!",
+            description: "Login atau daftar untuk menikmati fitur lengkap.",
+            duration: 4000,
+          });
+        }
+        return;
+      }
       if (user) {
         setCoinUser(user);
         const [balRes, profileRes] = await Promise.all([
