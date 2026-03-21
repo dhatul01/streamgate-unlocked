@@ -89,19 +89,16 @@ const LivePoll = ({ voterId }: LivePollProps) => {
   const handleVote = async (optionIndex: number) => {
     if (!poll || changing) return;
     
-    // If changing vote, delete old vote first
-    if (myVote !== null) {
-      setChanging(true);
-      await supabase.from("poll_votes").delete()
-        .eq("poll_id", poll.id)
-        .eq("voter_id", voterId);
-    }
-
-    // Optimistic update
-    if (myVote !== null) {
+    const previousVote = myVote;
+    
+    // Optimistic update immediately
+    setChanging(true);
+    setMyVote(optionIndex);
+    
+    if (previousVote !== null) {
       setVotes(prev => {
         const updated = { ...prev };
-        updated[myVote] = Math.max((updated[myVote] || 1) - 1, 0);
+        updated[previousVote] = Math.max((updated[previousVote] || 1) - 1, 0);
         updated[optionIndex] = (updated[optionIndex] || 0) + 1;
         return updated;
       });
@@ -109,14 +106,34 @@ const LivePoll = ({ voterId }: LivePollProps) => {
       setVotes(prev => ({ ...prev, [optionIndex]: (prev[optionIndex] || 0) + 1 }));
       setTotalVotes(prev => prev + 1);
     }
-    setMyVote(optionIndex);
 
-    await supabase.from("poll_votes").insert({
-      poll_id: poll.id,
-      voter_id: voterId,
-      option_index: optionIndex,
-    });
-    setChanging(false);
+    try {
+      // If changing vote, delete old then insert new
+      if (previousVote !== null) {
+        await supabase.from("poll_votes").delete()
+          .eq("poll_id", poll.id)
+          .eq("voter_id", voterId);
+      }
+
+      const { error } = await supabase.from("poll_votes").insert({
+        poll_id: poll.id,
+        voter_id: voterId,
+        option_index: optionIndex,
+      });
+
+      if (error) {
+        // Revert optimistic update on error
+        console.error("Vote error:", error);
+        setMyVote(previousVote);
+        await fetchVotes(poll.id);
+      }
+    } catch (e) {
+      console.error("Vote failed:", e);
+      setMyVote(previousVote);
+      await fetchVotes(poll.id);
+    } finally {
+      setChanging(false);
+    }
   };
 
   if (!poll) return null;
