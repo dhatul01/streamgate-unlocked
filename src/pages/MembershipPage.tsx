@@ -98,6 +98,11 @@ const MembershipPage = () => {
   };
 
   const handleChooseCoin = () => {
+    if (coinBalance < (selectedShow?.coin_price || 0)) {
+      setPurchaseMethod("coin");
+      setPurchaseStep("coin_insufficient");
+      return;
+    }
     setPurchaseMethod("coin");
     setPurchaseStep("coin_info");
   };
