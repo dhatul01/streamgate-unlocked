@@ -50,12 +50,18 @@ export function useShowPurchase() {
         const { data: tokenData } = await supabase.rpc("get_my_active_show_tokens");
         const backendTokens = tokenData && typeof tokenData === "object" ? (tokenData as Record<string, string>) : {};
         const mergedTokens = { ...stored, ...backendTokens };
-        const validMap: Record<string, string> = {};
 
-        for (const [showId, tokenCode] of Object.entries(mergedTokens)) {
-          const { data } = await supabase.rpc("validate_token", { _code: tokenCode as string });
-          if ((data as any)?.valid) validMap[showId] = tokenCode as string;
-        }
+        // Validate all tokens in parallel instead of sequentially
+        const entries = Object.entries(mergedTokens);
+        const results = await Promise.all(
+          entries.map(([, tokenCode]) =>
+            supabase.rpc("validate_token", { _code: tokenCode as string }).then(r => r.data)
+          )
+        );
+        const validMap: Record<string, string> = {};
+        entries.forEach(([showId, tokenCode], i) => {
+          if ((results[i] as any)?.valid) validMap[showId] = tokenCode as string;
+        });
 
         localStorage.setItem(`redeemed_tokens_${user.id}`, JSON.stringify(validMap));
         setRedeemedTokens(validMap);
