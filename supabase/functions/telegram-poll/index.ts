@@ -313,10 +313,6 @@ async function processCoinOrder(
         type: 'coin_order',
       });
 
-      if (order.phone) {
-        const waMsg = `✅ Pembayaran kamu untuk *${order.coin_amount} koin* telah dikonfirmasi!\n\n💰 Koin sudah ditambahkan ke akunmu.\nSaldo saat ini: ${newBalance} koin.\n\nTerima kasih! 🎉`;
-        await sendFonnteWhatsApp(order.phone, waMsg);
-      }
 
       const username = escapeMarkdown(profile?.username || 'User');
       await sendTelegramMessage(botToken, chatId,
