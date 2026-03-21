@@ -62,25 +62,6 @@ const SubscriptionOrderManager = () => {
     toast({ title: "Order dihapus" });
   };
 
-  const sendWhatsApp = (phone: string, message: string) => {
-    const cleanPhone = phone.replace(/^0/, "62").replace(/[^0-9]/g, "");
-    const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
-  };
-
-  const sendBulkWhatsApp = () => {
-    const confirmedOrders = orders.filter((o) => o.status === "confirmed");
-    confirmedOrders.forEach((order) => {
-      const msg = waMessages[order.id] || bulkMessage;
-      if (msg.trim()) {
-        const cleanPhone = order.phone.replace(/^0/, "62").replace(/[^0-9]/g, "");
-        const encoded = encodeURIComponent(msg);
-        window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, "_blank");
-      }
-    });
-    toast({ title: `Mengirim ke ${confirmedOrders.length} user` });
-    setShowBulk(false);
-  };
 
   const copyBulkData = (field: "phone" | "email") => {
     const targetOrders = filter === "all" ? orders : orders.filter((o) => o.status === filter);
