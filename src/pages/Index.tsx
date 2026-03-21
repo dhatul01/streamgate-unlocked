@@ -429,6 +429,18 @@ const Index = () => {
       description: "Tonton ulang show yang sudah berlalu",
       action: () => { window.location.href = "/replay"; },
     },
+    ...(settings.whatsapp_channel ? [{
+      icon: <Radio className="h-5 w-5 tv:h-7 tv:w-7 text-primary" />,
+      label: "Saluran WhatsApp",
+      description: "Ikuti saluran info terbaru",
+      action: () => window.open(settings.whatsapp_channel, "_blank"),
+    }] : []),
+    ...(settings.whatsapp_number ? [{
+      icon: <Phone className="h-5 w-5 tv:h-7 tv:w-7 text-success" />,
+      label: "Hubungi Admin",
+      description: "Chat langsung via WhatsApp",
+      action: () => window.open(`https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent("Halo admin")}`, "_blank"),
+    }] : []),
     {
       icon: <CreditCard className="h-5 w-5 tv:h-7 tv:w-7 text-yellow-500" />,
       label: "Informasi Langganan",
