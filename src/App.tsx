@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import InstallBanner from "@/components/viewer/InstallBanner";
 import SecurityAlert from "@/components/viewer/SecurityAlert";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import LivePage from "./pages/LivePage";
 import AdminLogin from "./pages/AdminLogin";
@@ -19,34 +20,47 @@ import SchedulePage from "./pages/SchedulePage";
 import NotFound from "./pages/NotFound";
 import InstallPage from "./pages/InstallPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/live" element={<LivePage />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/membership" element={<MembershipPage />} />
-          <Route path="/auth" element={<ViewerAuth />} />
-          <Route path="/coins" element={<CoinShop />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/profile" element={<ViewerProfile />} />
-          <Route path="/replay" element={<ReplayPage />} />
-          <Route path="/schedule" element={<SchedulePage />} />
-          <Route path="/install" element={<InstallPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <InstallBanner />
-      <SecurityAlert />
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/live" element={<LivePage />} />
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/membership" element={<MembershipPage />} />
+            <Route path="/auth" element={<ViewerAuth />} />
+            <Route path="/coins" element={<CoinShop />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/profile" element={<ViewerProfile />} />
+            <Route path="/replay" element={<ReplayPage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/install" element={<InstallPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <InstallBanner />
+        <SecurityAlert />
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
