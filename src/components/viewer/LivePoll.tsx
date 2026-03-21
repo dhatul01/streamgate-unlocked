@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +18,7 @@ const LivePoll = ({ voterId }: LivePollProps) => {
   const [myVote, setMyVote] = useState<number | null>(null);
   const [totalVotes, setTotalVotes] = useState(0);
   const [changing, setChanging] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const processVotes = useCallback((voteList: any[]) => {
     const counts: Record<number, number> = {};
@@ -77,9 +78,12 @@ const LivePoll = ({ voterId }: LivePollProps) => {
           if (poll?.id === payload.old?.id) setPoll(null);
         }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (payload) => {
-        // Re-fetch all votes on any change for accuracy
-        if (poll?.id) fetchVotes(poll.id);
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, () => {
+        // Debounce re-fetch to avoid rapid updates during vote changes
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          if (poll?.id) fetchVotes(poll.id);
+        }, 500);
       })
       .subscribe();
 
@@ -89,19 +93,16 @@ const LivePoll = ({ voterId }: LivePollProps) => {
   const handleVote = async (optionIndex: number) => {
     if (!poll || changing) return;
     
-    // If changing vote, delete old vote first
-    if (myVote !== null) {
-      setChanging(true);
-      await supabase.from("poll_votes").delete()
-        .eq("poll_id", poll.id)
-        .eq("voter_id", voterId);
-    }
-
-    // Optimistic update
-    if (myVote !== null) {
+    const previousVote = myVote;
+    
+    // Optimistic update immediately
+    setChanging(true);
+    setMyVote(optionIndex);
+    
+    if (previousVote !== null) {
       setVotes(prev => {
         const updated = { ...prev };
-        updated[myVote] = Math.max((updated[myVote] || 1) - 1, 0);
+        updated[previousVote] = Math.max((updated[previousVote] || 1) - 1, 0);
         updated[optionIndex] = (updated[optionIndex] || 0) + 1;
         return updated;
       });
@@ -109,14 +110,34 @@ const LivePoll = ({ voterId }: LivePollProps) => {
       setVotes(prev => ({ ...prev, [optionIndex]: (prev[optionIndex] || 0) + 1 }));
       setTotalVotes(prev => prev + 1);
     }
-    setMyVote(optionIndex);
 
-    await supabase.from("poll_votes").insert({
-      poll_id: poll.id,
-      voter_id: voterId,
-      option_index: optionIndex,
-    });
-    setChanging(false);
+    try {
+      // If changing vote, delete old then insert new
+      if (previousVote !== null) {
+        await supabase.from("poll_votes").delete()
+          .eq("poll_id", poll.id)
+          .eq("voter_id", voterId);
+      }
+
+      const { error } = await supabase.from("poll_votes").insert({
+        poll_id: poll.id,
+        voter_id: voterId,
+        option_index: optionIndex,
+      });
+
+      if (error) {
+        // Revert optimistic update on error
+        console.error("Vote error:", error);
+        setMyVote(previousVote);
+        await fetchVotes(poll.id);
+      }
+    } catch (e) {
+      console.error("Vote failed:", e);
+      setMyVote(previousVote);
+      await fetchVotes(poll.id);
+    } finally {
+      setChanging(false);
+    }
   };
 
   if (!poll) return null;
