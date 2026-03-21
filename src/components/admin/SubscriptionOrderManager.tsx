@@ -169,23 +169,6 @@ const SubscriptionOrderManager = () => {
                     </Button>
                   </div>
                 )}
-                {order.status === "confirmed" && (
-                  <div className="w-full space-y-1">
-                    <Textarea
-                      value={waMessages[order.id] || ""}
-                      onChange={(e) => setWaMessages((prev) => ({ ...prev, [order.id]: e.target.value }))}
-                      placeholder="Tulis pesan untuk user ini..."
-                      className="h-16 bg-background text-xs"
-                    />
-                    <Button
-                      size="sm" variant="outline" className="h-7 w-full gap-1 text-xs"
-                      disabled={!waMessages[order.id]?.trim()}
-                      onClick={() => sendWhatsApp(order.phone, waMessages[order.id])}
-                    >
-                      <Send className="h-3 w-3" /> Kirim via WA
-                    </Button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
