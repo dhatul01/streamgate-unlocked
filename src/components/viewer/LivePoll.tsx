@@ -18,6 +18,7 @@ const LivePoll = ({ voterId }: LivePollProps) => {
   const [myVote, setMyVote] = useState<number | null>(null);
   const [totalVotes, setTotalVotes] = useState(0);
   const [changing, setChanging] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const processVotes = useCallback((voteList: any[]) => {
     const counts: Record<number, number> = {};
