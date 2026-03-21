@@ -86,6 +86,7 @@ const Index = () => {
   const [accessPasswords, setAccessPasswords] = useState<Record<string, string>>({});
   const [replayModal, setReplayModal] = useState<{ showId: string; password: string } | null>(null);
   const [replayCopied, setReplayCopied] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const fetchData = async () => {
     const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
