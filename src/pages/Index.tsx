@@ -628,7 +628,7 @@ const Index = () => {
 
       {/* Descriptions Section */}
       {descriptions.length > 0 && (
-        <section className="py-16 tv:py-24">
+        <section className="py-10 tv:py-16">
           <div className="mx-auto max-w-7xl tv:max-w-[1800px] px-4 tv:px-8">
             {/* Section Header */}
             {(settings.landing_desc_subtitle || settings.landing_desc_title || settings.landing_desc_quote) && (

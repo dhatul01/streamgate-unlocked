@@ -13,6 +13,7 @@ const settingsKeys = [
   { key: "whatsapp_channel", label: "Link Saluran WhatsApp", placeholder: "https://whatsapp.com/channel/...", type: "input" as const, hint: "Link saluran WhatsApp untuk info publik" },
   { key: "purchase_message", label: "Pesan untuk halaman tanpa token", placeholder: "Untuk pembelian token streaming...", type: "textarea" as const },
   { key: "subscription_info", label: "Informasi Langganan (tampil di menu)", placeholder: "Paket langganan kami meliputi...", type: "textarea" as const },
+  { key: "announcement_text", label: "Teks Pengumuman (tampil di landing page)", placeholder: "Pembelian membership Bulan April akan dibuka...", type: "textarea" as const, hint: "Teks pengumuman yang akan ditampilkan di landing page jika diaktifkan" },
   { key: "landing_desc_subtitle", label: "Subjudul Section Deskripsi", placeholder: "KEUNGGULAN KAMI", type: "input" as const, hint: "Teks kecil di atas judul section (opsional)" },
   { key: "landing_desc_title", label: "Judul Section Deskripsi", placeholder: "THIS IS REALTIME48 STREAM", type: "input" as const, hint: "Judul besar section deskripsi (opsional)" },
   { key: "landing_desc_quote", label: "Kutipan/Deskripsi Section", placeholder: "Membawa kemeriahan langsung di rumah Anda...", type: "textarea" as const, hint: "Teks kutipan di bawah judul section (opsional)" },
