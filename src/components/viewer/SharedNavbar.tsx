@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download, Share } from "lucide-react";
 import {
   Sheet,

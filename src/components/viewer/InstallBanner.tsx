@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef } from "react";
 import { X, Download, Share, MoreVertical } from "lucide-react";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

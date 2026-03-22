@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Download, CheckCircle, Share, MoreVertical, Smartphone } from "lucide-react";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
