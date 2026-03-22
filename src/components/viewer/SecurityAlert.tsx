@@ -51,6 +51,8 @@ const SecurityAlert = forwardRef<HTMLDivElement>((_, ref) => {
       </div>
     </div>
   );
-};
+});
+
+SecurityAlert.displayName = "SecurityAlert";
 
 export default SecurityAlert;
