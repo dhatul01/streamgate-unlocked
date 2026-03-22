@@ -172,6 +172,38 @@ async function forceDeleteWebhook(botToken: string): Promise<boolean> {
   return false;
 }
 
+async function processAdminMessage(supabase: any, botToken: string, chatId: string, msg: any) {
+  const rawText = (msg.text as string).trim();
+  const text = rawText.toUpperCase();
+  const yaMatch = text.match(/^YA\s+(.+)$/);
+  const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
+  const resetMatch = text.match(/^RESET\s+(.+)$/);
+  const tolakResetMatch = text.match(/^TOLAK_RESET\s+(.+)$/);
+  const isStatus = rawText === '/status' || text === '/STATUS';
+
+  if (isStatus) {
+    await handleStatusCommand(supabase, botToken, chatId);
+  } else if (resetMatch) {
+    await processPasswordReset(supabase, botToken, chatId, resetMatch[1].trim().toLowerCase(), 'approve');
+  } else if (tolakResetMatch) {
+    await processPasswordReset(supabase, botToken, chatId, tolakResetMatch[1].trim().toLowerCase(), 'reject');
+  } else if (yaMatch) {
+    const ids = yaMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+    if (ids.length > 10) {
+      await sendTelegramMessage(botToken, chatId, '⚠️ Maksimal 10 order per bulk konfirmasi\.');
+    } else {
+      await processBulkOrders(supabase, botToken, chatId, ids, 'approve');
+    }
+  } else if (tidakMatch) {
+    const ids = tidakMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+    if (ids.length > 10) {
+      await sendTelegramMessage(botToken, chatId, '⚠️ Maksimal 10 order per bulk tolak\.');
+    } else {
+      await processBulkOrders(supabase, botToken, chatId, ids, 'reject');
+    }
+  }
+}
+
 // ─── Order Processing ───────────────────────────────────────────────
 
 async function processBulkOrders(
