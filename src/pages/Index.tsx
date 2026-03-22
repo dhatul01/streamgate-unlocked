@@ -338,8 +338,8 @@ const Index = () => {
     const file = e.target.files?.[0];
     if (!file || !selectedShow) return;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg", "image/heic", "image/heif"];
+    if (file.type && !allowedTypes.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
       toast({ title: "Format file tidak didukung", description: "Hanya JPEG, PNG, dan WebP yang diizinkan.", variant: "destructive" });
       return;
     }
@@ -354,11 +354,19 @@ const Index = () => {
       formData.append("file", file);
       formData.append("show_id", selectedShow.id);
 
-      const { data, error } = await supabase.functions.invoke("upload-payment-proof", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-payment-proof`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: formData,
       });
-
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        toast({ title: "Upload gagal", description: data?.error || "Coba lagi", variant: "destructive" });
+        setUploadingProof(false);
+        return;
+      }
       if (data?.path) {
         const storagePath = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`;
         setProofUrl(storagePath);
@@ -921,7 +929,7 @@ const Index = () => {
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 tv:py-6 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10 tv:text-base">
                   <Upload className="h-4 w-4 tv:h-6 tv:w-6" />
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
+                  <input type="file" accept="image/*,.heic,.heif" capture="environment" className="hidden" onChange={handleUploadProof} />
                 </label>
               </div>
             )}

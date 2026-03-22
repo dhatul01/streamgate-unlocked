@@ -301,7 +301,7 @@ const CoinShop = () => {
               <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 hover:border-primary">
                 <Upload className={`h-8 w-8 ${uploading ? "animate-pulse text-primary" : "text-muted-foreground"}`} />
                 <span className="text-sm text-muted-foreground">{uploading ? "Mengupload..." : "Tap untuk upload bukti bayar"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} disabled={uploading} />
+                <input type="file" accept="image/*,.heic,.heif" capture="environment" className="hidden" onChange={handleUploadProof} disabled={uploading} />
               </label>
             </div>
           )}
