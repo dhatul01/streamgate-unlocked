@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
-import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download } from "lucide-react";
+import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download, Share } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -10,6 +10,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 interface SharedNavbarProps {
   activePage?: "home" | "coins" | "membership" | "replay";
@@ -22,13 +27,30 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
   const [coinUsername, setCoinUsername] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    setIsStandalone(
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true
+    );
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setAuthChecked(true);
       if (!session?.user) {
-        // Show login prompt for unauthenticated users
         const hasSeenPrompt = sessionStorage.getItem("login_prompt_shown");
         if (!hasSeenPrompt) {
           sessionStorage.setItem("login_prompt_shown", "1");
@@ -85,13 +107,28 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
     return () => { supabase.removeChannel(channel); };
   }, [coinUser]);
 
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        toast({ title: "✅ Berhasil di-install!", description: "Buka RealTime48 dari home screen." });
+        setIsStandalone(true);
+      }
+      setDeferredPrompt(null);
+      setSheetOpen(false);
+    } else {
+      // Fallback: navigate to install page for instructions
+      window.location.href = "/install";
+    }
+  };
+
   const menuItems = [
     { icon: <Home className="h-5 w-5 text-primary" />, label: "Beranda", description: "Halaman utama", href: "/", active: activePage === "home" },
     { icon: <Play className="h-5 w-5 text-primary" />, label: "Replay Show", description: "Tonton ulang show yang telah berlalu", href: "/replay", active: activePage === "replay" },
     { icon: <Radio className="h-5 w-5 text-primary" />, label: "Jadwal Show", description: "Lihat jadwal & countdown show", href: "/schedule", active: false },
     { icon: <CreditCard className="h-5 w-5 text-primary" />, label: "Coin Shop", description: "Beli & tukar koin", href: "/coins", active: activePage === "coins" },
     { icon: <Crown className="h-5 w-5 text-yellow-500" />, label: "Membership", description: "Paket langganan eksklusif", href: "/membership", active: activePage === "membership" },
-    { icon: <Download className="h-5 w-5 text-primary" />, label: "Install App", description: "Pasang aplikasi ke HP kamu", href: "/install", active: false },
   ];
 
   return (
@@ -108,7 +145,6 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
               <span className="text-sm font-bold text-warning">{coinBalance}</span>
             </div>
           )}
-          {/* Coin Shop shortcut - hidden when sheet is open */}
           {!sheetOpen && (
             <a href="/coins" className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5 text-warning transition hover:bg-warning/20" title="Coin Shop">
               <Coins className="h-4 w-4" />
@@ -178,6 +214,28 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
                     </div>
                   </a>
                 ))}
+
+                {/* Install App - hidden when already in standalone PWA */}
+                {!isStandalone && (
+                  <button
+                    onClick={handleInstallClick}
+                    className="flex w-full items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-left transition hover:border-primary hover:bg-primary/10"
+                  >
+                    <div className="mt-0.5 shrink-0">
+                      <Download className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Install Aplikasi</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {deferredPrompt
+                          ? "Pasang langsung ke home screen"
+                          : isIOS
+                            ? "Ketuk Share → Add to Home Screen"
+                            : "Pasang aplikasi ke HP kamu"}
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
             </SheetContent>
           </Sheet>
