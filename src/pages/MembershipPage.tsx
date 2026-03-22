@@ -274,7 +274,7 @@ const MembershipPage = () => {
 
                 <div className="relative h-48 overflow-hidden">
                   {show.background_image_url ? (
-                    <img src={show.background_image_url} alt={show.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img src={show.background_image_url} alt={show.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-gradient-to-br from-yellow-500/20 to-primary/10">
                       <Crown className="h-16 w-16 text-yellow-500/30" />

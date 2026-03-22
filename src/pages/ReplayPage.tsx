@@ -247,7 +247,7 @@ const ReplayPage = () => {
                 >
                   <div className="relative h-44 overflow-hidden">
                     {show.background_image_url ? (
-                      <img src={show.background_image_url} alt={show.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <img src={show.background_image_url} alt={show.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-accent/10">
                         <Play className="h-16 w-16 text-primary/30" />
