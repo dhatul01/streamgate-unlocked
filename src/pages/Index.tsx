@@ -921,7 +921,7 @@ const Index = () => {
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 tv:py-6 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10 tv:text-base">
                   <Upload className="h-4 w-4 tv:h-6 tv:w-6" />
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleUploadProof} />
+                  <input type="file" accept="image/*,.heic,.heif" capture="environment" className="hidden" onChange={handleUploadProof} />
                 </label>
               </div>
             )}
