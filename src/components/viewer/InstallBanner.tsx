@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { X, Download, Share, MoreVertical } from "lucide-react";
 import logo from "@/assets/logo.png";
 
@@ -9,7 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 const PWA_BANNER_KEY = "pwa-banner-dismissed";
 
-const InstallBanner = () => {
+const InstallBanner = forwardRef<HTMLDivElement>((_, ref) => {
   const [show, setShow] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
@@ -109,6 +109,8 @@ const InstallBanner = () => {
       </div>
     </div>
   );
-};
+});
+
+InstallBanner.displayName = "InstallBanner";
 
 export default InstallBanner;

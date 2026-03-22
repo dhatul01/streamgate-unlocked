@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, X } from "lucide-react";
 
-const SecurityAlert = () => {
+const SecurityAlert = forwardRef<HTMLDivElement>((_, ref) => {
   const [alert, setAlert] = useState<{ description: string; severity: string } | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -51,6 +51,8 @@ const SecurityAlert = () => {
       </div>
     </div>
   );
-};
+});
+
+SecurityAlert.displayName = "SecurityAlert";
 
 export default SecurityAlert;
