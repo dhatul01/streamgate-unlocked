@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
@@ -7,7 +6,7 @@ const MIN_REMAINING_MS = 6_000;
 const LONG_POLL_MAX_SECONDS = 20;
 const LOCK_WINDOW_MS = 25_000;
 
-serve(async () => {
+Deno.serve(async () => {
   const startTime = Date.now();
 
   const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
@@ -30,16 +29,15 @@ serve(async () => {
   let totalProcessed = 0;
 
   try {
-    try {
-      const deleteWebhookResponse = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/deleteWebhook`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drop_pending_updates: false }),
-      });
-      await deleteWebhookResponse.text();
-    } catch (_) {
-      // ignore webhook cleanup failures
+    // Step 1: Check and force-remove any webhook
+    const webhookCleared = await ensureNoWebhook(BOT_TOKEN);
+    if (!webhookCleared) {
+      console.error('Failed to clear webhook, aborting');
+      return errorResponse('Could not clear webhook');
     }
+
+    // Step 2: Poll loop with 409 retry
+    let consecutive409 = 0;
 
     while (true) {
       const elapsed = Date.now() - startTime;
@@ -64,11 +62,27 @@ serve(async () => {
       const data = await response.json();
       if (!response.ok) {
         if (data?.error_code === 409) {
-          console.warn('409 conflict detected, skipping this run to avoid overlap');
-          return jsonResponse({ ok: true, skipped: true, reason: 'telegram getUpdates conflict' });
+          consecutive409++;
+          console.warn(`409 conflict #${consecutive409} - waiting before retry`);
+          
+          if (consecutive409 >= 3) {
+            console.error('3 consecutive 409s - forcing webhook delete and retrying');
+            await forceDeleteWebhook(BOT_TOKEN);
+            // Wait 3 seconds for Telegram to release the connection
+            await sleep(3000);
+            consecutive409 = 0;
+            continue;
+          }
+          
+          // Wait progressively longer: 2s, 4s
+          await sleep(consecutive409 * 2000);
+          continue;
         }
         return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
       }
+
+      // Reset 409 counter on success
+      consecutive409 = 0;
 
       const updates = data.result ?? [];
       if (updates.length === 0) {
@@ -159,6 +173,62 @@ serve(async () => {
     await releaseLock(supabase);
   }
 });
+
+// ─── Webhook Management ────────────────────────────────────────────
+
+async function ensureNoWebhook(botToken: string): Promise<boolean> {
+  try {
+    // Check current webhook status
+    const infoRes = await fetch(`${TELEGRAM_API}${botToken}/getWebhookInfo`);
+    const infoData = await infoRes.json();
+    
+    if (infoData.ok && infoData.result) {
+      const webhookUrl = infoData.result.url || '';
+      const pendingCount = infoData.result.pending_update_count || 0;
+      
+      if (webhookUrl) {
+        console.log(`Active webhook found: ${webhookUrl} (${pendingCount} pending). Removing...`);
+        const deleted = await forceDeleteWebhook(botToken);
+        if (!deleted) return false;
+        // Wait for Telegram to fully release the webhook connection
+        await sleep(2000);
+        console.log('Webhook removed successfully');
+      } else {
+        console.log('No webhook set - ready for polling');
+      }
+    }
+    
+    return true;
+  } catch (e) {
+    console.error('ensureNoWebhook error:', e);
+    // Try to delete webhook anyway
+    return await forceDeleteWebhook(botToken);
+  }
+}
+
+async function forceDeleteWebhook(botToken: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${TELEGRAM_API}${botToken}/deleteWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ drop_pending_updates: false }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        console.log(`deleteWebhook succeeded on attempt ${attempt + 1}`);
+        return true;
+      }
+      console.warn(`deleteWebhook attempt ${attempt + 1} failed:`, JSON.stringify(data));
+    } catch (e) {
+      console.warn(`deleteWebhook attempt ${attempt + 1} error:`, e);
+    }
+    await sleep(1000);
+  }
+  return false;
+}
+
+// ─── Order Processing ───────────────────────────────────────────────
 
 async function processBulkOrders(
   supabase: any,
@@ -596,6 +666,8 @@ async function processPasswordReset(
   }
 }
 
+// ─── Utilities ──────────────────────────────────────────────────────
+
 function escapeMarkdown(text: string): string {
   return String(text || '').replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
@@ -641,6 +713,8 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
   }
 }
 
+// ─── Lock Management ────────────────────────────────────────────────
+
 async function acquireLock(supabase: any): Promise<{ acquired: boolean; update_offset: number }> {
   const nowIso = new Date().toISOString();
   const staleBeforeIso = new Date(Date.now() - LOCK_WINDOW_MS).toISOString();
@@ -680,6 +754,10 @@ async function releaseLock(supabase: any) {
   if (error) {
     console.error('telegram-poll releaseLock error:', error.message);
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function jsonResponse(body: unknown, status = 200) {
