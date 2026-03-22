@@ -1,10 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
-const MAX_RUNTIME_MS = 52_000;
-const MIN_REMAINING_MS = 6_000;
-const LONG_POLL_MAX_SECONDS = 20;
-const LOCK_WINDOW_MS = 25_000;
+const MAX_RUNTIME_MS = 50_000;
+const MIN_REMAINING_MS = 5_000;
+const POLL_INTERVAL_MS = 2000; // Short-poll every 2 seconds
+const LOCK_WINDOW_MS = 60_000; // 60s lock window (cron fires every minute)
 
 Deno.serve(async () => {
   const startTime = Date.now();
