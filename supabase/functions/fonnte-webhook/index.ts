@@ -15,6 +15,9 @@ serve(async (req) => {
     const secretParam = url.searchParams.get('secret');
     const WEBHOOK_SECRET = Deno.env.get('FONNTE_WEBHOOK_SECRET');
 
+    console.log('Secret param received:', secretParam ? `"${secretParam}" (len=${secretParam.length})` : 'NONE');
+    console.log('Secret env configured:', WEBHOOK_SECRET ? `yes (len=${WEBHOOK_SECRET.length})` : 'NO');
+
     if (!WEBHOOK_SECRET || secretParam !== WEBHOOK_SECRET) {
       console.error('Webhook secret mismatch or not configured');
       return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
