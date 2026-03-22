@@ -156,6 +156,36 @@ serve(async (req) => {
       else (resetPending || []).forEach((r: any) => { msg += `  • ${r.short_id} — ${r.identifier}\n`; });
 
       await sendReply(msg);
+    } else if (command === 'BROADCAST') {
+      const broadcastMsg = message.substring(message.indexOf(' ') + 1).trim();
+      if (!broadcastMsg || broadcastMsg.toUpperCase() === 'BROADCAST') {
+        await sendReply('❌ Format: BROADCAST [pesan]\nContoh: BROADCAST Show malam ini jam 8!');
+      } else {
+        // Get all unique phone numbers from confirmed orders
+        const { data: coinPhones } = await supabase.from('coin_orders').select('phone').eq('status', 'confirmed');
+        const { data: subPhones } = await supabase.from('subscription_orders').select('phone').eq('status', 'confirmed');
+        const { data: resetPhones } = await supabase.from('password_reset_requests').select('phone');
+
+        const allPhones = new Set<string>();
+        [...(coinPhones || []), ...(subPhones || []), ...(resetPhones || [])].forEach((r: any) => {
+          const p = (r.phone || '').replace(/[^0-9]/g, '');
+          if (p.length >= 10) allPhones.add(p);
+        });
+
+        if (allPhones.size === 0) {
+          await sendReply('❌ Tidak ada nomor user yang tersimpan.');
+        } else {
+          const targets = Array.from(allPhones).join(',');
+          if (FONNTE_TOKEN) {
+            await fetch('https://api.fonnte.com/send', {
+              method: 'POST',
+              headers: { 'Authorization': FONNTE_TOKEN },
+              body: new URLSearchParams({ target: targets, message: `📢 *PENGUMUMAN*\n\n${broadcastMsg}` }),
+            });
+          }
+          await sendReply(`✅ Broadcast terkirim ke ${allPhones.size} nomor!`);
+        }
+      }
     } else if (command === 'HELP' || command === 'MENU') {
       await sendReply(
         `📋 *DAFTAR PERINTAH ADMIN*\n\n` +
@@ -165,6 +195,8 @@ serve(async (req) => {
         `   Contoh: TIDAK C1\n\n` +
         `💰 *SALDO* — Cek saldo & pendapatan admin\n\n` +
         `📊 *STATUS* — Lihat order pending & status sistem\n\n` +
+        `📢 *BROADCAST [pesan]* — Kirim pengumuman ke semua user\n` +
+        `   Contoh: BROADCAST Show malam ini jam 8!\n\n` +
         `📋 *HELP* — Tampilkan menu ini`
       );
     }
