@@ -99,24 +99,31 @@ const MembershipPage = () => {
     };
   }, []);
 
-  const handleBuy = (show: Show) => {
+  const handleBuy = async (show: Show) => {
     setSelectedShow(show);
     setPurchaseMethod(null);
     setProofUrl("");
     setPhone("");
     setEmail("");
     setResultGroupLink("");
-    fetchBalance();
+    await fetchBalance();
 
-    // If coin-only mode, skip choose step
+    // If coin-only mode, skip choose step and go directly to coin
     if (coinOnly && show.coin_price > 0) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast({ title: "Silakan login terlebih dahulu", variant: "destructive" });
+        return;
+      }
+      const { data: bal } = await supabase.from("coin_balances").select("balance").eq("user_id", session.user.id).maybeSingle();
+      const currentBalance = bal?.balance || 0;
+      setCoinBalance(currentBalance);
       setPurchaseMethod("coin");
-      // Check balance immediately  
-      supabase.from("coin_balances").select("balance").eq("user_id", "").maybeSingle(); // just trigger balance refresh
-      fetchBalance().then(() => {
-        // Will be handled by the component re-render
-      });
-      setPurchaseStep("coin_info");
+      if (currentBalance < show.coin_price) {
+        setPurchaseStep("coin_insufficient");
+      } else {
+        setPurchaseStep("coin_info");
+      }
       return;
     }
     setPurchaseStep("choose");
