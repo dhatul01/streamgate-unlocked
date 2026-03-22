@@ -50,7 +50,16 @@ const PageLoader = () => (
   </div>
 );
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(preloadPopularPages);
+    } else {
+      setTimeout(preloadPopularPages, 2000);
+    }
+  }, []);
+
+  return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
