@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["logo.png", "placeholder.svg"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
