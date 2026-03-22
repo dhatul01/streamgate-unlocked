@@ -47,7 +47,12 @@ serve(async (req) => {
     const message = (body.message || body.text || body.body || '').trim();
     const normalizedAdmin = ADMIN_WA.replace(/[^0-9]/g, '');
 
+    console.log('Webhook body keys:', Object.keys(body));
+    console.log('Sender:', sender, '| Admin:', normalizedAdmin, '| Match:', sender === normalizedAdmin);
+    console.log('Message:', message);
+
     if (!sender || sender !== normalizedAdmin) {
+      console.log('Rejected: sender does not match admin');
       return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
