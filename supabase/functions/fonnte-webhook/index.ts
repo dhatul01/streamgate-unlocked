@@ -43,6 +43,14 @@ serve(async (req) => {
       }
     }
 
+    // Skip group messages immediately
+    const isGroup = body.isgroup === 'true' || body.isgroup === true;
+    if (isGroup) {
+      return new Response(JSON.stringify({ success: true, skipped: 'group_message' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const rawSender = (body.sender || body.from || '').replace(/[^0-9]/g, '');
     const message = (body.message || body.text || body.body || '').trim();
     const rawAdmin = ADMIN_WA.replace(/[^0-9]/g, '');
@@ -56,12 +64,10 @@ serve(async (req) => {
     const sender = normalizePhone(rawSender);
     const normalizedAdmin = normalizePhone(rawAdmin);
 
-    console.log('Webhook body keys:', Object.keys(body));
     console.log('Sender:', sender, '| Admin:', normalizedAdmin, '| Match:', sender === normalizedAdmin);
     console.log('Message:', message);
 
     if (!sender || sender !== normalizedAdmin) {
-      console.log('Rejected: sender does not match admin');
       return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
