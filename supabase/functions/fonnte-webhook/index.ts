@@ -10,6 +10,18 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    // Verify webhook secret token from URL query parameter
+    const url = new URL(req.url);
+    const secretParam = url.searchParams.get('secret');
+    const WEBHOOK_SECRET = Deno.env.get('FONNTE_WEBHOOK_SECRET');
+
+    if (!WEBHOOK_SECRET || secretParam !== WEBHOOK_SECRET) {
+      console.error('Webhook secret mismatch or not configured');
+      return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN');
