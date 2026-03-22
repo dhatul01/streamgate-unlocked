@@ -354,11 +354,19 @@ const Index = () => {
       formData.append("file", file);
       formData.append("show_id", selectedShow.id);
 
-      const { data, error } = await supabase.functions.invoke("upload-payment-proof", {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-payment-proof`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
         body: formData,
       });
-
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok || !data?.path) {
+        toast({ title: "Upload gagal", description: data?.error || "Coba lagi", variant: "destructive" });
+        setUploadingProof(false);
+        return;
+      }
       if (data?.path) {
         const storagePath = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/payment-proofs/${data.path}`;
         setProofUrl(storagePath);
