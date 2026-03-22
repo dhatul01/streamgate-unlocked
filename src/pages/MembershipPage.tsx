@@ -39,6 +39,7 @@ const MembershipPage = () => {
   const [coinBalance, setCoinBalance] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [resultGroupLink, setResultGroupLink] = useState("");
+  const [coinOnly, setCoinOnly] = useState(false);
 
   const fetchData = async () => {
     const { data: allShows } = await supabase.rpc("get_public_shows");
