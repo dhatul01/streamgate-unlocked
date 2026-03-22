@@ -43,9 +43,18 @@ serve(async (req) => {
       }
     }
 
-    const sender = (body.sender || body.from || '').replace(/[^0-9]/g, '');
+    const rawSender = (body.sender || body.from || '').replace(/[^0-9]/g, '');
     const message = (body.message || body.text || body.body || '').trim();
-    const normalizedAdmin = ADMIN_WA.replace(/[^0-9]/g, '');
+    const rawAdmin = ADMIN_WA.replace(/[^0-9]/g, '');
+
+    // Normalize: strip leading 62 or 0 to get core number
+    const normalizePhone = (num: string) => {
+      if (num.startsWith('62')) return num.slice(2);
+      if (num.startsWith('0')) return num.slice(1);
+      return num;
+    };
+    const sender = normalizePhone(rawSender);
+    const normalizedAdmin = normalizePhone(rawAdmin);
 
     console.log('Webhook body keys:', Object.keys(body));
     console.log('Sender:', sender, '| Admin:', normalizedAdmin, '| Match:', sender === normalizedAdmin);
