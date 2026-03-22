@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -22,6 +22,15 @@ const SchedulePage = lazy(() => import("./pages/SchedulePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const InstallPage = lazy(() => import("./pages/InstallPage"));
 
+// Preload popular pages after initial render is idle
+const preloadPopularPages = () => {
+  import("./pages/LivePage");
+  import("./pages/SchedulePage");
+  import("./pages/ViewerAuth");
+  import("./pages/CoinShop");
+  import("./pages/MembershipPage");
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,7 +50,16 @@ const PageLoader = () => (
   </div>
 );
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(preloadPopularPages);
+    } else {
+      setTimeout(preloadPopularPages, 2000);
+    }
+  }, []);
+
+  return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -71,6 +89,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;
