@@ -12,11 +12,8 @@ serve(async (req) => {
   try {
     // Verify webhook secret token from URL query parameter
     const url = new URL(req.url);
-    const secretParam = url.searchParams.get('secret');
-    const WEBHOOK_SECRET = Deno.env.get('FONNTE_WEBHOOK_SECRET');
-
-    console.log('Secret param received:', secretParam ? `"${secretParam}" (len=${secretParam.length})` : 'NONE');
-    console.log('Secret env configured:', WEBHOOK_SECRET ? `yes (len=${WEBHOOK_SECRET.length})` : 'NO');
+    const secretParam = (url.searchParams.get('secret') || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const WEBHOOK_SECRET = (Deno.env.get('FONNTE_WEBHOOK_SECRET') || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
     if (!WEBHOOK_SECRET || secretParam !== WEBHOOK_SECRET) {
       console.error('Webhook secret mismatch or not configured');
