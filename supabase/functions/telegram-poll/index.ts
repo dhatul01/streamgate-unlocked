@@ -29,72 +29,17 @@ Deno.serve(async () => {
   let totalProcessed = 0;
 
   try {
-    // Step 1: Check and force-remove any webhook
-    const webhookCleared = await ensureNoWebhook(BOT_TOKEN);
-    if (!webhookCleared) {
-      console.error('Failed to clear webhook, aborting');
-      return errorResponse('Could not clear webhook');
-    }
+    // Step 1: Ensure no webhook
+    await ensureNoWebhook(BOT_TOKEN);
 
-    // Step 2: Initial short-poll to claim the connection (timeout=0)
-    // This forces Telegram to terminate any stale getUpdates connections
-    console.log('Performing initial short-poll (timeout=0) to claim connection...');
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const shortPollRes = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          offset: currentOffset,
-          timeout: 0,
-          allowed_updates: ['message'],
-        }),
-      });
-      
-      const shortPollData = await shortPollRes.json();
-      
-      if (shortPollRes.ok) {
-        console.log(`Short-poll succeeded on attempt ${attempt + 1}, ${(shortPollData.result ?? []).length} updates`);
-        // Process any updates from short-poll
-        const spUpdates = shortPollData.result ?? [];
-        if (spUpdates.length > 0) {
-          const spRows = spUpdates
-            .filter((u: any) => u.message)
-            .map((u: any) => ({
-              update_id: u.update_id,
-              chat_id: u.message.chat.id,
-              text: u.message.text ?? null,
-              raw_update: u,
-              processed: false,
-            }));
-          if (spRows.length > 0) {
-            await supabase.from('telegram_messages').upsert(spRows, { onConflict: 'update_id' });
-          }
-          currentOffset = Math.max(...spUpdates.map((u: any) => u.update_id)) + 1;
-          await supabase.from('telegram_bot_state').update({ update_offset: currentOffset, updated_at: new Date().toISOString() }).eq('id', 1);
-        }
-        break;
-      }
-      
-      if (shortPollData?.error_code === 409) {
-        console.warn(`Short-poll 409 attempt ${attempt + 1}/5 - waiting ${(attempt + 1) * 3}s for stale connection to expire...`);
-        await sleep((attempt + 1) * 3000);
-        continue;
-      }
-      
-      console.error('Short-poll failed:', JSON.stringify(shortPollData));
-      return errorResponse(`Initial getUpdates failed: ${JSON.stringify(shortPollData)}`);
-    }
-
-    // Step 3: Main long-poll loop
-    let consecutive409 = 0;
+    // Step 2: Short-poll loop (timeout=0, no 409 risk)
+    console.log('Starting short-poll loop...');
+    let pollCount = 0;
 
     while (true) {
       const elapsed = Date.now() - startTime;
       const remainingMs = MAX_RUNTIME_MS - elapsed;
       if (remainingMs < MIN_REMAINING_MS) break;
-
-      const timeout = Math.min(LONG_POLL_MAX_SECONDS, Math.floor(remainingMs / 1000) - 3);
-      if (timeout < 1) break;
 
       await touchState(supabase);
 
@@ -103,7 +48,7 @@ Deno.serve(async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           offset: currentOffset,
-          timeout,
+          timeout: 0, // Short-poll: return immediately
           allowed_updates: ['message'],
         }),
       });
@@ -111,105 +56,63 @@ Deno.serve(async () => {
       const data = await response.json();
       if (!response.ok) {
         if (data?.error_code === 409) {
-          consecutive409++;
-          console.warn(`Long-poll 409 #${consecutive409}`);
-          if (consecutive409 >= 3) {
-            console.error('Persistent 409 in long-poll, ending this run');
-            break;
-          }
-          await sleep(3000);
+          console.warn('409 on short-poll, waiting 5s...');
+          await sleep(5000);
           continue;
         }
-        return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
+        console.error('getUpdates failed:', JSON.stringify(data));
+        break;
       }
 
-      consecutive409 = 0;
-
+      pollCount++;
       const updates = data.result ?? [];
-      if (updates.length === 0) {
+
+      if (updates.length > 0) {
+        console.log(`Poll #${pollCount}: ${updates.length} updates`);
+
+        const rows = updates
+          .filter((u: any) => u.message)
+          .map((u: any) => ({
+            update_id: u.update_id,
+            chat_id: u.message.chat.id,
+            text: u.message.text ?? null,
+            raw_update: u,
+            processed: false,
+          }));
+
+        if (rows.length > 0) {
+          const { error: upsertError } = await supabase
+            .from('telegram_messages')
+            .upsert(rows, { onConflict: 'update_id' });
+          if (upsertError) {
+            console.error('upsert error:', upsertError.message);
+          }
+        }
+
+        const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
+        await supabase.from('telegram_bot_state')
+          .update({ update_offset: newOffset, updated_at: new Date().toISOString() })
+          .eq('id', 1);
+        currentOffset = newOffset;
+
+        // Process admin commands
+        const adminMessages = rows.filter((r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text);
+        for (const msg of adminMessages) {
+          await processAdminMessage(supabase, BOT_TOKEN, ADMIN_CHAT_ID, msg);
+          totalProcessed++;
+          await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
+        }
+
+        // If we got updates, poll again immediately (burst mode)
         continue;
       }
 
-      const rows = updates
-        .filter((u: any) => u.message)
-        .map((u: any) => ({
-          update_id: u.update_id,
-          chat_id: u.message.chat.id,
-          text: u.message.text ?? null,
-          raw_update: u,
-          processed: false,
-        }));
-
-      if (rows.length > 0) {
-        const { error: upsertError } = await supabase
-          .from('telegram_messages')
-          .upsert(rows, { onConflict: 'update_id' });
-
-        if (upsertError) {
-          return errorResponse(`telegram_messages upsert failed: ${upsertError.message}`);
-        }
-      }
-
-      const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
-      const { error: offsetError } = await supabase
-        .from('telegram_bot_state')
-        .update({
-          update_offset: newOffset,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', 1);
-
-      if (offsetError) {
-        return errorResponse(`telegram_bot_state update failed: ${offsetError.message}`);
-      }
-
-      currentOffset = newOffset;
-
-      const adminMessages = rows.filter((r: any) => String(r.chat_id) === ADMIN_CHAT_ID && r.text);
-
-      for (const msg of adminMessages) {
-        const rawText = (msg.text as string).trim();
-        const text = rawText.toUpperCase();
-        const yaMatch = text.match(/^YA\s+(.+)$/);
-        const tidakMatch = text.match(/^TIDAK\s+(.+)$/);
-        const resetMatch = text.match(/^RESET\s+(.+)$/);
-        const tolakResetMatch = text.match(/^TOLAK_RESET\s+(.+)$/);
-        const isStatus = rawText === '/status' || text === '/STATUS';
-
-        if (isStatus) {
-          await handleStatusCommand(supabase, BOT_TOKEN, ADMIN_CHAT_ID);
-          totalProcessed++;
-        } else if (resetMatch) {
-          const shortId = resetMatch[1].trim().toLowerCase();
-          await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'approve');
-          totalProcessed++;
-        } else if (tolakResetMatch) {
-          const shortId = tolakResetMatch[1].trim().toLowerCase();
-          await processPasswordReset(supabase, BOT_TOKEN, ADMIN_CHAT_ID, shortId, 'reject');
-          totalProcessed++;
-        } else if (yaMatch) {
-          const ids = yaMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
-          if (ids.length > 10) {
-            await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk konfirmasi\. Silakan bagi menjadi beberapa perintah\.');
-          } else {
-            await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'approve');
-            totalProcessed += ids.length;
-          }
-        } else if (tidakMatch) {
-          const ids = tidakMatch[1].split(',').map((s: string) => s.trim().toLowerCase()).filter(Boolean);
-          if (ids.length > 10) {
-            await sendTelegramMessage(BOT_TOKEN, ADMIN_CHAT_ID, '⚠️ Maksimal 10 order per bulk tolak\. Silakan bagi menjadi beberapa perintah\.');
-          } else {
-            await processBulkOrders(supabase, BOT_TOKEN, ADMIN_CHAT_ID, ids, 'reject');
-            totalProcessed += ids.length;
-          }
-        }
-
-        await supabase.from('telegram_messages').update({ processed: true }).eq('update_id', msg.update_id);
-      }
+      // No updates — wait before next poll
+      await sleep(POLL_INTERVAL_MS);
     }
 
-    return jsonResponse({ ok: true, processed: totalProcessed, finalOffset: currentOffset });
+    console.log(`Polling complete: ${pollCount} polls, ${totalProcessed} processed`);
+    return jsonResponse({ ok: true, processed: totalProcessed, polls: pollCount, finalOffset: currentOffset });
   } finally {
     await releaseLock(supabase);
   }
