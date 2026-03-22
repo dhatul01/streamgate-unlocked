@@ -373,18 +373,20 @@ const MembershipPage = () => {
             {purchaseStep === "choose" && (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Pilih metode pembayaran:</p>
-                <button
-                  onClick={handleChooseQris}
-                  className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-yellow-500 hover:bg-yellow-500/5"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
-                    <Upload className="h-5 w-5 text-yellow-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Bayar via QRIS</p>
-                    <p className="text-xs text-muted-foreground">Scan QRIS & upload bukti pembayaran</p>
-                  </div>
-                </button>
+                {!coinOnly && (
+                  <button
+                    onClick={handleChooseQris}
+                    className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-yellow-500 hover:bg-yellow-500/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
+                      <Upload className="h-5 w-5 text-yellow-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Bayar via QRIS</p>
+                      <p className="text-xs text-muted-foreground">Scan QRIS & upload bukti pembayaran</p>
+                    </div>
+                  </button>
+                )}
                 {selectedShow.coin_price > 0 && (
                   <button
                     onClick={handleChooseCoin}
