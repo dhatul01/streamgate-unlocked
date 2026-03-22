@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import { Menu } from "lucide-react";

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import { ArrowLeft, Coins, Save, User, History, BarChart3, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import ReferralSection from "@/components/viewer/ReferralSection";

@@ -15,7 +15,7 @@ const PipButton = lazy(() => import("@/components/viewer/PipButton"));
 
 type AnimationType = "none" | "snow" | "stars" | "rain" | "leaves" | "bubbles" | "fireflies" | "confetti" | "money" | "trees" | "hearts" | "sakura" | "sparkle" | "balloons";
 
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 
 const LivePage = () => {
   const [searchParams] = useSearchParams();

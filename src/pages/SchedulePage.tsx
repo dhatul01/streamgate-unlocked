@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
 import { Calendar } from "lucide-react";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import type { Show } from "@/types/show";
 import { useShowPurchase } from "@/hooks/useShowPurchase";
 import ShowCard from "@/components/viewer/ShowCard";
