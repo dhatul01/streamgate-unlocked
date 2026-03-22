@@ -67,6 +67,12 @@ const MembershipPage = () => {
     fetchData();
     fetchBalance();
 
+    // Fetch coin-only setting
+    supabase.from("site_settings").select("value").eq("key", "membership_coin_only").maybeSingle()
+      .then(({ data }) => {
+        if (data?.value === "true") setCoinOnly(true);
+      });
+
     const showChannel = supabase
       .channel("membership-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
@@ -77,9 +83,19 @@ const MembershipPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
 
+    const settingsChannel = supabase
+      .channel("membership-settings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, (payload: any) => {
+        if (payload.new?.key === "membership_coin_only") {
+          setCoinOnly(payload.new.value === "true");
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(showChannel);
       supabase.removeChannel(orderChannel);
+      supabase.removeChannel(settingsChannel);
     };
   }, []);
 
