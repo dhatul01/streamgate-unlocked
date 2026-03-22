@@ -36,7 +36,56 @@ Deno.serve(async () => {
       return errorResponse('Could not clear webhook');
     }
 
-    // Step 2: Poll loop with 409 retry
+    // Step 2: Initial short-poll to claim the connection (timeout=0)
+    // This forces Telegram to terminate any stale getUpdates connections
+    console.log('Performing initial short-poll (timeout=0) to claim connection...');
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const shortPollRes = await fetch(`${TELEGRAM_API}${BOT_TOKEN}/getUpdates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offset: currentOffset,
+          timeout: 0,
+          allowed_updates: ['message'],
+        }),
+      });
+      
+      const shortPollData = await shortPollRes.json();
+      
+      if (shortPollRes.ok) {
+        console.log(`Short-poll succeeded on attempt ${attempt + 1}, ${(shortPollData.result ?? []).length} updates`);
+        // Process any updates from short-poll
+        const spUpdates = shortPollData.result ?? [];
+        if (spUpdates.length > 0) {
+          const spRows = spUpdates
+            .filter((u: any) => u.message)
+            .map((u: any) => ({
+              update_id: u.update_id,
+              chat_id: u.message.chat.id,
+              text: u.message.text ?? null,
+              raw_update: u,
+              processed: false,
+            }));
+          if (spRows.length > 0) {
+            await supabase.from('telegram_messages').upsert(spRows, { onConflict: 'update_id' });
+          }
+          currentOffset = Math.max(...spUpdates.map((u: any) => u.update_id)) + 1;
+          await supabase.from('telegram_bot_state').update({ update_offset: currentOffset, updated_at: new Date().toISOString() }).eq('id', 1);
+        }
+        break;
+      }
+      
+      if (shortPollData?.error_code === 409) {
+        console.warn(`Short-poll 409 attempt ${attempt + 1}/5 - waiting ${(attempt + 1) * 3}s for stale connection to expire...`);
+        await sleep((attempt + 1) * 3000);
+        continue;
+      }
+      
+      console.error('Short-poll failed:', JSON.stringify(shortPollData));
+      return errorResponse(`Initial getUpdates failed: ${JSON.stringify(shortPollData)}`);
+    }
+
+    // Step 3: Main long-poll loop
     let consecutive409 = 0;
 
     while (true) {
@@ -63,25 +112,17 @@ Deno.serve(async () => {
       if (!response.ok) {
         if (data?.error_code === 409) {
           consecutive409++;
-          console.warn(`409 conflict #${consecutive409} - waiting before retry`);
-          
+          console.warn(`Long-poll 409 #${consecutive409}`);
           if (consecutive409 >= 3) {
-            console.error('3 consecutive 409s - forcing webhook delete and retrying');
-            await forceDeleteWebhook(BOT_TOKEN);
-            // Wait 3 seconds for Telegram to release the connection
-            await sleep(3000);
-            consecutive409 = 0;
-            continue;
+            console.error('Persistent 409 in long-poll, ending this run');
+            break;
           }
-          
-          // Wait progressively longer: 2s, 4s
-          await sleep(consecutive409 * 2000);
+          await sleep(3000);
           continue;
         }
         return errorResponse(`getUpdates failed: ${JSON.stringify(data)}`);
       }
 
-      // Reset 409 counter on success
       consecutive409 = 0;
 
       const updates = data.result ?? [];
