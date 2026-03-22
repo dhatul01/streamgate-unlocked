@@ -102,12 +102,24 @@ const MembershipPage = () => {
   const handleBuy = (show: Show) => {
     setSelectedShow(show);
     setPurchaseMethod(null);
-    setPurchaseStep("choose");
     setProofUrl("");
     setPhone("");
     setEmail("");
     setResultGroupLink("");
     fetchBalance();
+
+    // If coin-only mode, skip choose step
+    if (coinOnly && show.coin_price > 0) {
+      setPurchaseMethod("coin");
+      // Check balance immediately  
+      supabase.from("coin_balances").select("balance").eq("user_id", "").maybeSingle(); // just trigger balance refresh
+      fetchBalance().then(() => {
+        // Will be handled by the component re-render
+      });
+      setPurchaseStep("coin_info");
+      return;
+    }
+    setPurchaseStep("choose");
   };
 
   const handleChooseQris = () => {
