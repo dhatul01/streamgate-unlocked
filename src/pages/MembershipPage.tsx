@@ -39,6 +39,7 @@ const MembershipPage = () => {
   const [coinBalance, setCoinBalance] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [resultGroupLink, setResultGroupLink] = useState("");
+  const [coinOnly, setCoinOnly] = useState(false);
 
   const fetchData = async () => {
     const { data: allShows } = await supabase.rpc("get_public_shows");
@@ -66,6 +67,12 @@ const MembershipPage = () => {
     fetchData();
     fetchBalance();
 
+    // Fetch coin-only setting
+    supabase.from("site_settings").select("value").eq("key", "membership_coin_only").maybeSingle()
+      .then(({ data }) => {
+        if (data?.value === "true") setCoinOnly(true);
+      });
+
     const showChannel = supabase
       .channel("membership-shows")
       .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, () => fetchData())
@@ -76,21 +83,50 @@ const MembershipPage = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "subscription_orders" }, () => fetchData())
       .subscribe();
 
+    const settingsChannel = supabase
+      .channel("membership-settings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, (payload: any) => {
+        if (payload.new?.key === "membership_coin_only") {
+          setCoinOnly(payload.new.value === "true");
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(showChannel);
       supabase.removeChannel(orderChannel);
+      supabase.removeChannel(settingsChannel);
     };
   }, []);
 
-  const handleBuy = (show: Show) => {
+  const handleBuy = async (show: Show) => {
     setSelectedShow(show);
     setPurchaseMethod(null);
-    setPurchaseStep("choose");
     setProofUrl("");
     setPhone("");
     setEmail("");
     setResultGroupLink("");
-    fetchBalance();
+    await fetchBalance();
+
+    // If coin-only mode, skip choose step and go directly to coin
+    if (coinOnly && show.coin_price > 0) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast({ title: "Silakan login terlebih dahulu", variant: "destructive" });
+        return;
+      }
+      const { data: bal } = await supabase.from("coin_balances").select("balance").eq("user_id", session.user.id).maybeSingle();
+      const currentBalance = bal?.balance || 0;
+      setCoinBalance(currentBalance);
+      setPurchaseMethod("coin");
+      if (currentBalance < show.coin_price) {
+        setPurchaseStep("coin_insufficient");
+      } else {
+        setPurchaseStep("coin_info");
+      }
+      return;
+    }
+    setPurchaseStep("choose");
   };
 
   const handleChooseQris = () => {
@@ -260,7 +296,7 @@ const MembershipPage = () => {
 
                   {show.coin_price > 0 && (
                     <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-                      <Coins className="h-3.5 w-3.5" /> atau {show.coin_price} Koin
+                      <Coins className="h-3.5 w-3.5" /> {coinOnly ? `${show.coin_price} Koin` : `atau ${show.coin_price} Koin`}
                     </div>
                   )}
 
@@ -337,18 +373,20 @@ const MembershipPage = () => {
             {purchaseStep === "choose" && (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Pilih metode pembayaran:</p>
-                <button
-                  onClick={handleChooseQris}
-                  className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-yellow-500 hover:bg-yellow-500/5"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
-                    <Upload className="h-5 w-5 text-yellow-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Bayar via QRIS</p>
-                    <p className="text-xs text-muted-foreground">Scan QRIS & upload bukti pembayaran</p>
-                  </div>
-                </button>
+                {!coinOnly && (
+                  <button
+                    onClick={handleChooseQris}
+                    className="flex w-full items-center gap-3 rounded-xl border-2 border-border bg-background p-4 text-left transition hover:border-yellow-500 hover:bg-yellow-500/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
+                      <Upload className="h-5 w-5 text-yellow-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Bayar via QRIS</p>
+                      <p className="text-xs text-muted-foreground">Scan QRIS & upload bukti pembayaran</p>
+                    </div>
+                  </button>
+                )}
                 {selectedShow.coin_price > 0 && (
                   <button
                     onClick={handleChooseCoin}

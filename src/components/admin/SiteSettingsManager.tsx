@@ -143,6 +143,33 @@ const SiteSettingsManager = () => {
         </div>
         <p className="mt-1 text-[10px] text-muted-foreground">Tampilkan banner pengumuman di halaman utama</p>
       </div>
+
+      {/* Membership coin-only toggle */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Mode Pembayaran Membership</label>
+        <p className="mb-2 text-[10px] text-muted-foreground">Jika diaktifkan, membership hanya bisa dibeli dengan koin (QRIS dinonaktifkan).</p>
+        <div className="flex gap-2">
+          {[
+            { value: "false", label: "🔓 QRIS + Koin" },
+            { value: "true", label: "🪙 Koin Saja" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, membership_coin_only: opt.value }));
+                saveSetting("membership_coin_only", opt.value);
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                (values.membership_coin_only || "false") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Layout Deskripsi Landing Page</label>
         <p className="mb-2 text-[10px] text-muted-foreground">Pilih tampilan section deskripsi: daftar vertikal atau kartu grid.</p>
