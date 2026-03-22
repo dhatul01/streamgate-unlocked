@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["logo.png", "placeholder.svg"],
+      includeAssets: ["logo.png", "logo.webp", "placeholder.svg"],
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
