@@ -926,11 +926,22 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground text-center tv:text-sm">
                   Setelah melakukan pembayaran, upload bukti transfer:
                 </p>
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 tv:py-6 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10 tv:text-base">
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-4 tv:py-6 text-sm font-medium text-primary transition hover:border-primary hover:bg-primary/10 tv:text-base"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*,.heic,.heif";
+                    input.capture = "environment";
+                    input.onchange = (e) => handleUploadProof(e as any);
+                    input.click();
+                  }}
+                  disabled={uploadingProof}
+                >
                   <Upload className="h-4 w-4 tv:h-6 tv:w-6" />
                   {uploadingProof ? "Mengupload..." : "Upload Bukti Pembayaran"}
-                  <input type="file" accept="image/*,.heic,.heif" capture="environment" className="hidden" onChange={handleUploadProof} />
-                </label>
+                </button>
               </div>
             )}
 
