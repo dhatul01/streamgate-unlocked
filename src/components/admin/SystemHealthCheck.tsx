@@ -52,17 +52,24 @@ const SystemHealthCheck = () => {
       results.push({ label: "Authentication", status: "error", detail: e.message, icon: Shield });
     }
 
-    // 3. Edge Functions (test with a lightweight call)
+    // 3. Edge Functions (test with admin-live-logs which has proper CORS + auth)
     const efStart = performance.now();
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-poll`, {
-        method: "OPTIONS",
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-live-logs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token || ""}`,
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        },
+        body: JSON.stringify({}),
       });
       const ms = Math.round(performance.now() - efStart);
       results.push({
         label: "Edge Functions",
-        status: ms > 5000 ? "warn" : "ok",
-        detail: `Respons ${ms}ms (status ${res.status})`,
+        status: res.ok ? (ms > 5000 ? "warn" : "ok") : "warn",
+        detail: res.ok ? `Respons ${ms}ms` : `Status ${res.status} (${ms}ms)`,
         icon: Zap,
         ms,
       });
