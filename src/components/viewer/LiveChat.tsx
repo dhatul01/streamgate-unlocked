@@ -166,8 +166,9 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       const { data } = await supabase
         .from("chat_messages")
         .select("*")
-        .order("created_at", { ascending: true })
-        .limit(50);
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (data) data.reverse();
       if (data) {
         startTransition(() => {
           setMessages(data);
@@ -189,8 +190,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
               const newMsg = payload.new as ChatMessage;
               setMessages((prev) => {
                 const next = [...prev, newMsg];
-                // Trim to last 100 messages to prevent memory growth during long streams
-                return next.length > 100 ? next.slice(-100) : next;
+                // Keep only last 30 messages on screen
+                return next.length > 30 ? next.slice(-30) : next;
               });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
             } else if (payload.eventType === "DELETE") {
