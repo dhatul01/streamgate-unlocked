@@ -47,12 +47,20 @@ const MonitorView = () => {
 
   const handleResetChat = async () => {
     setResetting(true);
-    const { error } = await supabase.from("chat_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    const { data, error } = await supabase.rpc("admin_reset_chat");
     setResetting(false);
-    if (error) {
-      toast({ title: "Gagal mereset chat", variant: "destructive" });
+    const result = data as { success?: boolean; deleted?: number; error?: string } | null;
+    if (error || !result?.success) {
+      toast({
+        title: "Gagal mereset chat",
+        description: result?.error || error?.message || "Terjadi kesalahan",
+        variant: "destructive",
+      });
     } else {
-      toast({ title: "Live chat berhasil direset" });
+      toast({
+        title: "✅ Live chat berhasil direset",
+        description: `${result.deleted ?? 0} pesan dihapus. Pesan yang di-pin tetap dipertahankan.`,
+      });
     }
   };
 
@@ -101,7 +109,7 @@ const MonitorView = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Live Chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              Semua pesan chat (termasuk yang di-pin) akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+              Semua pesan chat akan dihapus secara permanen, kecuali pesan yang di-pin. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
