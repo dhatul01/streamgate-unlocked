@@ -78,6 +78,31 @@ function useCountdown(dateStr: string, timeStr: string) {
   return { text, now };
 }
 
+// Shared member-photo cache (loaded once across all ShowCards)
+type MemberPhoto = { name: string; photo_url: string };
+let _memberCache: MemberPhoto[] | null = null;
+let _memberPromise: Promise<MemberPhoto[]> | null = null;
+const loadMembers = (): Promise<MemberPhoto[]> => {
+  if (_memberCache) return Promise.resolve(_memberCache);
+  if (_memberPromise) return _memberPromise;
+  _memberPromise = supabase
+    .from("members")
+    .select("name, photo_url")
+    .then(({ data }) => {
+      _memberCache = (data as MemberPhoto[] | null) || [];
+      return _memberCache;
+    });
+  return _memberPromise;
+};
+function useMemberPhotos() {
+  const [list, setList] = useState<MemberPhoto[]>(_memberCache || []);
+  useEffect(() => {
+    if (_memberCache) return;
+    loadMembers().then(setList);
+  }, []);
+  return list;
+}
+
 const ShowCard = ({
   show, index, isReplayMode, redeemedToken, accessPassword, replayPassword,
   onBuy, onCoinBuy, showCountdown = true,
