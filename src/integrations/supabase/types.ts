@@ -413,6 +413,33 @@ export type Database = {
         }
         Relationships: []
       }
+      members: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          photo_url: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          photo_url?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          photo_url?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       moderator_playlists: {
         Row: {
           created_at: string
