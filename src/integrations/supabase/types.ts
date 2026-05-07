@@ -1172,6 +1172,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_reset_chat: { Args: never; Returns: Json }
       check_rate_limit: {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
         Returns: boolean
