@@ -109,7 +109,7 @@ const MonitorView = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Live Chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              Semua pesan chat (termasuk yang di-pin) akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+              Semua pesan chat akan dihapus secara permanen, kecuali pesan yang di-pin. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
