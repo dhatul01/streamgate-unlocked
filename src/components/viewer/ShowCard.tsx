@@ -85,13 +85,11 @@ let _memberPromise: Promise<MemberPhoto[]> | null = null;
 const loadMembers = (): Promise<MemberPhoto[]> => {
   if (_memberCache) return Promise.resolve(_memberCache);
   if (_memberPromise) return _memberPromise;
-  _memberPromise = supabase
-    .from("members")
-    .select("name, photo_url")
-    .then(({ data }) => {
-      _memberCache = (data as MemberPhoto[] | null) || [];
-      return _memberCache;
-    });
+  _memberPromise = (async () => {
+    const { data } = await supabase.from("members").select("name, photo_url");
+    _memberCache = (data as MemberPhoto[] | null) || [];
+    return _memberCache;
+  })();
   return _memberPromise;
 };
 function useMemberPhotos() {
