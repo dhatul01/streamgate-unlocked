@@ -21,6 +21,7 @@ import PollManager from "@/components/admin/PollManager";
 import SecurityLogManager from "@/components/admin/SecurityLogManager";
 import SystemHealthCheck from "@/components/admin/SystemHealthCheck";
 import AdminLiveLogs from "@/components/admin/AdminLiveLogs";
+import MemberManager from "@/components/admin/MemberManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
