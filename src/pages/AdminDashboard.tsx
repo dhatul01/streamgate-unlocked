@@ -73,6 +73,7 @@ const AdminDashboard = () => {
       case "live": return <LiveControl />;
       case "tokens": return <TokenFactory />;
       case "shows": return <ShowManager />;
+      case "members": return <MemberManager />;
       case "orders": return <SubscriptionOrderManager />;
       case "coin-packages": return userRole === "admin" ? <CoinPackageManager /> : null;
       case "coin-orders": return <CoinOrderManager />;
