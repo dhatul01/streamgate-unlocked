@@ -111,6 +111,18 @@ const ShowCard = ({
   const pw = accessPassword || replayPassword;
   const hasPw = pw && pw !== "__purchased__";
 
+  // Match lineup names against the member photo library
+  const memberPhotos = useMemberPhotos();
+  const lineupMembers = useMemo(() => {
+    if (!show.lineup) return [];
+    const names = show.lineup.split(/[,\n;|]/).map((s) => s.trim()).filter(Boolean);
+    return names.map((name) => {
+      const match = memberPhotos.find((m) => m.name.toLowerCase() === name.toLowerCase());
+      return { name, photo_url: match?.photo_url || "" };
+    });
+  }, [show.lineup, memberPhotos]);
+  const hasMemberPhotos = lineupMembers.some((m) => m.photo_url);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
