@@ -197,10 +197,39 @@ const ShowCard = ({
           </div>
         )}
         {show.lineup && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
-            <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
-            <span className="line-clamp-2">{show.lineup}</span>
-          </div>
+          hasMemberPhotos ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Users className="h-4 w-4 text-primary" /> Lineup
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+                {lineupMembers.map((m, i) => (
+                  <div key={`${m.name}-${i}`} className="flex shrink-0 flex-col items-center gap-1.5 w-16 tv:w-20">
+                    {m.photo_url ? (
+                      <img
+                        src={m.photo_url}
+                        alt={m.name}
+                        loading="lazy"
+                        className="h-14 w-14 tv:h-20 tv:w-20 rounded-full object-cover border-2 border-primary/40 shadow-md shadow-primary/10"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 tv:h-20 tv:w-20 rounded-full bg-secondary border-2 border-border flex items-center justify-center text-base font-bold text-muted-foreground">
+                        {m.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-[10px] tv:text-xs text-foreground/90 text-center truncate w-full">
+                      {m.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
+              <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
+              <span className="line-clamp-2">{show.lineup}</span>
+            </div>
+          )
         )}
 
         {/* Action buttons */}
