@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import {
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { Show } from "@/types/show";
 import { SHOW_CATEGORIES } from "@/types/show";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ShowCardProps {
   show: Show;
@@ -77,6 +78,29 @@ function useCountdown(dateStr: string, timeStr: string) {
   return { text, now };
 }
 
+// Shared member-photo cache (loaded once across all ShowCards)
+type MemberPhoto = { name: string; photo_url: string };
+let _memberCache: MemberPhoto[] | null = null;
+let _memberPromise: Promise<MemberPhoto[]> | null = null;
+const loadMembers = (): Promise<MemberPhoto[]> => {
+  if (_memberCache) return Promise.resolve(_memberCache);
+  if (_memberPromise) return _memberPromise;
+  _memberPromise = (async () => {
+    const { data } = await supabase.from("members").select("name, photo_url");
+    _memberCache = (data as MemberPhoto[] | null) || [];
+    return _memberCache;
+  })();
+  return _memberPromise;
+};
+function useMemberPhotos() {
+  const [list, setList] = useState<MemberPhoto[]>(_memberCache || []);
+  useEffect(() => {
+    if (_memberCache) return;
+    loadMembers().then(setList);
+  }, []);
+  return list;
+}
+
 const ShowCard = ({
   show, index, isReplayMode, redeemedToken, accessPassword, replayPassword,
   onBuy, onCoinBuy, showCountdown = true,
@@ -86,6 +110,18 @@ const ShowCard = ({
 
   const pw = accessPassword || replayPassword;
   const hasPw = pw && pw !== "__purchased__";
+
+  // Match lineup names against the member photo library
+  const memberPhotos = useMemberPhotos();
+  const lineupMembers = useMemo(() => {
+    if (!show.lineup) return [];
+    const names = show.lineup.split(/[,\n;|]/).map((s) => s.trim()).filter(Boolean);
+    return names.map((name) => {
+      const match = memberPhotos.find((m) => m.name.toLowerCase() === name.toLowerCase());
+      return { name, photo_url: match?.photo_url || "" };
+    });
+  }, [show.lineup, memberPhotos]);
+  const hasMemberPhotos = lineupMembers.some((m) => m.photo_url);
 
   return (
     <motion.div
@@ -161,10 +197,39 @@ const ShowCard = ({
           </div>
         )}
         {show.lineup && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
-            <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
-            <span className="line-clamp-2">{show.lineup}</span>
-          </div>
+          hasMemberPhotos ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Users className="h-4 w-4 text-primary" /> Lineup
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+                {lineupMembers.map((m, i) => (
+                  <div key={`${m.name}-${i}`} className="flex shrink-0 flex-col items-center gap-1.5 w-16 tv:w-20">
+                    {m.photo_url ? (
+                      <img
+                        src={m.photo_url}
+                        alt={m.name}
+                        loading="lazy"
+                        className="h-14 w-14 tv:h-20 tv:w-20 rounded-full object-cover border-2 border-primary/40 shadow-md shadow-primary/10"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 tv:h-20 tv:w-20 rounded-full bg-secondary border-2 border-border flex items-center justify-center text-base font-bold text-muted-foreground">
+                        {m.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-[10px] tv:text-xs text-foreground/90 text-center truncate w-full">
+                      {m.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground tv:text-base">
+              <Users className="mt-0.5 h-4 w-4 tv:h-5 tv:w-5 text-primary" />
+              <span className="line-clamp-2">{show.lineup}</span>
+            </div>
+          )
         )}
 
         {/* Action buttons */}

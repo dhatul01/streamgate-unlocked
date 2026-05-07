@@ -21,6 +21,7 @@ import PollManager from "@/components/admin/PollManager";
 import SecurityLogManager from "@/components/admin/SecurityLogManager";
 import SystemHealthCheck from "@/components/admin/SystemHealthCheck";
 import AdminLiveLogs from "@/components/admin/AdminLiveLogs";
+import MemberManager from "@/components/admin/MemberManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -72,6 +73,7 @@ const AdminDashboard = () => {
       case "live": return <LiveControl />;
       case "tokens": return <TokenFactory />;
       case "shows": return <ShowManager />;
+      case "members": return <MemberManager />;
       case "orders": return <SubscriptionOrderManager />;
       case "coin-packages": return userRole === "admin" ? <CoinPackageManager /> : null;
       case "coin-orders": return <CoinOrderManager />;
