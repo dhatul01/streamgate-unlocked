@@ -1,0 +1,1 @@
+INSERT INTO public.streams (title, description, is_live) VALUES ('Live Stream', '', false);
