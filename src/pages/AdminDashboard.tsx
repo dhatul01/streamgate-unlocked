@@ -22,6 +22,8 @@ import SecurityLogManager from "@/components/admin/SecurityLogManager";
 import SystemHealthCheck from "@/components/admin/SystemHealthCheck";
 import AdminLiveLogs from "@/components/admin/AdminLiveLogs";
 import MemberManager from "@/components/admin/MemberManager";
+import IpManager from "@/components/admin/IpManager";
+import UserManager from "@/components/admin/UserManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -80,6 +82,8 @@ const AdminDashboard = () => {
       case "descriptions": return <LandingDescriptionManager />;
       case "polls": return <PollManager />;
       case "security": return userRole === "admin" ? <SecurityLogManager /> : null;
+      case "ip-manager": return userRole === "admin" ? <IpManager /> : null;
+      case "user-manager": return userRole === "admin" ? <UserManager /> : null;
       case "health": return userRole === "admin" ? <SystemHealthCheck /> : null;
       case "live-logs": return userRole === "admin" ? <AdminLiveLogs /> : null;
       case "monitor": return <MonitorView />;
