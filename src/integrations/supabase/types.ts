@@ -101,6 +101,42 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_ips: {
+        Row: {
+          auto_blocked: boolean
+          blocked_at: string
+          id: string
+          ip_address: string
+          is_active: boolean
+          reason: string
+          unblocked_at: string | null
+          unblocked_by: string | null
+          violation_count: number
+        }
+        Insert: {
+          auto_blocked?: boolean
+          blocked_at?: string
+          id?: string
+          ip_address: string
+          is_active?: boolean
+          reason?: string
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+          violation_count?: number
+        }
+        Update: {
+          auto_blocked?: boolean
+          blocked_at?: string
+          id?: string
+          ip_address?: string
+          is_active?: boolean
+          reason?: string
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+          violation_count?: number
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_at: string
@@ -347,6 +383,36 @@ export type Database = {
           reference_id?: string | null
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ip_visit_log: {
+        Row: {
+          first_seen_at: string
+          id: string
+          ip_address: string
+          last_seen_at: string
+          path: string | null
+          user_agent: string | null
+          visit_count: number
+        }
+        Insert: {
+          first_seen_at?: string
+          id?: string
+          ip_address: string
+          last_seen_at?: string
+          path?: string | null
+          user_agent?: string | null
+          visit_count?: number
+        }
+        Update: {
+          first_seen_at?: string
+          id?: string
+          ip_address?: string
+          last_seen_at?: string
+          path?: string | null
+          user_agent?: string | null
+          visit_count?: number
         }
         Relationships: []
       }
@@ -692,6 +758,30 @@ export type Database = {
           created_at?: string
           id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      rate_limit_violations: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          ip_address: string
+          violation_key: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address: string
+          violation_key?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          ip_address?: string
+          violation_key?: string
         }
         Relationships: []
       }
@@ -1126,6 +1216,21 @@ export type Database = {
         }
         Relationships: []
       }
+      viewer_presence: {
+        Row: {
+          last_seen_at: string
+          viewer_key: string
+        }
+        Insert: {
+          last_seen_at?: string
+          viewer_key: string
+        }
+        Update: {
+          last_seen_at?: string
+          viewer_key?: string
+        }
+        Relationships: []
+      }
       watch_parties: {
         Row: {
           created_at: string
@@ -1199,6 +1304,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_coins: {
+        Args: { _amount: number; _reason: string; _user_id: string }
+        Returns: Json
+      }
       admin_reset_chat: { Args: never; Returns: Json }
       check_rate_limit: {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
@@ -1207,6 +1316,7 @@ export type Database = {
       claim_referral: { Args: { _code: string }; Returns: Json }
       cleanup_old_otp_codes: { Args: never; Returns: undefined }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      cleanup_viewer_presence: { Args: never; Returns: undefined }
       confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
       create_token_session: {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
@@ -1306,6 +1416,7 @@ export type Database = {
         }
       }
       get_purchased_show_passwords: { Args: never; Returns: Json }
+      get_viewer_count: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1366,6 +1477,7 @@ export type Database = {
         Returns: Json
       }
       validate_token: { Args: { _code: string }; Returns: Json }
+      viewer_heartbeat: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
