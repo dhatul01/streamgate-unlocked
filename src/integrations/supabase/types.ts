@@ -1313,6 +1313,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_auth_user: {
+        Args: { _email: string; _id: string; _username: string }
+        Returns: undefined
+      }
       log_security_event: {
         Args: {
           _description: string
