@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer from "@/components/viewer/VideoPlayer";
 import LiveChat from "@/components/viewer/LiveChat";
+import LiveViewerCount from "@/components/viewer/LiveViewerCount";
 import ChatModeratorManager from "@/components/admin/ChatModeratorManager";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
