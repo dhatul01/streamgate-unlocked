@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.webp";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
@@ -22,6 +22,8 @@ const allSections = [
   { id: "descriptions", label: "Deskripsi LP", icon: FileText, adminOnly: false },
   { id: "polls", label: "Live Poll", icon: BarChart3, adminOnly: false },
   { id: "security", label: "Security Log", icon: Shield, adminOnly: true },
+  { id: "ip-manager", label: "IP Manager", icon: Globe, adminOnly: true },
+  { id: "user-manager", label: "User Manager", icon: UserCog, adminOnly: true },
   { id: "health", label: "System Health", icon: Activity, adminOnly: true },
   { id: "live-logs", label: "Live Logs", icon: ScrollText, adminOnly: true },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
