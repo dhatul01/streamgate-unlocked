@@ -96,7 +96,10 @@ const MonitorView = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold text-foreground">📺 Monitor</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-foreground">📺 Monitor</h2>
+        <LiveViewerCount isLive={stream?.is_live || false} />
+      </div>
 
       {/* Reset Chat Button */}
       <AlertDialog>
