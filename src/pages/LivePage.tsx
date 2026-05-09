@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense, memo
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
+import LiveViewerCount from "@/components/viewer/LiveViewerCount";
 import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 
 // Lazy load heavy components
