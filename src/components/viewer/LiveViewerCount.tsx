@@ -49,7 +49,7 @@ const LiveViewerCount = ({ isLive, trackPresence = false }: Props) => {
       }
     };
     fetchCount();
-    const poll = setInterval(fetchCount, 5_000);
+    const poll = setInterval(fetchCount, 10_000);
     return () => { cancelled = true; clearInterval(poll); };
   }, [isLive, trackPresence]);
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense, memo
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPlayer, { VideoPlayerHandle } from "@/components/viewer/VideoPlayer";
+import LiveViewerCount from "@/components/viewer/LiveViewerCount";
 import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 
 // Lazy load heavy components
@@ -664,10 +665,13 @@ const LivePage = () => {
             <p className="text-xs text-muted-foreground tv:text-base truncate">{stream?.description}</p>
           </div>
           {isLive ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base shrink-0">
-              <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
-              LIVE
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <LiveViewerCount isLive={isLive} trackPresence />
+              <span className="flex items-center gap-1.5 rounded-full bg-destructive/20 px-3 py-1 tv:px-5 tv:py-2 text-xs font-semibold text-destructive tv:text-base">
+                <span className="h-2 w-2 tv:h-3 tv:w-3 animate-pulse rounded-full bg-destructive" />
+                LIVE
+              </span>
+            </div>
           ) : (
             <span className="rounded-full bg-muted px-3 py-1 tv:px-5 tv:py-2 text-xs font-medium text-muted-foreground tv:text-base shrink-0">
               OFFLINE
