@@ -6,7 +6,7 @@ import LiveViewerCount from "@/components/viewer/LiveViewerCount";
 import ChatModeratorManager from "@/components/admin/ChatModeratorManager";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye, EyeOff } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
