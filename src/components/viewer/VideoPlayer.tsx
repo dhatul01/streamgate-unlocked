@@ -30,6 +30,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ytMuted, setYtMuted] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [cloudflareKey, setCloudflareKey] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const ytPlayerRef = useRef<any>(null);
@@ -38,6 +39,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
+  // Reconnect tracking — exponential backoff for 7-hour stability
+  const reconnectAttemptRef = useRef(0);
+  const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
+  const lastProgressRef = useRef({ time: 0, at: Date.now() });
 
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
