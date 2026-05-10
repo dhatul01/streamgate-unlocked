@@ -242,31 +242,79 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setIsLoading(false);
         setIsSwitchingQuality(false);
         if (data.fatal) {
+          const attempt = ++reconnectAttemptRef.current;
+          // Exponential backoff capped at 30s — handles network blips during 7h streams
+          const backoff = Math.min(1500 * Math.pow(1.5, Math.min(attempt - 1, 8)), 30_000);
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
+              setTimeout(() => { if (!destroyed && hls) hls.startLoad(); }, backoff);
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
+              try { hls.recoverMediaError(); } catch {}
               break;
             default:
-              hls.destroy();
+              try { hls.destroy(); } catch {}
               hlsRef.current = null;
               hlsInitRef.current = false;
-              // Reinit after delay
-              setTimeout(() => {
-                if (!destroyed) initHls();
-              }, 3000);
+              setTimeout(() => { if (!destroyed) initHls(); }, backoff);
               break;
           }
         }
       });
+
+      hls.on(Hls.Events.FRAG_LOADED, () => { reconnectAttemptRef.current = 0; });
     };
 
     initHls();
 
+    // Stall watchdog: if currentTime hasn't advanced in 15s while supposedly playing → recover
+    lastProgressRef.current = { time: 0, at: Date.now() };
+    stallWatchdogRef.current = setInterval(() => {
+      if (destroyed || !videoRef.current || !hlsRef.current) return;
+      const v = videoRef.current;
+      if (v.paused || v.ended || document.hidden) {
+        lastProgressRef.current = { time: v.currentTime, at: Date.now() };
+        return;
+      }
+      const now = Date.now();
+      if (v.currentTime !== lastProgressRef.current.time) {
+        lastProgressRef.current = { time: v.currentTime, at: now };
+        return;
+      }
+      if (now - lastProgressRef.current.at > 15_000) {
+        // Stalled — try jump to live edge first, then recover
+        try {
+          if (hlsRef.current.liveSyncPosition) {
+            v.currentTime = hlsRef.current.liveSyncPosition;
+          }
+          v.play().catch(() => {});
+        } catch {}
+        const sinceStall = now - lastProgressRef.current.at;
+        if (sinceStall > 30_000) {
+          try { hlsRef.current.recoverMediaError(); } catch {}
+        }
+        if (sinceStall > 60_000) {
+          // Full reinit as last resort
+          try { hlsRef.current.destroy(); } catch {}
+          hlsRef.current = null;
+          hlsInitRef.current = false;
+          if (!destroyed) initHls();
+        }
+        lastProgressRef.current = { time: v.currentTime, at: now };
+      }
+    }, 5_000);
+
+    // Auto-recover on network reconnect
+    const onOnline = () => {
+      if (destroyed || !hlsRef.current) return;
+      try { hlsRef.current.startLoad(); } catch {}
+    };
+    window.addEventListener("online", onOnline);
+
     return () => {
       destroyed = true;
+      clearInterval(stallWatchdogRef.current);
+      window.removeEventListener("online", onOnline);
       if (hls) {
         hls.destroy();
         hlsRef.current = null;
