@@ -1309,6 +1309,7 @@ export type Database = {
         Returns: Json
       }
       admin_reset_chat: { Args: never; Returns: Json }
+      check_ip_banned: { Args: { _ip: string }; Returns: Json }
       check_rate_limit: {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
         Returns: boolean
@@ -1426,6 +1427,10 @@ export type Database = {
       }
       import_auth_user: {
         Args: { _email: string; _id: string; _username: string }
+        Returns: undefined
+      }
+      log_ip_visit: {
+        Args: { _ip: string; _path: string; _ua: string }
         Returns: undefined
       }
       log_security_event: {
