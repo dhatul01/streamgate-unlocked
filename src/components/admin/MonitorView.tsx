@@ -24,6 +24,9 @@ const MonitorView = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [resetting, setResetting] = useState(false);
+  // Default OFF — admin opts in to load player so 1000 viewer streams don't get
+  // an extra bandwidth/CPU client per admin tab.
+  const [previewEnabled, setPreviewEnabled] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
