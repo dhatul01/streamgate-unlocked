@@ -31,26 +31,39 @@ const LiveViewerCount = ({ isLive, trackPresence = false }: Props) => {
       });
     });
 
-    const hbInterval = setInterval(() => {
-      supabase.rpc("viewer_heartbeat", { _key: key }).then(() => {});
-    }, 25_000);
+    // Heartbeat every 30s ± 5s jitter — spreads load across 1000 viewers
+    let hbTimer: ReturnType<typeof setTimeout>;
+    const scheduleHb = () => {
+      const delay = 25_000 + Math.random() * 10_000;
+      hbTimer = setTimeout(() => {
+        supabase.rpc("viewer_heartbeat", { _key: key }).then(() => {});
+        scheduleHb();
+      }, delay);
+    };
+    scheduleHb();
 
-    return () => clearInterval(hbInterval);
+    return () => clearTimeout(hbTimer);
   }, [isLive, trackPresence]);
 
   useEffect(() => {
     if (!isLive) { setCount(0); return; }
 
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout>;
     const fetchCount = async () => {
       const { data } = await supabase.rpc("get_viewer_count");
       if (!cancelled && typeof data === "number") {
         setCount(trackPresence && viewerKeyRef.current ? Math.max(data, 1) : data);
       }
     };
-    fetchCount();
-    const poll = setInterval(fetchCount, 10_000);
-    return () => { cancelled = true; clearInterval(poll); };
+    // Initial fetch with small random delay to avoid thundering herd on page load
+    pollTimer = setTimeout(function loop() {
+      if (cancelled) return;
+      fetchCount();
+      // Poll every 15s ± 5s jitter
+      pollTimer = setTimeout(loop, 12_000 + Math.random() * 6_000);
+    }, Math.random() * 2_000);
+    return () => { cancelled = true; clearTimeout(pollTimer); };
   }, [isLive, trackPresence]);
 
   if (!isLive || count === 0) return null;
