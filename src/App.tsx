@@ -7,6 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import InstallBanner from "@/components/viewer/InstallBanner";
 import SecurityAlert from "@/components/viewer/SecurityAlert";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import IpGate from "@/components/viewer/IpGate";
+import RouteTransition from "@/components/viewer/RouteTransition";
+import MobileBottomNav from "@/components/viewer/MobileBottomNav";
 
 const Index = lazy(() => import("./pages/Index"));
 const LivePage = lazy(() => import("./pages/LivePage"));
@@ -66,23 +69,28 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/live" element={<LivePage />} />
-              <Route path="/admin" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/membership" element={<MembershipPage />} />
-              <Route path="/auth" element={<ViewerAuth />} />
-              <Route path="/coins" element={<CoinShop />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/profile" element={<ViewerProfile />} />
-              <Route path="/replay" element={<ReplayPage />} />
-              <Route path="/schedule" element={<SchedulePage />} />
-              <Route path="/install" element={<InstallPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <IpGate>
+            <Suspense fallback={<PageLoader />}>
+              <RouteTransition>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/live" element={<LivePage />} />
+                  <Route path="/admin" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/membership" element={<MembershipPage />} />
+                  <Route path="/auth" element={<ViewerAuth />} />
+                  <Route path="/coins" element={<CoinShop />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/profile" element={<ViewerProfile />} />
+                  <Route path="/replay" element={<ReplayPage />} />
+                  <Route path="/schedule" element={<SchedulePage />} />
+                  <Route path="/install" element={<InstallPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </RouteTransition>
+            </Suspense>
+            <MobileBottomNav />
+          </IpGate>
         </BrowserRouter>
         <InstallBanner />
         <SecurityAlert />
