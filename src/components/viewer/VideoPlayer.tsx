@@ -471,12 +471,28 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist, autoPlay, decryptUrl, obfuscate, deobfuscate]);
 
-  // Cloudflare loading
+  // Cloudflare loading + auto-reconnect on network/visibility
   useEffect(() => {
-    if (playlist.type === "cloudflare") {
-      const timer = setTimeout(() => setIsLoading(false), 2000);
-      return () => clearTimeout(timer);
-    }
+    if (playlist.type !== "cloudflare") return;
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    let lastReload = Date.now();
+    const reload = () => {
+      // Throttle reloads to max 1 per 10s
+      if (Date.now() - lastReload < 10_000) return;
+      lastReload = Date.now();
+      setCloudflareKey((k) => k + 1);
+      setIsLoading(true);
+      setTimeout(() => setIsLoading(false), 2000);
+    };
+    const onOnline = () => reload();
+    const onVisible = () => { if (!document.hidden) reload(); };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [playlist]);
 
   const togglePlay = useCallback((e?: React.MouseEvent) => {
