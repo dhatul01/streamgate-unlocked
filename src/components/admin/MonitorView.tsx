@@ -6,7 +6,7 @@ import LiveViewerCount from "@/components/viewer/LiveViewerCount";
 import ChatModeratorManager from "@/components/admin/ChatModeratorManager";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Eye, EyeOff } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,9 @@ const MonitorView = () => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<any>(null);
   const [resetting, setResetting] = useState(false);
+  // Default OFF — admin opts in to load player so 1000 viewer streams don't get
+  // an extra bandwidth/CPU client per admin tab.
+  const [previewEnabled, setPreviewEnabled] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -124,18 +127,32 @@ const MonitorView = () => {
       </AlertDialog>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Player */}
+        {/* Player — opt-in to avoid extra streaming load during peak viewers */}
         <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Live Preview</span>
+            <Button
+              variant={previewEnabled ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setPreviewEnabled((v) => !v)}
+              className="gap-2"
+            >
+              {previewEnabled ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {previewEnabled ? "Sembunyikan" : "Tampilkan"}
+            </Button>
+          </div>
           <div className="rounded-xl border border-border overflow-hidden">
-            {activePlaylist ? (
-              <VideoPlayer playlist={activePlaylist} />
+            {previewEnabled && activePlaylist ? (
+              <VideoPlayer playlist={activePlaylist} autoPlay={false} />
             ) : (
               <div className="flex aspect-video items-center justify-center bg-card">
-                <p className="text-sm text-muted-foreground">Tidak ada sumber video</p>
+                <p className="text-sm text-muted-foreground">
+                  {activePlaylist ? "Klik 'Tampilkan' untuk memuat preview" : "Tidak ada sumber video"}
+                </p>
               </div>
             )}
           </div>
-          {playlists.length > 1 && (
+          {previewEnabled && playlists.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
               {playlists.map((p) => (
                 <button
