@@ -22,6 +22,8 @@ import ShowCard from "@/components/viewer/ShowCard";
 import PurchaseModal from "@/components/viewer/PurchaseModal";
 import { SHOW_CATEGORIES } from "@/types/show";
 import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
+import HeroVideoBackground from "@/components/viewer/HeroVideoBackground";
+import { LandingShowsSkeleton } from "@/components/viewer/SkeletonLoaders";
 
 
 
@@ -53,6 +55,7 @@ interface SiteSettings {
 const Index = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
+  const [loadingShows, setLoadingShows] = useState(true);
   const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
@@ -120,6 +123,7 @@ const Index = () => {
       setSettings((prev) => ({ ...prev, ...s }));
     }
     if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
+    setLoadingShows(false);
   };
 
   // Helper: check if show scheduled time has already passed
@@ -564,6 +568,7 @@ const Index = () => {
       <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden pt-16 tv:pt-24">
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="h-full w-full object-cover opacity-40" />
+          <HeroVideoBackground url={settings.hero_video_url} poster={heroBg} brightness={55} />
           <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background" />
         </div>
 
@@ -810,7 +815,9 @@ const Index = () => {
             🎭 Jadwal Show
           </motion.h2>
 
-          {regularShows.length === 0 ? (
+          {loadingShows ? (
+            <LandingShowsSkeleton />
+          ) : regularShows.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-12 tv:p-20 text-center">
               <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />
               <p className="text-lg font-medium text-foreground tv:text-2xl">Belum ada show tersedia</p>
