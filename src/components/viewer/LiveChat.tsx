@@ -257,14 +257,20 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !username) return;
+    if (!newMessage.trim()) return;
 
-    if (!hasSession && !isAdmin) {
-      toast.error("Login dulu untuk mengirim pesan", {
-        description: "Pesan chat hanya bisa dikirim setelah login akun.",
-        action: { label: "Login", onClick: () => { window.location.href = "/auth?redirect=" + encodeURIComponent(window.location.pathname + window.location.search); } },
-      });
+    const finalName = effectiveUsername;
+    if (!finalName) {
+      toast.error("Masukkan username dulu untuk berkomentar");
       return;
+    }
+    // Validate guest username (matches RLS regex)
+    if (isGuest) {
+      if (finalName.length < 2 || finalName.length > 24 || !/^[A-Za-z0-9_. -]+$/.test(finalName)) {
+        toast.error("Username 2-24 karakter (huruf/angka/_.-/spasi)");
+        return;
+      }
+      try { localStorage.setItem("guest_chat_username", finalName); } catch {}
     }
 
     const now = Date.now();
@@ -277,9 +283,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     setSending(true);
 
     const insertData: any = {
-      username,
+      username: finalName,
       message: newMessage.trim(),
-      token_id: tokenId || null,
+      // Guests cannot attach a token (RLS forbids it)
+      token_id: isGuest ? null : (tokenId || null),
     };
     if (isAdmin) {
       insertData.is_admin = true;
@@ -294,7 +301,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     }
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin, hasSession]);
+  }, [newMessage, effectiveUsername, isGuest, tokenId, isAdmin]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
