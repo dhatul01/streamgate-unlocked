@@ -831,6 +831,18 @@ const Index = () => {
 
           {loadingShows ? (
             <LandingShowsSkeleton />
+          ) : showsError ? (
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-10 tv:p-16 text-center animate-fade-in">
+              <X className="mx-auto mb-3 h-10 w-10 text-destructive" />
+              <p className="text-base font-semibold text-foreground">Gagal memuat daftar show</p>
+              <p className="mt-1.5 text-xs text-muted-foreground max-w-sm mx-auto">{showsError}</p>
+              <button
+                onClick={handleRetryShows}
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 hover-scale"
+              >
+                <Radio className="h-4 w-4" /> Coba Lagi
+              </button>
+            </div>
           ) : regularShows.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-12 tv:p-20 text-center">
               <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />
