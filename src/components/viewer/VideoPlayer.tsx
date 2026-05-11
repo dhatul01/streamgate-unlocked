@@ -560,9 +560,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     if (!containerRef.current) return;
     try {
       if (document.fullscreenElement) {
+        try { (screen.orientation as any)?.unlock?.(); } catch {}
         await document.exitFullscreen();
       } else {
         await containerRef.current.requestFullscreen();
+        // On mobile, force landscape for the best video viewing experience
+        if (window.matchMedia("(max-width: 1024px)").matches) {
+          try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+        }
       }
     } catch {}
   }, []);
