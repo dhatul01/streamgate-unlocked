@@ -234,12 +234,41 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         if (destroyed) return;
-        setIsLoading(false);
         setIsSwitchingQuality(false);
-        if (data.fatal) {
+
+        const isManifestError =
+          data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+          data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
+          data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR ||
+          data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+          data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT;
+
+        // Keep loading overlay up while we try to recover the manifest so the user
+        // sees a spinner instead of a blank black screen.
+        if (isManifestError) setIsLoading(true);
+        else if (!data.fatal) setIsLoading(false);
+
+        if (data.fatal || isManifestError) {
           const attempt = ++reconnectAttemptRef.current;
-          // Exponential backoff capped at 30s — handles network blips during 7h streams
           const backoff = Math.min(1500 * Math.pow(1.5, Math.min(attempt - 1, 8)), 30_000);
+
+          // Manifest failed → reinit hls.js entirely after a few retries
+          const fullReinit = () => {
+            try { hls.destroy(); } catch {}
+            hlsRef.current = null;
+            hlsInitRef.current = false;
+            setTimeout(() => { if (!destroyed) initHls(); }, backoff);
+          };
+
+          if (isManifestError) {
+            if (attempt <= 3) {
+              setTimeout(() => { if (!destroyed && hls) hls.startLoad(); }, backoff);
+            } else {
+              fullReinit();
+            }
+            return;
+          }
+
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               setTimeout(() => { if (!destroyed && hls) hls.startLoad(); }, backoff);
@@ -248,10 +277,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               try { hls.recoverMediaError(); } catch {}
               break;
             default:
-              try { hls.destroy(); } catch {}
-              hlsRef.current = null;
-              hlsInitRef.current = false;
-              setTimeout(() => { if (!destroyed) initHls(); }, backoff);
+              fullReinit();
               break;
           }
         }
