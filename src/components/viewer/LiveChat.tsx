@@ -109,12 +109,18 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
   const [hasSession, setHasSession] = useState(false);
+  const [guestUsername, setGuestUsername] = useState<string>(() => {
+    try { return localStorage.getItem("guest_chat_username") || ""; } catch { return ""; }
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
-  const isChatMod = chatModUsernames.has(username);
+  // Effective username: prefer logged-in/token name, fall back to guest input
+  const effectiveUsername = (username && username.trim()) || guestUsername.trim();
+  const isGuest = !hasSession && !isAdmin;
+  const isChatMod = chatModUsernames.has(effectiveUsername);
 
   // Track Supabase session — required for inserting chat messages (RLS)
   useEffect(() => {
@@ -150,10 +156,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
   // Presence for online count
   useEffect(() => {
-    if (!username) return;
+    if (!effectiveUsername) return;
 
     const channel = supabase.channel("online-users", {
-      config: { presence: { key: username } },
+      config: { presence: { key: effectiveUsername } },
     });
 
     channel
@@ -163,7 +169,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await channel.track({ user: username, joined_at: new Date().toISOString() });
+          await channel.track({ user: effectiveUsername, joined_at: new Date().toISOString() });
         }
       });
 
@@ -172,7 +178,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [username]);
+  }, [effectiveUsername]);
 
   // Load messages
   useEffect(() => {
@@ -251,14 +257,20 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !username) return;
+    if (!newMessage.trim()) return;
 
-    if (!hasSession && !isAdmin) {
-      toast.error("Login dulu untuk mengirim pesan", {
-        description: "Pesan chat hanya bisa dikirim setelah login akun.",
-        action: { label: "Login", onClick: () => { window.location.href = "/auth?redirect=" + encodeURIComponent(window.location.pathname + window.location.search); } },
-      });
+    const finalName = effectiveUsername;
+    if (!finalName) {
+      toast.error("Masukkan username dulu untuk berkomentar");
       return;
+    }
+    // Validate guest username (matches RLS regex)
+    if (isGuest) {
+      if (finalName.length < 2 || finalName.length > 24 || !/^[A-Za-z0-9_. -]+$/.test(finalName)) {
+        toast.error("Username 2-24 karakter (huruf/angka/_.-/spasi)");
+        return;
+      }
+      try { localStorage.setItem("guest_chat_username", finalName); } catch {}
     }
 
     const now = Date.now();
@@ -271,9 +283,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     setSending(true);
 
     const insertData: any = {
-      username,
+      username: finalName,
       message: newMessage.trim(),
-      token_id: tokenId || null,
+      // Guests cannot attach a token (RLS forbids it)
+      token_id: isGuest ? null : (tokenId || null),
     };
     if (isAdmin) {
       insertData.is_admin = true;
@@ -288,7 +301,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     }
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin, hasSession]);
+  }, [newMessage, effectiveUsername, isGuest, tokenId, isAdmin]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
@@ -386,13 +399,20 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         )}
       </div>
 
-      {/* Input */}
-      {!hasSession && !isAdmin && (
-        <div className="flex items-center justify-between gap-2 border-t border-border bg-warning/10 px-3 py-2 text-[11px] tv:text-sm">
-          <span className="text-warning">Login dulu untuk ikut komentar di live chat.</span>
+      {/* Guest username input — shown when not logged in and parent didn't pass a username */}
+      {isGuest && !username && (
+        <div className="flex items-center gap-2 border-t border-border bg-secondary/30 px-3 py-2 tv:px-4 tv:py-3">
+          <Input
+            value={guestUsername}
+            onChange={(e) => setGuestUsername(e.target.value.slice(0, 24))}
+            placeholder="Username untuk komentar (2-24 karakter)"
+            maxLength={24}
+            className="h-9 flex-1 border-secondary bg-background text-xs tv:h-11 tv:text-sm"
+          />
           <a
             href={`/auth?redirect=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`}
-            className="inline-flex items-center gap-1 rounded-md bg-warning/20 px-2 py-1 font-semibold text-warning hover:bg-warning/30"
+            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 tv:text-xs"
+            title="Login untuk badge dan koin"
           >
             <LogIn className="h-3 w-3" /> Login
           </a>
@@ -403,14 +423,15 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={!username ? "Masukkan username dulu" : (!hasSession && !isAdmin) ? "Login untuk komentar..." : "Ketik pesan..."}
-          disabled={!username || sending}
+          placeholder={!effectiveUsername ? "Masukkan username dulu" : "Ketik pesan..."}
+          disabled={!effectiveUsername || sending}
+          maxLength={300}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button
           type="submit"
           size="icon"
-          disabled={!username || sending || !newMessage.trim()}
+          disabled={!effectiveUsername || sending || !newMessage.trim()}
           className="h-10 w-10 tv:h-12 tv:w-12 shrink-0 rounded-lg"
         >
           <Send className="h-4 w-4 tv:h-5 tv:w-5" />

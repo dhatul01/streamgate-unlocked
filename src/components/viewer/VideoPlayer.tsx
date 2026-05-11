@@ -193,23 +193,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       });
 
       hlsRef.current = hls;
-      hls.loadSource(decodedUrl);
       hls.attachMedia(videoRef.current!);
-
-      // Override video src property to hide URL from DOM inspection
-      try {
-        const videoEl = videoRef.current!;
-        const origSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-        Object.defineProperty(videoEl, 'src', {
-          get: () => '',
-          set: (v: string) => origSrc?.set?.call(videoEl, v),
-          configurable: true,
-        });
-        Object.defineProperty(videoEl, 'currentSrc', {
-          get: () => '',
-          configurable: true,
-        });
-      } catch {}
+      hls.loadSource(decodedUrl);
+      // NOTE: do NOT override video.src / currentSrc — hls.js relies on the
+      // native MediaSource attachment, and intercepting these properties can
+      // leave the player visually blank in some Chromium builds.
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         if (destroyed) return;
@@ -222,8 +210,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setCurrentQuality(-1);
         setIsLoading(false);
         if (autoPlay) {
-          videoRef.current!.play().catch(() => {});
-          setIsPlaying(true);
+          const v = videoRef.current!;
+          v.play()
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              // Autoplay with sound blocked → retry muted so the stream is visible
+              v.muted = true;
+              v.play().then(() => setIsPlaying(true)).catch(() => {});
+            });
         }
       });
 
@@ -644,6 +638,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           onClick={togglePlay}
           className={`h-full w-full object-contain cursor-pointer ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
           playsInline
+          preload="auto"
+          controls={false}
         />
       )}
 
