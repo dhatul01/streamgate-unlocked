@@ -24,6 +24,8 @@ import { SHOW_CATEGORIES } from "@/types/show";
 import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 import HeroVideoBackground from "@/components/viewer/HeroVideoBackground";
 import { LandingShowsSkeleton } from "@/components/viewer/SkeletonLoaders";
+import ShowTimezoneStrip from "@/components/viewer/ShowTimezoneStrip";
+import LandingStats from "@/components/viewer/LandingStats";
 
 
 
@@ -818,6 +820,14 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      {/* Timezone strip + landing stats */}
+      <section className="px-4 pb-2 pt-6">
+        <ShowTimezoneStrip />
+      </section>
+      <section className="px-4 py-8 md:py-10">
+        <LandingStats />
+      </section>
 
       {/* Regular Shows Section */}
       <section id="shows" className="px-4 py-16 md:py-24 tv:py-32 tv:px-8">

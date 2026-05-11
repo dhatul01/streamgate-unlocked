@@ -24,6 +24,7 @@ const ReplayPage = lazy(() => import("./pages/ReplayPage"));
 const SchedulePage = lazy(() => import("./pages/SchedulePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const InstallPage = lazy(() => import("./pages/InstallPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 
 // Preload popular pages after initial render is idle
 const preloadPopularPages = () => {
@@ -85,6 +86,7 @@ const App = () => {
                   <Route path="/replay" element={<ReplayPage />} />
                   <Route path="/schedule" element={<SchedulePage />} />
                   <Route path="/install" element={<InstallPage />} />
+                  <Route path="/about" element={<AboutPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </RouteTransition>
