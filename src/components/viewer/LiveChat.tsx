@@ -156,10 +156,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
   // Presence for online count
   useEffect(() => {
-    if (!username) return;
+    if (!effectiveUsername) return;
 
     const channel = supabase.channel("online-users", {
-      config: { presence: { key: username } },
+      config: { presence: { key: effectiveUsername } },
     });
 
     channel
@@ -169,7 +169,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await channel.track({ user: username, joined_at: new Date().toISOString() });
+          await channel.track({ user: effectiveUsername, joined_at: new Date().toISOString() });
         }
       });
 
@@ -178,7 +178,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [username]);
+  }, [effectiveUsername]);
 
   // Load messages
   useEffect(() => {
