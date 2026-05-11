@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback, useTransition, memo } from "r
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy } from "lucide-react";
+import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy, LogIn } from "lucide-react";
 import ChatLeaderboard from "@/components/viewer/ChatLeaderboard";
+import { toast } from "sonner";
 
 interface LiveChatProps {
   username: string;
@@ -107,12 +108,25 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
+  const [hasSession, setHasSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
   const isChatMod = chatModUsernames.has(username);
+
+  // Track Supabase session — required for inserting chat messages (RLS)
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (mounted) setHasSession(!!session);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   // Load chat moderators
   useEffect(() => {
@@ -180,7 +194,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     fetchMessages();
 
     const channel = supabase
-      .channel("chat-realtime")
+      .channel(`chat-realtime-${tokenId ?? "anon"}-${Math.random().toString(36).slice(2, 8)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
@@ -189,8 +203,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
               setMessages((prev) => {
+                if (prev.some((m) => m.id === newMsg.id)) return prev;
                 const next = [...prev, newMsg];
-                // Keep only last 30 messages on screen
                 return next.length > 30 ? next.slice(-30) : next;
               });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
@@ -215,7 +229,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [tokenId]);
 
   // Auto-scroll only when user is near bottom (prevents jump when reading older msgs / when trim happens)
   const isNearBottomRef = useRef(true);
