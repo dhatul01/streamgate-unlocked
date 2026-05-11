@@ -31,6 +31,19 @@ const ViewerAuth = () => {
       .then(({ data }) => { if (data?.value) setAdminWaNumber(data.value); });
   }, []);
   const getRedirectPath = () => redirectTo || "/coins";
+
+  // Auto-redirect when a session already exists (login persistence)
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted && data.session) navigate(getRedirectPath(), { replace: true });
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (mounted && session) navigate(getRedirectPath(), { replace: true });
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [redirectTo]);
   const normalizePhone = (raw: string) => raw.replace(/[^0-9]/g, "");
   const deriveEmail = (phoneNum: string) => `${normalizePhone(phoneNum)}@rt48.user`;
 

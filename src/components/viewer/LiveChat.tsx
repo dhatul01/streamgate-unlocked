@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback, useTransition, memo } from "r
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy } from "lucide-react";
+import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy, LogIn } from "lucide-react";
 import ChatLeaderboard from "@/components/viewer/ChatLeaderboard";
+import { toast } from "sonner";
 
 interface LiveChatProps {
   username: string;
@@ -107,12 +108,25 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [sending, setSending] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
+  const [hasSession, setHasSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
   const isChatMod = chatModUsernames.has(username);
+
+  // Track Supabase session — required for inserting chat messages (RLS)
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (mounted) setHasSession(!!session);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   // Load chat moderators
   useEffect(() => {
@@ -180,7 +194,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     fetchMessages();
 
     const channel = supabase
-      .channel("chat-realtime")
+      .channel(`chat-realtime-${tokenId ?? "anon"}-${Math.random().toString(36).slice(2, 8)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "chat_messages" },
@@ -189,8 +203,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             if (payload.eventType === "INSERT") {
               const newMsg = payload.new as ChatMessage;
               setMessages((prev) => {
+                if (prev.some((m) => m.id === newMsg.id)) return prev;
                 const next = [...prev, newMsg];
-                // Keep only last 30 messages on screen
                 return next.length > 30 ? next.slice(-30) : next;
               });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
@@ -215,7 +229,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [tokenId]);
 
   // Auto-scroll only when user is near bottom (prevents jump when reading older msgs / when trim happens)
   const isNearBottomRef = useRef(true);
@@ -239,8 +253,19 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     e.preventDefault();
     if (!newMessage.trim() || !username) return;
 
+    if (!hasSession && !isAdmin) {
+      toast.error("Login dulu untuk mengirim pesan", {
+        description: "Pesan chat hanya bisa dikirim setelah login akun.",
+        action: { label: "Login", onClick: () => { window.location.href = "/auth?redirect=" + encodeURIComponent(window.location.pathname + window.location.search); } },
+      });
+      return;
+    }
+
     const now = Date.now();
-    if (now - lastSentRef.current < 2000) return; // 2s throttle
+    if (now - lastSentRef.current < 2000) {
+      toast.info("Tunggu sebentar sebelum kirim pesan lagi");
+      return;
+    }
     lastSentRef.current = now;
 
     setSending(true);
@@ -253,12 +278,17 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     if (isAdmin) {
       insertData.is_admin = true;
     }
-    await supabase.from("chat_messages").insert(insertData);
+    const { error } = await supabase.from("chat_messages").insert(insertData);
 
-    setNewMessage("");
+    if (error) {
+      toast.error("Gagal mengirim pesan", { description: error.message });
+      lastSentRef.current = 0; // allow retry immediately
+    } else {
+      setNewMessage("");
+    }
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin]);
+  }, [newMessage, username, tokenId, isAdmin, hasSession]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
@@ -357,12 +387,23 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       </div>
 
       {/* Input */}
+      {!hasSession && !isAdmin && (
+        <div className="flex items-center justify-between gap-2 border-t border-border bg-warning/10 px-3 py-2 text-[11px] tv:text-sm">
+          <span className="text-warning">Login dulu untuk ikut komentar di live chat.</span>
+          <a
+            href={`/auth?redirect=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`}
+            className="inline-flex items-center gap-1 rounded-md bg-warning/20 px-2 py-1 font-semibold text-warning hover:bg-warning/30"
+          >
+            <LogIn className="h-3 w-3" /> Login
+          </a>
+        </div>
+      )}
       <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-border bg-card p-3 tv:p-4 tv:gap-3">
         <Input
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={username ? "Ketik pesan..." : "Masukkan username dulu"}
+          placeholder={!username ? "Masukkan username dulu" : (!hasSession && !isAdmin) ? "Login untuk komentar..." : "Ketik pesan..."}
           disabled={!username || sending}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />

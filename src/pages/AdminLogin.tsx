@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.webp";
@@ -12,6 +12,22 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Auto-redirect when a session already exists & user has admin/moderator role
+  useEffect(() => {
+    let mounted = true;
+    const checkExisting = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted || !session?.user) return;
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+      const hasAccess = roles?.some((r: any) => r.role === "admin" || r.role === "moderator");
+      if (mounted && hasAccess) navigate("/admin/dashboard", { replace: true });
+    };
+    checkExisting();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

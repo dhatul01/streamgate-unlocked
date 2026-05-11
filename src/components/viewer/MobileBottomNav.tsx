@@ -10,7 +10,7 @@ const items = [
   { href: "/profile", label: "Profil", icon: User, match: (p: string) => p.startsWith("/profile") || p.startsWith("/auth") },
 ];
 
-const HIDDEN_PREFIXES = ["/admin", "/reset-password", "/install"];
+const HIDDEN_PREFIXES = ["/admin", "/reset-password", "/install", "/live"];
 
 const MobileBottomNav = () => {
   const isMobile = useIsMobile();
