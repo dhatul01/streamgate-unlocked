@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.webp";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog, Gauge } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
@@ -26,6 +26,7 @@ const allSections = [
   { id: "user-manager", label: "User Manager", icon: UserCog, adminOnly: true },
   { id: "health", label: "System Health", icon: Activity, adminOnly: true },
   { id: "live-logs", label: "Live Logs", icon: ScrollText, adminOnly: true },
+  { id: "rate-limits", label: "Rate Limits", icon: Gauge, adminOnly: true },
   { id: "monitor", label: "Monitor", icon: Monitor, adminOnly: false },
   { id: "site", label: "Pengaturan", icon: Settings, adminOnly: false },
   { id: "moderators", label: "Akun Moderator", icon: Users, adminOnly: true },

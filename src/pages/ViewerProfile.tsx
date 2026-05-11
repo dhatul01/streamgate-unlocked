@@ -8,6 +8,7 @@ import logo from "@/assets/logo.webp";
 import { ArrowLeft, Coins, Save, User, History, BarChart3, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import ReferralSection from "@/components/viewer/ReferralSection";
+import UserTransactionHistory from "@/components/viewer/UserTransactionHistory";
 
 const ViewerProfile = () => {
   const [user, setUser] = useState<any>(null);
@@ -188,62 +189,8 @@ const ViewerProfile = () => {
         {/* Referral section */}
         <ReferralSection />
 
-        {/* Full transaction history */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="rounded-xl border border-border bg-card p-5"
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <History className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Riwayat Transaksi</h3>
-            <span className="ml-auto text-[10px] text-muted-foreground">{allTransactions.length} total</span>
-          </div>
-          {transactions.length === 0 ? (
-            <p className="py-4 text-center text-xs text-muted-foreground">Belum ada transaksi</p>
-          ) : (
-            <div className="space-y-2">
-              {transactions.map((tx: any) => (
-                <div key={tx.id} className="flex items-center justify-between rounded-lg bg-background p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-foreground truncate">{tx.description}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-[9px] rounded px-1.5 py-0.5 font-medium ${
-                        tx.type === "purchase" ? "bg-success/10 text-success" :
-                        tx.type === "redeem" ? "bg-primary/10 text-primary" :
-                        tx.type === "replay_redeem" ? "bg-purple-500/10 text-purple-400" :
-                        tx.type === "gift" ? "bg-warning/10 text-warning" :
-                        tx.type === "referral_bonus" || tx.type === "referral_reward" ? "bg-pink-500/10 text-pink-400" :
-                        "bg-secondary text-muted-foreground"
-                      }`}>
-                        {tx.type === "purchase" ? "Pembelian" :
-                         tx.type === "redeem" ? "Show" :
-                         tx.type === "replay_redeem" ? "Replay" :
-                         tx.type === "gift" ? "Gift" :
-                         tx.type === "referral_bonus" ? "Referral" :
-                         tx.type === "referral_reward" ? "Reward" :
-                         tx.type}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleString("id-ID")}</p>
-                    </div>
-                  </div>
-                  <span className={`text-sm font-bold ml-2 ${tx.amount > 0 ? "text-success" : "text-destructive"}`}>
-                    {tx.amount > 0 ? "+" : ""}{tx.amount}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {!showAllTx && allTransactions.length > 10 && (
-            <button
-              onClick={loadAllTransactions}
-              className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg bg-secondary py-2 text-xs font-medium text-foreground hover:bg-secondary/80"
-            >
-              <ChevronDown className="h-3 w-3" /> Tampilkan semua ({allTransactions.length})
-            </button>
-          )}
-        </motion.div>
+        {/* Full transaction history (merged: coin_transactions + coin_orders) */}
+        {user?.id && <UserTransactionHistory userId={user.id} />}
       </div>
     </div>
   );
