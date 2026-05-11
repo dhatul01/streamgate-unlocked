@@ -167,23 +167,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 6,
         liveDurationInfinity: true,
-        // Optimized buffer settings for 1000+ concurrent viewers
-        // Lower buffers reduce memory per client while maintaining smooth playback
         maxBufferLength: 20,
         maxMaxBufferLength: 40,
-        maxBufferSize: 30 * 1000 * 1000, // 30MB (reduced from 60MB)
+        maxBufferSize: 30 * 1000 * 1000,
         maxBufferHole: 0.5,
-        // Backbuffer trimming — critical for memory management in long streams
-        backBufferLength: 30, // Only keep 30s of past content
-        // ABR settings
+        backBufferLength: 30,
         abrEwmaDefaultEstimate: 1_000_000,
         abrBandWidthFactor: 0.9,
         abrBandWidthUpFactor: 0.7,
-        // Recovery & retry — with exponential backoff
-        fragLoadingMaxRetry: 4,
-        fragLoadingRetryDelay: 1500,
-        manifestLoadingMaxRetry: 3,
-        levelLoadingMaxRetry: 3,
+        // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 1000,
+        fragLoadingMaxRetryTimeout: 30_000,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetryTimeout: 30_000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 1000,
+        levelLoadingMaxRetryTimeout: 30_000,
         // Faster start
         startFragPrefetch: true,
         testBandwidth: true,
