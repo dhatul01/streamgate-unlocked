@@ -35,6 +35,7 @@ const HeroVideoBackground = ({ url, poster, brightness = 60, className = "" }: H
   const hlsInstanceRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   useEffect(() => {
     if (!url) return;
@@ -147,42 +148,40 @@ const HeroVideoBackground = ({ url, poster, brightness = 60, className = "" }: H
   }, [ready]);
 
   const b = Math.max(0, Math.min(100, brightness));
-  const videoOpacity = 0.25 + (b / 100) * 0.75;
+  const baseOpacity = 0.25 + (b / 100) * 0.75;
   const overlayAlpha = 0.7 - (b / 100) * 0.7;
+  const showVideo = !!url && !hidden && videoPlaying;
 
-  // Fallback: tampilkan poster saja jika video gagal / tidak ada URL
-  if (!url || hidden) {
-    if (!poster) return null;
-    return (
-      <div className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+  return (
+    <div ref={containerRef} className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+      {/* Poster layer (fallback selalu ada di belakang) */}
+      {poster && (
         <img
           src={poster}
           alt=""
           loading="lazy"
-          className="h-full w-full object-cover"
-          style={{ opacity: videoOpacity }}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out"
+          style={{ opacity: showVideo ? 0 : baseOpacity }}
         />
-        <div
-          className="absolute inset-0"
-          style={{ backgroundColor: `rgba(0,0,0,${overlayAlpha.toFixed(3)})` }}
-        />
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div ref={containerRef} className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
-      <video
-        ref={videoRef}
-        className="h-full w-full object-cover transition-opacity duration-300"
-        style={{ opacity: videoOpacity }}
-        autoPlay muted loop playsInline preload="metadata"
-        disablePictureInPicture controls={false}
-        poster={poster}
-        onError={() => setHidden(true)}
-      />
+      {/* Video layer (fade-in saat sudah benar-benar memutar) */}
+      {url && !hidden && (
+        <video
+          ref={videoRef}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out"
+          style={{ opacity: showVideo ? baseOpacity : 0 }}
+          autoPlay muted loop playsInline preload="metadata"
+          disablePictureInPicture controls={false}
+          poster={poster}
+          onPlaying={() => setVideoPlaying(true)}
+          onWaiting={() => setVideoPlaying(false)}
+          onError={() => { setVideoPlaying(false); setHidden(true); }}
+        />
+      )}
+
       <div
-        className="absolute inset-0 transition-colors duration-300"
+        className="absolute inset-0 transition-colors duration-500"
         style={{ backgroundColor: `rgba(0,0,0,${overlayAlpha.toFixed(3)})` }}
       />
     </div>
