@@ -24,6 +24,7 @@ import AdminLiveLogs from "@/components/admin/AdminLiveLogs";
 import MemberManager from "@/components/admin/MemberManager";
 import IpManager from "@/components/admin/IpManager";
 import UserManager from "@/components/admin/UserManager";
+import RateLimitMonitor from "@/components/admin/RateLimitMonitor";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -86,6 +87,7 @@ const AdminDashboard = () => {
       case "user-manager": return userRole === "admin" ? <UserManager /> : null;
       case "health": return userRole === "admin" ? <SystemHealthCheck /> : null;
       case "live-logs": return userRole === "admin" ? <AdminLiveLogs /> : null;
+      case "rate-limits": return userRole === "admin" ? <RateLimitMonitor /> : null;
       case "monitor": return <MonitorView />;
       case "site": return (
         <div className="space-y-6">
