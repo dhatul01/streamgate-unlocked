@@ -109,12 +109,18 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
   const [hasSession, setHasSession] = useState(false);
+  const [guestUsername, setGuestUsername] = useState<string>(() => {
+    try { return localStorage.getItem("guest_chat_username") || ""; } catch { return ""; }
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
-  const isChatMod = chatModUsernames.has(username);
+  // Effective username: prefer logged-in/token name, fall back to guest input
+  const effectiveUsername = (username && username.trim()) || guestUsername.trim();
+  const isGuest = !hasSession && !isAdmin;
+  const isChatMod = chatModUsernames.has(effectiveUsername);
 
   // Track Supabase session — required for inserting chat messages (RLS)
   useEffect(() => {
