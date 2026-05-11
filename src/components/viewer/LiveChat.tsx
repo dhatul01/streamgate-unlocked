@@ -253,8 +253,19 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     e.preventDefault();
     if (!newMessage.trim() || !username) return;
 
+    if (!hasSession && !isAdmin) {
+      toast.error("Login dulu untuk mengirim pesan", {
+        description: "Pesan chat hanya bisa dikirim setelah login akun.",
+        action: { label: "Login", onClick: () => { window.location.href = "/auth?redirect=" + encodeURIComponent(window.location.pathname + window.location.search); } },
+      });
+      return;
+    }
+
     const now = Date.now();
-    if (now - lastSentRef.current < 2000) return; // 2s throttle
+    if (now - lastSentRef.current < 2000) {
+      toast.info("Tunggu sebentar sebelum kirim pesan lagi");
+      return;
+    }
     lastSentRef.current = now;
 
     setSending(true);
@@ -267,12 +278,17 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     if (isAdmin) {
       insertData.is_admin = true;
     }
-    await supabase.from("chat_messages").insert(insertData);
+    const { error } = await supabase.from("chat_messages").insert(insertData);
 
-    setNewMessage("");
+    if (error) {
+      toast.error("Gagal mengirim pesan", { description: error.message });
+      lastSentRef.current = 0; // allow retry immediately
+    } else {
+      setNewMessage("");
+    }
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, username, tokenId, isAdmin]);
+  }, [newMessage, username, tokenId, isAdmin, hasSession]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
