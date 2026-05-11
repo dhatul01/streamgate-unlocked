@@ -210,8 +210,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setCurrentQuality(-1);
         setIsLoading(false);
         if (autoPlay) {
-          videoRef.current!.play().catch(() => {});
-          setIsPlaying(true);
+          const v = videoRef.current!;
+          v.play()
+            .then(() => setIsPlaying(true))
+            .catch(() => {
+              // Autoplay with sound blocked → retry muted so the stream is visible
+              v.muted = true;
+              v.play().then(() => setIsPlaying(true)).catch(() => {});
+            });
         }
       });
 
