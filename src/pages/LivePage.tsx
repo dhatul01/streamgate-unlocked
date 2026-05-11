@@ -679,7 +679,7 @@ const LivePage = () => {
           )}
         </header>
 
-        <div className="player-area relative">
+        <div className="player-area relative max-lg:landscape:max-h-[100dvh] max-lg:landscape:flex max-lg:landscape:items-center max-lg:landscape:justify-center max-lg:landscape:bg-black [&>div]:max-lg:landscape:max-h-[100dvh] [&>div]:max-lg:landscape:w-auto [&>div]:max-lg:landscape:aspect-video">
           {isLive && activePlaylist && signedStreamUrl ? (
             <VideoPlayer
               key={playerKey}
