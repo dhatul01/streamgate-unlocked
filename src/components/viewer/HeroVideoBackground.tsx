@@ -146,11 +146,29 @@ const HeroVideoBackground = ({ url, poster, brightness = 60, className = "" }: H
     return () => { io.disconnect(); document.removeEventListener("visibilitychange", onVis); };
   }, [ready]);
 
-  if (!url || hidden) return null;
-
   const b = Math.max(0, Math.min(100, brightness));
   const videoOpacity = 0.25 + (b / 100) * 0.75;
   const overlayAlpha = 0.7 - (b / 100) * 0.7;
+
+  // Fallback: tampilkan poster saja jika video gagal / tidak ada URL
+  if (!url || hidden) {
+    if (!poster) return null;
+    return (
+      <div className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+        <img
+          src={poster}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+          style={{ opacity: videoOpacity }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: `rgba(0,0,0,${overlayAlpha.toFixed(3)})` }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
