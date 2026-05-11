@@ -167,23 +167,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 6,
         liveDurationInfinity: true,
-        // Optimized buffer settings for 1000+ concurrent viewers
-        // Lower buffers reduce memory per client while maintaining smooth playback
         maxBufferLength: 20,
         maxMaxBufferLength: 40,
-        maxBufferSize: 30 * 1000 * 1000, // 30MB (reduced from 60MB)
+        maxBufferSize: 30 * 1000 * 1000,
         maxBufferHole: 0.5,
-        // Backbuffer trimming — critical for memory management in long streams
-        backBufferLength: 30, // Only keep 30s of past content
-        // ABR settings
+        backBufferLength: 30,
         abrEwmaDefaultEstimate: 1_000_000,
         abrBandWidthFactor: 0.9,
         abrBandWidthUpFactor: 0.7,
-        // Recovery & retry — with exponential backoff
-        fragLoadingMaxRetry: 4,
-        fragLoadingRetryDelay: 1500,
-        manifestLoadingMaxRetry: 3,
-        levelLoadingMaxRetry: 3,
+        // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 1000,
+        fragLoadingMaxRetryTimeout: 30_000,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetryTimeout: 30_000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 1000,
+        levelLoadingMaxRetryTimeout: 30_000,
         // Faster start
         startFragPrefetch: true,
         testBandwidth: true,
@@ -233,12 +234,41 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         if (destroyed) return;
-        setIsLoading(false);
         setIsSwitchingQuality(false);
-        if (data.fatal) {
+
+        const isManifestError =
+          data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+          data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
+          data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR ||
+          data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+          data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT;
+
+        // Keep loading overlay up while we try to recover the manifest so the user
+        // sees a spinner instead of a blank black screen.
+        if (isManifestError) setIsLoading(true);
+        else if (!data.fatal) setIsLoading(false);
+
+        if (data.fatal || isManifestError) {
           const attempt = ++reconnectAttemptRef.current;
-          // Exponential backoff capped at 30s — handles network blips during 7h streams
           const backoff = Math.min(1500 * Math.pow(1.5, Math.min(attempt - 1, 8)), 30_000);
+
+          // Manifest failed → reinit hls.js entirely after a few retries
+          const fullReinit = () => {
+            try { hls.destroy(); } catch {}
+            hlsRef.current = null;
+            hlsInitRef.current = false;
+            setTimeout(() => { if (!destroyed) initHls(); }, backoff);
+          };
+
+          if (isManifestError) {
+            if (attempt <= 3) {
+              setTimeout(() => { if (!destroyed && hls) hls.startLoad(); }, backoff);
+            } else {
+              fullReinit();
+            }
+            return;
+          }
+
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               setTimeout(() => { if (!destroyed && hls) hls.startLoad(); }, backoff);
@@ -247,10 +277,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
               try { hls.recoverMediaError(); } catch {}
               break;
             default:
-              try { hls.destroy(); } catch {}
-              hlsRef.current = null;
-              hlsInitRef.current = false;
-              setTimeout(() => { if (!destroyed) initHls(); }, backoff);
+              fullReinit();
               break;
           }
         }
@@ -533,9 +560,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     if (!containerRef.current) return;
     try {
       if (document.fullscreenElement) {
+        try { (screen.orientation as any)?.unlock?.(); } catch {}
         await document.exitFullscreen();
       } else {
         await containerRef.current.requestFullscreen();
+        // On mobile, force landscape for the best video viewing experience
+        if (window.matchMedia("(max-width: 1024px)").matches) {
+          try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+        }
       }
     } catch {}
   }, []);

@@ -642,7 +642,7 @@ const LivePage = () => {
   const isAuthenticated = !!tokenData;
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
+    <div className="relative flex min-h-[100dvh] flex-col bg-background lg:flex-row max-lg:landscape:flex-row max-lg:landscape:min-h-screen">
       <Suspense fallback={null}>
         <ConnectionStatus />
       </Suspense>
@@ -655,7 +655,7 @@ const LivePage = () => {
         </Suspense>
       )}
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
           <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-14 tv:w-14 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
           <div className="flex-1 min-w-0">
@@ -679,7 +679,7 @@ const LivePage = () => {
           )}
         </header>
 
-        <div className="player-area relative">
+        <div className="player-area relative max-lg:landscape:max-h-[100dvh] max-lg:landscape:flex max-lg:landscape:items-center max-lg:landscape:justify-center max-lg:landscape:bg-black [&>div]:max-lg:landscape:max-h-[100dvh] [&>div]:max-lg:landscape:w-auto [&>div]:max-lg:landscape:aspect-video">
           {isLive && activePlaylist && signedStreamUrl ? (
             <VideoPlayer
               key={playerKey}
@@ -767,7 +767,7 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px]">
+      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
         {/* Live Poll - always visible when poll is active */}
         <Suspense fallback={null}>
           <LivePoll voterId={tokenData?.id || username} />
