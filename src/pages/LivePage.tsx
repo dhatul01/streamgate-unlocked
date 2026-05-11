@@ -642,7 +642,7 @@ const LivePage = () => {
   const isAuthenticated = !!tokenData;
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background lg:flex-row">
+    <div className="relative flex min-h-[100dvh] flex-col bg-background lg:flex-row max-lg:landscape:flex-row max-lg:landscape:min-h-screen">
       <Suspense fallback={null}>
         <ConnectionStatus />
       </Suspense>
