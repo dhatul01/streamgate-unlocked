@@ -56,6 +56,7 @@ const Index = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
   const [loadingShows, setLoadingShows] = useState(true);
+  const [showsError, setShowsError] = useState<string | null>(null);
   const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
@@ -96,34 +97,47 @@ const Index = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const fetchData = async () => {
-    const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
-      supabase.rpc("get_public_shows"),
-      supabase.from("site_settings").select("*"),
-      supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("streams").select("is_live").limit(1).single(),
-    ]);
-    if (streamRes.data) {
-      setIsStreamLive(streamRes.data.is_live);
-    }
-    if (showsRes.data) {
-      setShows(showsRes.data as Show[]);
-      const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
-      if (subShows.length > 0) {
-        const counts: Record<string, number> = {};
-        for (const s of subShows) {
-          const { data: count } = await supabase.rpc("get_order_count", { _show_id: s.id });
-          counts[s.id] = (count as number) || 0;
-        }
-        setSubscriberCounts(counts);
+    setShowsError(null);
+    try {
+      const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
+        supabase.rpc("get_public_shows"),
+        supabase.from("site_settings").select("*"),
+        supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("streams").select("is_live").limit(1).single(),
+      ]);
+      if (showsRes.error) throw showsRes.error;
+      if (streamRes.data) {
+        setIsStreamLive(streamRes.data.is_live);
       }
+      if (showsRes.data) {
+        setShows(showsRes.data as Show[]);
+        const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
+        if (subShows.length > 0) {
+          const counts: Record<string, number> = {};
+          for (const s of subShows) {
+            const { data: count } = await supabase.rpc("get_order_count", { _show_id: s.id });
+            counts[s.id] = (count as number) || 0;
+          }
+          setSubscriberCounts(counts);
+        }
+      }
+      if (settingsRes.data) {
+        const s: any = {};
+        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
+        setSettings((prev) => ({ ...prev, ...s }));
+      }
+      if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
+    } catch (err: any) {
+      console.error("[Index] fetchData failed:", err);
+      setShowsError(err?.message || "Gagal memuat daftar show. Periksa koneksi internet Anda.");
+    } finally {
+      setLoadingShows(false);
     }
-    if (settingsRes.data) {
-      const s: any = {};
-      settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-      setSettings((prev) => ({ ...prev, ...s }));
-    }
-    if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
-    setLoadingShows(false);
+  };
+
+  const handleRetryShows = () => {
+    setLoadingShows(true);
+    fetchData();
   };
 
   // Helper: check if show scheduled time has already passed
