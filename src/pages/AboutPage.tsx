@@ -17,8 +17,8 @@ const AboutPage = () => {
   const [whatsapp, setWhatsapp] = useState<string>("");
 
   useEffect(() => {
-    supabase.from("site_settings").select("whatsapp_number").maybeSingle().then(({ data }) => {
-      if (data?.whatsapp_number) setWhatsapp(data.whatsapp_number);
+    supabase.from("site_settings").select("key,value").eq("key", "whatsapp_number").maybeSingle().then(({ data }) => {
+      if (data?.value) setWhatsapp(data.value);
     });
   }, []);
 
