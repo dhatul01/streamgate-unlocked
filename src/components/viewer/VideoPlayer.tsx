@@ -413,7 +413,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 if (iframe) {
                   iframe.removeAttribute("title");
                   iframe.setAttribute("referrerpolicy", "no-referrer");
-                  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+                  // NOTE: do NOT set sandbox here — adding sandbox after the
+                  // iframe loads forces a reload that breaks the YT IFrame API
+                  // bridge, leaving the player visually blank.
                 }
               } catch {}
 
