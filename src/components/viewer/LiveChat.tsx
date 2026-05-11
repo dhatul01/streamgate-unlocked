@@ -399,13 +399,20 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         )}
       </div>
 
-      {/* Input */}
-      {!hasSession && !isAdmin && (
-        <div className="flex items-center justify-between gap-2 border-t border-border bg-warning/10 px-3 py-2 text-[11px] tv:text-sm">
-          <span className="text-warning">Login dulu untuk ikut komentar di live chat.</span>
+      {/* Guest username input — shown when not logged in and parent didn't pass a username */}
+      {isGuest && !username && (
+        <div className="flex items-center gap-2 border-t border-border bg-secondary/30 px-3 py-2 tv:px-4 tv:py-3">
+          <Input
+            value={guestUsername}
+            onChange={(e) => setGuestUsername(e.target.value.slice(0, 24))}
+            placeholder="Username untuk komentar (2-24 karakter)"
+            maxLength={24}
+            className="h-9 flex-1 border-secondary bg-background text-xs tv:h-11 tv:text-sm"
+          />
           <a
             href={`/auth?redirect=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : "/")}`}
-            className="inline-flex items-center gap-1 rounded-md bg-warning/20 px-2 py-1 font-semibold text-warning hover:bg-warning/30"
+            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 tv:text-xs"
+            title="Login untuk badge dan koin"
           >
             <LogIn className="h-3 w-3" /> Login
           </a>
@@ -416,14 +423,15 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={!username ? "Masukkan username dulu" : (!hasSession && !isAdmin) ? "Login untuk komentar..." : "Ketik pesan..."}
-          disabled={!username || sending}
+          placeholder={!effectiveUsername ? "Masukkan username dulu" : "Ketik pesan..."}
+          disabled={!effectiveUsername || sending}
+          maxLength={300}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button
           type="submit"
           size="icon"
-          disabled={!username || sending || !newMessage.trim()}
+          disabled={!effectiveUsername || sending || !newMessage.trim()}
           className="h-10 w-10 tv:h-12 tv:w-12 shrink-0 rounded-lg"
         >
           <Send className="h-4 w-4 tv:h-5 tv:w-5" />
