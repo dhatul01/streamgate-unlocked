@@ -292,10 +292,24 @@ const Index = () => {
       })
       .subscribe();
 
+    // Polling fallback: re-fetch is_live every 30s in case realtime is delayed/disconnected
+    const pollLive = async () => {
+      if (document.visibilityState !== "visible") return;
+      const { data } = await supabase.from("streams").select("is_live").limit(1).single();
+      if (data && typeof data.is_live === "boolean") {
+        setIsStreamLive((prev) => (prev !== data.is_live ? data.is_live : prev));
+      }
+    };
+    const livePollId = window.setInterval(pollLive, 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") pollLive(); };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       supabase.removeChannel(showCh);
       supabase.removeChannel(orderCh);
       supabase.removeChannel(streamCh);
+      window.clearInterval(livePollId);
+      document.removeEventListener("visibilitychange", onVisible);
       cleanupBalance.then((cleanup) => cleanup?.());
     };
   }, []);
