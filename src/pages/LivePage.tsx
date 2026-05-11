@@ -655,7 +655,7 @@ const LivePage = () => {
         </Suspense>
       )}
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 tv:px-8 tv:py-5">
           <img src={logo} alt="RealTime48" className="h-8 w-8 tv:h-14 tv:w-14 rounded-full border border-primary/40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
           <div className="flex-1 min-w-0">
