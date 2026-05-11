@@ -56,6 +56,7 @@ const Index = () => {
   const { toast } = useToast();
   const [shows, setShows] = useState<Show[]>([]);
   const [loadingShows, setLoadingShows] = useState(true);
+  const [showsError, setShowsError] = useState<string | null>(null);
   const [isStreamLive, setIsStreamLive] = useState(true);
   const [descriptions, setDescriptions] = useState<LandingDescription[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
@@ -96,34 +97,47 @@ const Index = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const fetchData = async () => {
-    const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
-      supabase.rpc("get_public_shows"),
-      supabase.from("site_settings").select("*"),
-      supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("streams").select("is_live").limit(1).single(),
-    ]);
-    if (streamRes.data) {
-      setIsStreamLive(streamRes.data.is_live);
-    }
-    if (showsRes.data) {
-      setShows(showsRes.data as Show[]);
-      const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
-      if (subShows.length > 0) {
-        const counts: Record<string, number> = {};
-        for (const s of subShows) {
-          const { data: count } = await supabase.rpc("get_order_count", { _show_id: s.id });
-          counts[s.id] = (count as number) || 0;
-        }
-        setSubscriberCounts(counts);
+    setShowsError(null);
+    try {
+      const [showsRes, settingsRes, descRes, streamRes] = await Promise.all([
+        supabase.rpc("get_public_shows"),
+        supabase.from("site_settings").select("*"),
+        supabase.from("landing_descriptions").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("streams").select("is_live").limit(1).single(),
+      ]);
+      if (showsRes.error) throw showsRes.error;
+      if (streamRes.data) {
+        setIsStreamLive(streamRes.data.is_live);
       }
+      if (showsRes.data) {
+        setShows(showsRes.data as Show[]);
+        const subShows = (showsRes.data as Show[]).filter((s) => s.is_subscription);
+        if (subShows.length > 0) {
+          const counts: Record<string, number> = {};
+          for (const s of subShows) {
+            const { data: count } = await supabase.rpc("get_order_count", { _show_id: s.id });
+            counts[s.id] = (count as number) || 0;
+          }
+          setSubscriberCounts(counts);
+        }
+      }
+      if (settingsRes.data) {
+        const s: any = {};
+        settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
+        setSettings((prev) => ({ ...prev, ...s }));
+      }
+      if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
+    } catch (err: any) {
+      console.error("[Index] fetchData failed:", err);
+      setShowsError(err?.message || "Gagal memuat daftar show. Periksa koneksi internet Anda.");
+    } finally {
+      setLoadingShows(false);
     }
-    if (settingsRes.data) {
-      const s: any = {};
-      settingsRes.data.forEach((row: any) => { s[row.key] = row.value; });
-      setSettings((prev) => ({ ...prev, ...s }));
-    }
-    if (descRes.data) setDescriptions(descRes.data as LandingDescription[]);
-    setLoadingShows(false);
+  };
+
+  const handleRetryShows = () => {
+    setLoadingShows(true);
+    fetchData();
   };
 
   // Helper: check if show scheduled time has already passed
@@ -817,6 +831,18 @@ const Index = () => {
 
           {loadingShows ? (
             <LandingShowsSkeleton />
+          ) : showsError ? (
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-10 tv:p-16 text-center animate-fade-in">
+              <X className="mx-auto mb-3 h-10 w-10 text-destructive" />
+              <p className="text-base font-semibold text-foreground">Gagal memuat daftar show</p>
+              <p className="mt-1.5 text-xs text-muted-foreground max-w-sm mx-auto">{showsError}</p>
+              <button
+                onClick={handleRetryShows}
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 hover-scale"
+              >
+                <Radio className="h-4 w-4" /> Coba Lagi
+              </button>
+            </div>
           ) : regularShows.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-12 tv:p-20 text-center">
               <MessageCircle className="mx-auto mb-4 h-12 w-12 tv:h-16 tv:w-16 text-muted-foreground" />

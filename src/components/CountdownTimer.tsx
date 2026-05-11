@@ -5,6 +5,8 @@ import { Timer } from "lucide-react";
 interface CountdownTimerProps {
   dateStr: string;
   timeStr: string;
+  /** Override paksa ke status SEDANG LIVE (mis. saat admin mengaktifkan stream). */
+  forceLive?: boolean;
 }
 
 const months: Record<string, number> = {
@@ -56,7 +58,7 @@ const AnimatedDigit = ({ value, label }: { value: number; label: string }) => (
   </div>
 );
 
-const CountdownTimer = ({ dateStr, timeStr }: CountdownTimerProps) => {
+const CountdownTimer = ({ dateStr, timeStr, forceLive = false }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isLive, setIsLive] = useState(false);
   const [isPast, setIsPast] = useState(false);
@@ -93,9 +95,9 @@ const CountdownTimer = ({ dateStr, timeStr }: CountdownTimerProps) => {
     return () => clearInterval(interval);
   }, [dateStr, timeStr]);
 
-  if (isPast) return <span className="text-[10px] font-medium text-muted-foreground">Sudah berlalu</span>;
+  if (isPast && !forceLive) return <span className="text-[10px] font-medium text-muted-foreground">Sudah berlalu</span>;
 
-  if (isLive) {
+  if (isLive || forceLive) {
     return (
       <motion.div
         animate={{ scale: [1, 1.05, 1] }}
