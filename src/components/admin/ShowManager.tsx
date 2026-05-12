@@ -109,6 +109,8 @@ const ShowManager = () => {
         replay_coin_price: show.replay_coin_price,
         access_password: show.access_password,
         is_replay: show.is_replay,
+        replay_embed_url: show.replay_embed_url || "",
+        replay_embed_type: show.replay_embed_type || "m3u8",
       })
       .eq("id", show.id);
     await fetchShows();
