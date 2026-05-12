@@ -206,8 +206,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         if (destroyed) return;
         const levels = data.levels.map((l: any, i: number) => ({
-          label: `${l.height}p`,
+          label: l.height ? `${l.height}p` : `${Math.round((l.bitrate || 0) / 1000)}k`,
           index: i,
+          height: l.height,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
         hls.currentLevel = -1;
@@ -218,7 +219,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           v.play()
             .then(() => setIsPlaying(true))
             .catch(() => {
-              // Autoplay with sound blocked → retry muted so the stream is visible
               v.muted = true;
               v.play().then(() => setIsPlaying(true)).catch(() => {});
             });
@@ -228,8 +228,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       hls.on(Hls.Events.LEVEL_SWITCHING, () => {
         if (!destroyed) setIsSwitchingQuality(true);
       });
-      hls.on(Hls.Events.LEVEL_SWITCHED, () => {
-        if (!destroyed) setIsSwitchingQuality(false);
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_: any, data: any) => {
+        if (destroyed) return;
+        setIsSwitchingQuality(false);
+        setPendingQuality(null);
+        clearTimeout(qualitySwitchTimerRef.current);
+        try {
+          const lvl = hls.levels?.[data.level];
+          setActiveHeight(lvl?.height ?? null);
+        } catch {}
       });
       hls.on(Hls.Events.FRAG_BUFFERED, () => {
         if (!destroyed) setIsSwitchingQuality(false);
