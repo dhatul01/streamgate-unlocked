@@ -64,6 +64,11 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  h1, h2, h3, .font-display {
+    font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
