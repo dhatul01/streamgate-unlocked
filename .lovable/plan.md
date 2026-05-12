@@ -1,54 +1,58 @@
-# Perbaikan Halaman Live & Performa Global
 
-## 1. Sembunyikan Bottom Navigation di Halaman Live
-**File:** `src/components/viewer/MobileBottomNav.tsx` (sudah ada `/live` di `HIDDEN_PREFIXES`, tapi nav masih muncul di screenshot).
+# Plan Perbaikan Player, Kompatibilitas, & Token
 
-- Periksa `src/App.tsx` untuk memastikan `MobileBottomNav` di-mount di tempat yang konsisten dan tidak ada nav duplikat (misalnya dari `SharedNavbar`).
-- Tambahkan pengecekan `useLocation` yang lebih ketat: hide jika `pathname === "/live"` ATAU `pathname.startsWith("/live")` ATAU ada query `?t=...`.
-- Tambahkan fallback CSS guard di `LivePage.tsx`: render `<style>nav[data-bottom-nav]{display:none!important}</style>` lokal, dan tambahkan atribut `data-bottom-nav` ke `<nav>` di `MobileBottomNav` agar pasti tersembunyi pada device tertentu yang sudah cache HTML lama.
+## 1. Quality Switch UI yang Konsisten (`src/components/viewer/VideoPlayer.tsx`)
+- Tampilkan label kualitas aktif di tombol "Kualitas" (mis. `Kualitas: 720p` atau `Auto · 720p`) berdasarkan `hls.currentLevel` & `hls.levels[currentLevel].height`.
+- Saat user pilih level: tandai item terpilih dengan ✓, simpan `pendingLevel`, tampilkan overlay "Mengganti ke 480p…".
+- Pasang listener `Hls.Events.LEVEL_SWITCHED` untuk update label & matikan overlay.
+- Fallback: jika `LEVEL_SWITCHED` tidak datang dalam 5 dtk → revert pendingLevel ke level aktif sebenarnya, sembunyikan overlay, dan tampilkan toast "Gagal pindah resolusi, tetap di Xp". Tombol/menu tetap responsif (tidak ter-disable permanen).
+- Saat error level (`LEVEL_LOAD_ERROR`) untuk level tertentu, hapus level itu dari daftar yang ditawarkan dan kembali ke Auto.
 
-## 2. Klik Layar Player ≠ Play/Pause
-**File:** `src/components/viewer/VideoPlayer.tsx`
+## 2. Kompatibilitas PC, Mobile, TV/Proyektor & Semua Browser
+- **Layout TV/Proyektor (≥1800px)**: tambahkan breakpoint utility di `tailwind.config.ts` (`tv: '1800px'`) dan terapkan di `LivePage.tsx` untuk skala kontrol/teks lebih besar (text-xl, tombol h-12).
+- **Chrome/Edge desktop**: hapus pemanggilan API yang throw (`screen.orientation.lock` di desktop), bungkus dengan `try/catch` + feature-detect `isMobile && 'orientation' in screen && 'lock' in screen.orientation`.
+- **Safari iOS**: gunakan `webkitEnterFullscreen()` pada `<video>` jika `requestFullscreen` tidak tersedia; untuk HLS native (Safari), pakai `video.src` langsung tanpa hls.js.
+- **Smart TV / WebOS / Tizen / Android TV browser**: pastikan semua tombol bisa diakses via keyboard/remote — tambah `tabIndex={0}` & focus ring (`focus-visible:ring-2 ring-primary`) pada tombol play/pause, mute, fullscreen, kualitas, PiP.
+- **Pointer events**: ganti handler `onClick` yang hanya cocok untuk mouse menjadi `onClick` + `onKeyDown` (Enter/Space) untuk remote.
+- **Pastikan tidak ada CSS** yang `pointer-events: none` menutupi tombol (audit overlay watermark & quality menu z-index).
 
-- Hapus `onClick={togglePlay}` dari:
-  - `<video>` element (m3u8) — ganti hanya untuk show/hide controls.
-  - Overlay div di YouTube branch.
-  - Overlay div di Cloudflare branch.
-- Ganti perilaku klik menjadi *toggle visibility kontrol* saja (set `setShowControls(prev => !prev)` + reset auto-hide timer). Overlay tetap ada untuk memblokir interaksi native (link YT, dll) tapi tidak memicu play/pause.
-- Tombol play/pause di bar kontrol tetap satu-satunya cara pause/play.
+## 3. Tombol Landscape Berfungsi di Semua Perangkat
+File: `VideoPlayer.tsx`
+- Logika `toggleFullscreen` direvisi:
+  1. Jika `<video>.webkitEnterFullscreen` ada (iOS) → panggil itu.
+  2. Else `containerRef.requestFullscreen()`.
+  3. Setelah fullscreen aktif: cek `screen.orientation?.lock` — kalau ada DAN device mobile (`matchMedia('(pointer: coarse)')`) → coba lock `landscape`, telan error dengan `.catch(()=>{})`.
+  4. Saat keluar fullscreen → `screen.orientation.unlock?.()`.
+- Tambah event listener `fullscreenchange` + `webkitfullscreenchange` untuk sync state ikon tombol di semua browser.
+- Tampilkan tombol fullscreen selalu visible (tidak di-hide) di bar kontrol, dan gunakan ikon yang berubah Maximize/Minimize.
 
-## 3. Quality Selector m3u8 Benar-benar Berfungsi
-**File:** `src/components/viewer/VideoPlayer.tsx`
+## 4. Token Benar-Benar Mengunci 1 Perangkat
+Backend (migration baru):
+- Update `create_token_session`:
+  - Untuk token **non-public** dengan `max_devices = 1`:
+    - Jika sudah ada session dengan fingerprint berbeda → return error `"Token sudah dipakai di perangkat lain"` (jangan izinkan tambah).
+    - Saat ini logika sudah cek `count >= max_devices` tapi izinkan jika fingerprint sama; tetap pertahankan untuk kasus yang sama.
+  - Tambahkan kolom `locked_fingerprint` pada `tokens` (text, nullable).
+  - Saat session pertama dibuat, set `tokens.locked_fingerprint = _fingerprint`.
+  - Penolakan berikutnya: kalau `locked_fingerprint IS NOT NULL` dan `_fingerprint <> locked_fingerprint` → tolak, walau semua session sudah dihapus (mencegah bypass via reset).
+- `release_token_session` tidak menghapus `locked_fingerprint`.
+- `self_reset_token_session` tetap hapus session **tetapi reset `locked_fingerprint = NULL`** hanya jika user reset (artinya mereka pindah perangkat dengan kuota harian).
 
-- Pastikan `handleQualityChange` untuk m3u8:
-  - Set `hls.nextLevel = index` (untuk perpindahan halus segmen berikutnya) selain `currentLevel`.
-  - Tampilkan overlay "Mengganti resolusi…" sampai event `LEVEL_SWITCHED` benar-benar selesai (pakai timeout 5 dtk fallback agar tidak ngambang).
-  - Untuk pilihan `Auto` (index `-1`): set `hls.currentLevel = -1` dan `hls.nextLevel = -1` lalu reset ABR (`hls.loadLevel = -1`).
-- Pastikan label level diambil dari `level.height || level.bitrate` agar selalu muncul nama seperti `720p`, `480p`, dst.
-- Tutup menu kualitas otomatis saat klik di luar (event listener `pointerdown` global).
-
-## 4. Ringankan Aplikasi & Kompatibilitas Chrome
-**File:** `vite.config.ts`, `src/main.tsx`, beberapa komponen viewer.
-
-- **Build splitting:** Tambah `manualChunks` di `vite.config.ts` untuk memisahkan `hls.js`, `recharts`, `@radix-ui/*`, `lucide-react` ke chunk sendiri sehingga halaman landing tidak menarik HLS.
-- **Lazy import HLS lebih agresif:** sudah `await import("hls.js")` — tambah `webpackPrefetch`/`vite` magic comment `/* @vite-ignore */` tidak perlu, cukup pastikan `hls.js` tidak di-bundle ke entry.
-- **Hindari API yang gagal di Chrome desktop:** bungkus `screen.orientation.lock` dengan deteksi `'lock' in screen.orientation` (di Chrome desktop akan throw — sudah di-try/catch tapi tetap blokir flow di beberapa versi).
-- **Polyfill ringan:** pastikan `target: 'es2020'` di `vite.config.ts` agar Chrome lama (≥ 90) tetap jalan tanpa error syntax.
-- Ganti beberapa `setInterval` polling (di `LivePage`) menjadi pakai `visibilitychange` + pause polling saat tab tidak aktif untuk menurunkan CPU.
-
-## 5. Hapus Cache Lama Saat User Membuka Website
-**File:** `src/main.tsx`, `vite.config.ts` (PWA plugin).
-
-- Tambah versi build constant (`__APP_VERSION__` dari `package.json`) di `vite.config.ts` `define`.
-- Di `src/main.tsx`, sebelum render:
-  - Bandingkan `localStorage.getItem('app_version')` dengan `__APP_VERSION__`.
-  - Jika beda: hapus semua `caches.keys()` (`caches.delete(...)`), unregister semua `serviceWorker.getRegistrations()` lama, set ulang versi, lalu `location.reload()` satu kali (guard agar tidak loop pakai `sessionStorage` flag).
-- Pada PWA `registerSW`:
-  - Set `onNeedRefresh` agar otomatis aktivasi `updateSW(true)` (sudah ada) DAN `skipWaiting: true`, `clientsClaim: true` di workbox config (`vite.config.ts`).
-- Tambahkan meta tag `Cache-Control: no-cache` untuk `index.html` melalui `vite.config.ts` `transformIndexHtml`.
+## 5. Reset Kuota 3x/Hari untuk Token Durasi >3 Hari & Membership
+File: function `self_reset_token_session`
+- Saat ini limit hardcoded 2x/hari. Ubah jadi dinamis:
+  - Default `_max_resets = 1` untuk token harian (≤3 hari).
+  - Untuk token dengan `duration_type IN ('weekly','monthly')` ATAU `expires_at - created_at > 3 days` ATAU token membership (token yang ter-link ke `subscription_orders` / show subscription) → `_max_resets = 3`.
+- Reset count dihitung per **hari kalender Asia/Jakarta (00:00 WIB)** — sudah benar di logika existing, pastikan tetap pakai `date_trunc('day', now() AT TIME ZONE 'Asia/Jakarta')`.
+- Update return JSON: tambah field `max_resets` agar UI bisa menampilkan "Sisa reset: 2/3".
+- UI di `LivePage.tsx` (banner reset session): tampilkan kuota dinamis dari response.
 
 ## Detail Teknis Singkat
-- Tidak ada perubahan database / RLS.
-- Tidak ada perubahan auth / login flow.
-- Semua perubahan murni frontend + konfigurasi Vite/PWA.
-- Pengujian: buka `/live?t=...` di Chrome mobile & desktop → bottom nav hilang, klik area video tidak pause, ganti resolusi 720p→480p → video benar-benar berpindah, refresh halaman versi baru → cache lama otomatis terhapus tanpa user harus clear manual.
+- Migration baru untuk `tokens.locked_fingerprint` + revisi 2 RPC (`create_token_session`, `self_reset_token_session`).
+- Frontend: hanya `VideoPlayer.tsx`, `LivePage.tsx`, `tailwind.config.ts`.
+- Tidak mengubah auth / RLS table publik.
+- Pengujian: 
+  - Buka token di device A → device B harus ditolak meski sudah lewat tengah malam.
+  - Reset di A (kuota 1 untuk daily / 3 untuk weekly+) → A bisa pindah ke B.
+  - Tombol fullscreen di Chrome desktop, Safari iOS, Android Chrome, TV browser → semua bekerja, ikon sync.
+  - Ganti resolusi 720p → 480p → label tombol berubah dan overlay hilang.
