@@ -18,6 +18,8 @@ export interface Show {
   replay_coin_price: number;
   is_replay: boolean;
   access_password?: string;
+  replay_embed_url?: string;
+  replay_embed_type?: string;
 }
 
 export const SHOW_CATEGORIES: Record<string, { label: string; color: string }> = {
