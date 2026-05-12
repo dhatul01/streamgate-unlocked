@@ -29,6 +29,8 @@ interface Show {
   replay_coin_price: number;
   access_password: string;
   is_replay: boolean;
+  replay_embed_url: string;
+  replay_embed_type: string;
 }
 
 const CATEGORY_OPTIONS = [
