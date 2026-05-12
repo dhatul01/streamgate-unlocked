@@ -380,6 +380,46 @@ const ShowManager = () => {
               <Input value={editing.access_password || ""} onChange={(e) => setEditing({ ...editing, access_password: e.target.value })} onBlur={() => updateShow(editing)} className="bg-background" placeholder="Kosongkan jika tidak perlu sandi" />
             </div>
 
+            {/* Replay embed (per-card) */}
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <Film className="h-4 w-4 text-accent" />
+                <span className="text-sm font-semibold text-foreground">Embed Replay (akses 14 hari per token)</span>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipe Embed</label>
+                <div className="flex gap-2">
+                  {[{ v: "m3u8", l: "M3U8 / HLS" }, { v: "youtube", l: "YouTube" }].map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => { const u = { ...editing, replay_embed_type: opt.v }; setEditing(u); updateShow(u); }}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                        (editing.replay_embed_type || "m3u8") === opt.v
+                          ? "border-accent bg-accent/15 text-accent"
+                          : "border-border bg-background text-muted-foreground hover:border-accent/40"
+                      }`}
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">URL Embed Replay</label>
+                <Input
+                  value={editing.replay_embed_url || ""}
+                  onChange={(e) => setEditing({ ...editing, replay_embed_url: e.target.value })}
+                  onBlur={() => updateShow(editing)}
+                  className="bg-background font-mono text-xs"
+                  placeholder={editing.replay_embed_type === "youtube" ? "https://www.youtube.com/embed/VIDEO_ID" : "https://.../playlist.m3u8"}
+                />
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Setiap token (link / membership / show) otomatis bisa membuka replay ini selama 14 hari setelah masa berlaku tokennya berakhir.
+                </p>
+              </div>
+            </div>
+
             {/* Subscription-specific fields */}
             {editing.is_subscription && (
               <>
