@@ -578,7 +578,7 @@ const LivePage = () => {
             <div className="mb-6 rounded-xl border border-border bg-secondary/30 p-4 tv:p-6 text-left space-y-2">
               <p className="text-xs font-semibold text-foreground tv:text-sm">🔄 Reset Session Mandiri</p>
               <p className="text-xs text-muted-foreground tv:text-sm">
-                Jika Anda keluar dari website tanpa menutup tab dengan benar, session mungkin masih terhitung. Gunakan tombol di bawah untuk mereset session (maks 2x/hari).
+                Jika Anda keluar dari website tanpa menutup tab dengan benar, session mungkin masih terhitung. Token harian dapat direset 1x/hari, token mingguan/bulanan dan membership 3x/hari (reset otomatis tiap pukul 00.00 WIB).
               </p>
             </div>
             <div className="flex flex-col gap-3">
