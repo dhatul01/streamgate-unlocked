@@ -17,14 +17,17 @@ const MobileBottomNav = () => {
   const location = useLocation();
 
   if (!isMobile) return null;
-  if (HIDDEN_PREFIXES.some((p) => location.pathname.startsWith(p))) return null;
+  const path = location.pathname;
+  if (path === "/live" || path.startsWith("/live/") || path.startsWith("/live?")) return null;
+  if (HIDDEN_PREFIXES.some((p) => path.startsWith(p))) return null;
 
   return (
     <>
       {/* spacer so content isn't hidden under the bar */}
-      <div className="h-16 md:hidden" aria-hidden />
+      <div className="h-16 md:hidden hide-on-live" aria-hidden data-bottom-nav-spacer />
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md md:hidden"
+        data-bottom-nav
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md md:hidden hide-on-live"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul className="flex items-stretch justify-around">

@@ -518,6 +518,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist]);
 
+  // Click on video surface only toggles control visibility — never play/pause.
+  const handleSurfaceClick = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowControls((prev) => !prev);
+    clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+  }, []);
+
   const togglePlay = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     
@@ -591,11 +599,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       } catch {}
     } else if (hlsRef.current) {
       setIsSwitchingQuality(true);
-      hlsRef.current.currentLevel = index;
+      try {
+        if (index === -1) {
+          hlsRef.current.currentLevel = -1;
+          hlsRef.current.nextLevel = -1;
+          hlsRef.current.loadLevel = -1;
+        } else {
+          hlsRef.current.nextLevel = index;
+          hlsRef.current.currentLevel = index;
+        }
+      } catch {}
       setCurrentQuality(index);
+      // Fallback: hide overlay after 5s if LEVEL_SWITCHED never fires
+      setTimeout(() => setIsSwitchingQuality(false), 5000);
     }
     setShowQualityMenu(false);
   }, [playlist.type, isYTReady]);
+
+  // Close quality menu on outside click
+  useEffect(() => {
+    if (!showQualityMenu) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-quality-menu]")) setShowQualityMenu(false);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [showQualityMenu]);
 
   const toggleYtMute = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
