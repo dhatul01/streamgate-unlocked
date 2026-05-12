@@ -926,6 +926,8 @@ export type Database = {
           price: string
           qris_image_url: string | null
           replay_coin_price: number
+          replay_embed_type: string
+          replay_embed_url: string
           schedule_date: string
           schedule_time: string
           sort_order: number
@@ -950,6 +952,8 @@ export type Database = {
           price?: string
           qris_image_url?: string | null
           replay_coin_price?: number
+          replay_embed_type?: string
+          replay_embed_url?: string
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
@@ -974,6 +978,8 @@ export type Database = {
           price?: string
           qris_image_url?: string | null
           replay_coin_price?: number
+          replay_embed_type?: string
+          replay_embed_url?: string
           schedule_date?: string
           schedule_time?: string
           sort_order?: number
@@ -1159,6 +1165,7 @@ export type Database = {
           is_public: boolean
           locked_fingerprint: string | null
           max_devices: number
+          replay_expires_at: string | null
           replay_password: string | null
           show_id: string | null
           status: string
@@ -1173,6 +1180,7 @@ export type Database = {
           is_public?: boolean
           locked_fingerprint?: string | null
           max_devices?: number
+          replay_expires_at?: string | null
           replay_password?: string | null
           show_id?: string | null
           status?: string
@@ -1187,6 +1195,7 @@ export type Database = {
           is_public?: boolean
           locked_fingerprint?: string | null
           max_devices?: number
+          replay_expires_at?: string | null
           replay_password?: string | null
           show_id?: string | null
           status?: string
@@ -1406,6 +1415,8 @@ export type Database = {
           price: string
           qris_image_url: string | null
           replay_coin_price: number
+          replay_embed_type: string
+          replay_embed_url: string
           schedule_date: string
           schedule_time: string
           sort_order: number
@@ -1420,6 +1431,7 @@ export type Database = {
         }
       }
       get_purchased_show_passwords: { Args: never; Returns: Json }
+      get_replay_access: { Args: { _token_code: string }; Returns: Json }
       get_viewer_count: { Args: never; Returns: number }
       has_role: {
         Args: {
