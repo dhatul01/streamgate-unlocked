@@ -1157,6 +1157,7 @@ export type Database = {
           expires_at: string
           id: string
           is_public: boolean
+          locked_fingerprint: string | null
           max_devices: number
           replay_password: string | null
           show_id: string | null
@@ -1170,6 +1171,7 @@ export type Database = {
           expires_at: string
           id?: string
           is_public?: boolean
+          locked_fingerprint?: string | null
           max_devices?: number
           replay_password?: string | null
           show_id?: string | null
@@ -1183,6 +1185,7 @@ export type Database = {
           expires_at?: string
           id?: string
           is_public?: boolean
+          locked_fingerprint?: string | null
           max_devices?: number
           replay_password?: string | null
           show_id?: string | null
