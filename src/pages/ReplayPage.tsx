@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
-import { Search, Calendar, Clock, Users, Coins, Play, Copy, Lock, Ticket } from "lucide-react";
+import { Search, Calendar, Clock, Users, Coins, Play, Copy, Lock, Ticket, Film, KeyRound, Clock4 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
+const VideoPlayer = lazy(() => import("@/components/viewer/VideoPlayer"));
 
 interface Show {
   id: string;
