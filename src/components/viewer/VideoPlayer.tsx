@@ -814,26 +814,38 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           <div className="relative" data-quality-menu>
             <button
               onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
-              className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary"
+              className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              tabIndex={0}
+              aria-label="Pilih kualitas video"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              {qualities.find(q => q.index === currentQuality)?.label || "Auto"}
+              <span>
+                {currentQuality === -1
+                  ? `Auto${activeHeight ? ` · ${activeHeight}p` : ""}`
+                  : qualities.find(q => q.index === currentQuality)?.label || "Auto"}
+              </span>
             </button>
             {showQualityMenu && (
-              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[100px] tv:min-w-[140px]">
-                {qualities.map((q) => (
-                  <button
-                    key={q.index}
-                    onClick={(e) => { e.stopPropagation(); handleQualityChange(q.index, q.ytKey); }}
-                    className={`block w-full rounded-md px-3 py-1.5 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition ${
-                      currentQuality === q.index
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-foreground hover:bg-secondary"
-                    }`}
-                  >
-                    {q.label}
-                  </button>
-                ))}
+              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[120px] tv:min-w-[160px]">
+                {qualities.map((q) => {
+                  const isActive = currentQuality === q.index;
+                  const isPending = pendingQuality === q.index;
+                  return (
+                    <button
+                      key={q.index}
+                      onClick={(e) => { e.stopPropagation(); handleQualityChange(q.index, q.ytKey); }}
+                      tabIndex={0}
+                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-semibold"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <span>{q.label}</span>
+                      {isPending ? <span className="text-[10px] opacity-70">…</span> : isActive ? <span>✓</span> : null}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -841,18 +853,26 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <button
           onClick={toggleOrientation}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
+          className="hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title="Rotate"
+          tabIndex={0}
+          aria-label="Putar layar"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
         </button>
 
         <button
           onClick={toggleFullscreen}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
-          title="Fullscreen"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          title={isFullscreen ? "Keluar fullscreen" : "Fullscreen"}
+          tabIndex={0}
+          aria-label={isFullscreen ? "Keluar fullscreen" : "Masuk fullscreen"}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          {isFullscreen ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          )}
         </button>
       </div>
     </div>
