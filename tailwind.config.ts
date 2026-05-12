@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        serif: ['"Playfair Display"', '"Times New Roman"', "Georgia", "serif"],
+        display: ['"Playfair Display"', '"Times New Roman"', "Georgia", "serif"],
+      },
       screens: {
         tv: "1800px",
       },
