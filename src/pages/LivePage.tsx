@@ -423,7 +423,7 @@ const LivePage = () => {
     return () => clearTimeout(timer);
   }, [stream?.is_live, activePlaylist, playerKey]);
 
-  // Disable right-click on player
+  // Disable right-click on player + hide bottom nav on this page (defense-in-depth)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -432,7 +432,11 @@ const LivePage = () => {
       }
     };
     document.addEventListener("contextmenu", handler);
-    return () => document.removeEventListener("contextmenu", handler);
+    document.body.classList.add("is-live-page");
+    return () => {
+      document.removeEventListener("contextmenu", handler);
+      document.body.classList.remove("is-live-page");
+    };
   }, []);
 
   const handlePlaylistSwitch = (playlist: any) => {

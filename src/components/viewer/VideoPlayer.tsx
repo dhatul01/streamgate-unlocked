@@ -518,6 +518,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist]);
 
+  // Click on video surface only toggles control visibility — never play/pause.
+  const handleSurfaceClick = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowControls((prev) => !prev);
+    clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+  }, []);
+
   const togglePlay = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     
@@ -591,11 +599,33 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       } catch {}
     } else if (hlsRef.current) {
       setIsSwitchingQuality(true);
-      hlsRef.current.currentLevel = index;
+      try {
+        if (index === -1) {
+          hlsRef.current.currentLevel = -1;
+          hlsRef.current.nextLevel = -1;
+          hlsRef.current.loadLevel = -1;
+        } else {
+          hlsRef.current.nextLevel = index;
+          hlsRef.current.currentLevel = index;
+        }
+      } catch {}
       setCurrentQuality(index);
+      // Fallback: hide overlay after 5s if LEVEL_SWITCHED never fires
+      setTimeout(() => setIsSwitchingQuality(false), 5000);
     }
     setShowQualityMenu(false);
   }, [playlist.type, isYTReady]);
+
+  // Close quality menu on outside click
+  useEffect(() => {
+    if (!showQualityMenu) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-quality-menu]")) setShowQualityMenu(false);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [showQualityMenu]);
 
   const toggleYtMute = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -658,7 +688,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           {/* Full overlay to block all YouTube UI navigation and links */}
           <div
             className="absolute inset-0 z-10 cursor-pointer"
-            onClick={togglePlay}
+            onClick={handleSurfaceClick}
             onContextMenu={(e) => e.preventDefault()}
           />
         </>
@@ -667,7 +697,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {playlist.type === "m3u8" && (
         <video
           ref={videoRef}
-          onClick={togglePlay}
+          onClick={handleSurfaceClick}
           className={`h-full w-full object-contain cursor-pointer ${isFullscreen ? "max-h-screen" : "absolute inset-0"}`}
           playsInline
           preload="auto"
@@ -685,7 +715,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             allowFullScreen
             loading="lazy"
           />
-          <div className="absolute inset-0 z-10 cursor-pointer" onClick={togglePlay} style={{ pointerEvents: "auto" }} />
+          <div className="absolute inset-0 z-10 cursor-pointer" onClick={handleSurfaceClick} style={{ pointerEvents: "auto" }} />
         </>
       )}
 
@@ -739,7 +769,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         <div className="flex-1" />
 
         {qualities.length > 0 && (
-          <div className="relative">
+          <div className="relative" data-quality-menu>
             <button
               onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
               className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary"

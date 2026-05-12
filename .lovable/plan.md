@@ -1,54 +1,54 @@
-# Rencana Perbaikan Halaman Live & Chat
+# Perbaikan Halaman Live & Performa Global
 
-## Temuan Akar Masalah
+## 1. Sembunyikan Bottom Navigation di Halaman Live
+**File:** `src/components/viewer/MobileBottomNav.tsx` (sudah ada `/live` di `HIDDEN_PREFIXES`, tapi nav masih muncul di screenshot).
 
-1. **Live chat tidak menerima pesan baru / tidak bisa kirim**
-   - Tabel `chat_messages` (juga `streams`, `playlists`, `tokens`, `site_settings`) **belum** terdaftar di publikasi `supabase_realtime`. Jadi event INSERT/UPDATE tidak pernah sampai ke client → pesan baru tidak muncul kecuali refresh.
-   - RLS `chat_messages` mensyaratkan user **terautentikasi** (`Authenticated can insert non-admin messages` dengan `WITH CHECK (is_admin = false)` & `REPLICA IDENTITY` untuk role `authenticated`). Penonton yang masuk via token tapi tanpa login Supabase → `insert` ditolak diam-diam (tidak ada toast error).
-   - Komponen `LiveChat.sendMessage` tidak menampilkan error sehingga user mengira chat "rusak".
+- Periksa `src/App.tsx` untuk memastikan `MobileBottomNav` di-mount di tempat yang konsisten dan tidak ada nav duplikat (misalnya dari `SharedNavbar`).
+- Tambahkan pengecekan `useLocation` yang lebih ketat: hide jika `pathname === "/live"` ATAU `pathname.startsWith("/live")` ATAU ada query `?t=...`.
+- Tambahkan fallback CSS guard di `LivePage.tsx`: render `<style>nav[data-bottom-nav]{display:none!important}</style>` lokal, dan tambahkan atribut `data-bottom-nav` ke `<nav>` di `MobileBottomNav` agar pasti tersembunyi pada device tertentu yang sudah cache HTML lama.
 
-2. **Player blank pada YouTube**
-   - Pada `VideoPlayer.tsx` (event `onReady`), iframe YouTube diberi `sandbox="allow-scripts allow-same-origin"` setelah dibuat. Penambahan atribut `sandbox` memicu iframe **reload tanpa konteks YT API** → player blank dan tidak pernah memanggil `onStateChange`. Atribut ini perlu dihapus (cukup `referrerpolicy="no-referrer"`).
-   - Untuk m3u8/cloudflare layar blank umumnya akibat `signedStreamUrl` belum siap atau HLS init dipanggil ganda. Tambah guard agar `key={playerKey}` tidak ikut berubah saat URL signed di-refresh (sudah aman) dan tampilkan fallback "Coba Lagi" bila inisialisasi gagal >10 detik.
+## 2. Klik Layar Player ≠ Play/Pause
+**File:** `src/components/viewer/VideoPlayer.tsx`
 
-3. **Tombol navigasi tetap muncul di halaman live (mobile)**
-   - `MobileBottomNav.tsx` punya daftar `HIDDEN_PREFIXES = ["/admin", "/reset-password", "/install"]`. Route `/live` tidak ada di sana, jadi bottom nav tetap tampil dan menyempitkan area chat.
+- Hapus `onClick={togglePlay}` dari:
+  - `<video>` element (m3u8) — ganti hanya untuk show/hide controls.
+  - Overlay div di YouTube branch.
+  - Overlay div di Cloudflare branch.
+- Ganti perilaku klik menjadi *toggle visibility kontrol* saja (set `setShowControls(prev => !prev)` + reset auto-hide timer). Overlay tetap ada untuk memblokir interaksi native (link YT, dll) tapi tidak memicu play/pause.
+- Tombol play/pause di bar kontrol tetap satu-satunya cara pause/play.
 
-4. **Login tidak persisten**
-   - `supabase/client.ts` sebenarnya sudah `persistSession: true` + `localStorage`. Sesi otomatis tersimpan.
-   - Masalah sebenarnya: `AdminLogin` & `ViewerAuth` tidak melakukan **redirect otomatis** kalau sesi sudah ada, jadi user merasa "harus login lagi". Tambah pengecekan `getSession()` di mount → kalau ada sesi valid + role sesuai, langsung `navigate` ke dashboard/profile.
-   - Untuk LivePage: tampilkan toast "berhasil login otomatis" sekali saja agar terasa persistent.
+## 3. Quality Selector m3u8 Benar-benar Berfungsi
+**File:** `src/components/viewer/VideoPlayer.tsx`
 
-## Perubahan
+- Pastikan `handleQualityChange` untuk m3u8:
+  - Set `hls.nextLevel = index` (untuk perpindahan halus segmen berikutnya) selain `currentLevel`.
+  - Tampilkan overlay "Mengganti resolusi…" sampai event `LEVEL_SWITCHED` benar-benar selesai (pakai timeout 5 dtk fallback agar tidak ngambang).
+  - Untuk pilihan `Auto` (index `-1`): set `hls.currentLevel = -1` dan `hls.nextLevel = -1` lalu reset ABR (`hls.loadLevel = -1`).
+- Pastikan label level diambil dari `level.height || level.bitrate` agar selalu muncul nama seperti `720p`, `480p`, dst.
+- Tutup menu kualitas otomatis saat klik di luar (event listener `pointerdown` global).
 
-### A. Database (migrasi)
-- `ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages, public.streams, public.playlists, public.tokens, public.site_settings;` (gunakan `DO $$` untuk skip table yang sudah terdaftar agar idempotent).
-- `ALTER TABLE public.chat_messages REPLICA IDENTITY FULL;` (sudah default di-tabel public, tetap dipastikan agar payload UPDATE/DELETE lengkap).
+## 4. Ringankan Aplikasi & Kompatibilitas Chrome
+**File:** `vite.config.ts`, `src/main.tsx`, beberapa komponen viewer.
 
-### B. `src/components/viewer/LiveChat.tsx`
-- Tampilkan toast error bila `supabase.from("chat_messages").insert(...)` mengembalikan error (terutama untuk RLS / belum login).
-- Bila user belum punya session Supabase, tampilkan placeholder input "Login dulu untuk komentar" + tombol kecil ke `/auth?redirect=/live?...`.
-- Pastikan channel name unik (`chat-realtime-${tokenId ?? "anon"}`) agar tidak konflik antar tab.
+- **Build splitting:** Tambah `manualChunks` di `vite.config.ts` untuk memisahkan `hls.js`, `recharts`, `@radix-ui/*`, `lucide-react` ke chunk sendiri sehingga halaman landing tidak menarik HLS.
+- **Lazy import HLS lebih agresif:** sudah `await import("hls.js")` — tambah `webpackPrefetch`/`vite` magic comment `/* @vite-ignore */` tidak perlu, cukup pastikan `hls.js` tidak di-bundle ke entry.
+- **Hindari API yang gagal di Chrome desktop:** bungkus `screen.orientation.lock` dengan deteksi `'lock' in screen.orientation` (di Chrome desktop akan throw — sudah di-try/catch tapi tetap blokir flow di beberapa versi).
+- **Polyfill ringan:** pastikan `target: 'es2020'` di `vite.config.ts` agar Chrome lama (≥ 90) tetap jalan tanpa error syntax.
+- Ganti beberapa `setInterval` polling (di `LivePage`) menjadi pakai `visibilitychange` + pause polling saat tab tidak aktif untuk menurunkan CPU.
 
-### C. `src/components/viewer/VideoPlayer.tsx`
-- Hapus baris `iframe.setAttribute("sandbox", "allow-scripts allow-same-origin")` di handler `onReady` YouTube agar API tidak putus.
-- Tambah safety: kalau `isLoading` masih `true` setelah 12 detik, tampilkan tombol "Muat Ulang Player" yang me-reset key playlist (set state baru di parent).
-- Tetap `referrerpolicy="no-referrer"` untuk anti-leak.
+## 5. Hapus Cache Lama Saat User Membuka Website
+**File:** `src/main.tsx`, `vite.config.ts` (PWA plugin).
 
-### D. `src/components/viewer/MobileBottomNav.tsx`
-- Tambahkan `"/live"` ke `HIDDEN_PREFIXES` agar bottom nav hilang di halaman live → area chat lebih luas.
+- Tambah versi build constant (`__APP_VERSION__` dari `package.json`) di `vite.config.ts` `define`.
+- Di `src/main.tsx`, sebelum render:
+  - Bandingkan `localStorage.getItem('app_version')` dengan `__APP_VERSION__`.
+  - Jika beda: hapus semua `caches.keys()` (`caches.delete(...)`), unregister semua `serviceWorker.getRegistrations()` lama, set ulang versi, lalu `location.reload()` satu kali (guard agar tidak loop pakai `sessionStorage` flag).
+- Pada PWA `registerSW`:
+  - Set `onNeedRefresh` agar otomatis aktivasi `updateSW(true)` (sudah ada) DAN `skipWaiting: true`, `clientsClaim: true` di workbox config (`vite.config.ts`).
+- Tambahkan meta tag `Cache-Control: no-cache` untuk `index.html` melalui `vite.config.ts` `transformIndexHtml`.
 
-### E. `src/pages/LivePage.tsx`
-- Tambah handler `onPlayerStuck` yang men-set state `playerReloadKey` (di-suffix ke `playerKey`) supaya tombol "Muat Ulang Player" berfungsi.
-- Sembunyikan elemen header link `← Kembali` saat fullscreen / mobile chat tampil (opsional minor).
-
-### F. `src/pages/AdminLogin.tsx` & `src/pages/ViewerAuth.tsx`
-- Pada mount: panggil `supabase.auth.getSession()`. Bila ada session:
-  - AdminLogin: cek role admin/moderator → redirect `/admin/dashboard`.
-  - ViewerAuth: redirect ke `/profile` (atau ke `?redirect=...` bila ada).
-- Pasang listener `supabase.auth.onAuthStateChange` agar perubahan login langsung terdeteksi.
-
-## Catatan Teknis
-- Tidak ada perubahan logika bisnis lain; fokus hanya pada perbaikan bug di atas.
-- Migrasi realtime aman untuk produksi (idempotent) dan tidak merubah data.
-- Tidak ada perubahan pada RPC keamanan (`get_playlists_for_token`, `validate_token`).
+## Detail Teknis Singkat
+- Tidak ada perubahan database / RLS.
+- Tidak ada perubahan auth / login flow.
+- Semua perubahan murni frontend + konfigurasi Vite/PWA.
+- Pengujian: buka `/live?t=...` di Chrome mobile & desktop → bottom nav hilang, klik area video tidak pause, ganti resolusi 720p→480p → video benar-benar berpindah, refresh halaman versi baru → cache lama otomatis terhapus tanpa user harus clear manual.

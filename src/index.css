@@ -121,3 +121,9 @@
     height: 10px;
   }
 }
+
+/* Hide mobile bottom nav on the live page (defense-in-depth) */
+body.is-live-page nav[data-bottom-nav],
+body.is-live-page [data-bottom-nav-spacer] {
+  display: none !important;
+}
