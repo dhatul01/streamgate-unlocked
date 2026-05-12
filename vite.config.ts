@@ -5,7 +5,13 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
+const APP_VERSION = JSON.stringify(`${Date.now()}`);
+
+// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: APP_VERSION,
+  },
   server: {
     host: "::",
     port: 8080,
@@ -89,6 +95,7 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   build: {
+    target: "es2020",
     rollupOptions: {
       output: {
         manualChunks: {
@@ -106,6 +113,7 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-toast",
           ],
           "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-hls": ["hls.js"],
         },
       },
     },
