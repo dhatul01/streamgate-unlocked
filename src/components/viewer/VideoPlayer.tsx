@@ -575,16 +575,30 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   }, [playlist.type]);
 
   const toggleFullscreen = useCallback(async () => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const video = videoRef.current as any;
+    if (!container) return;
+    const doc = document as any;
+    const inFs = !!(document.fullscreenElement || doc.webkitFullscreenElement);
     try {
-      if (document.fullscreenElement) {
+      if (inFs) {
         try { (screen.orientation as any)?.unlock?.(); } catch {}
-        await document.exitFullscreen();
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
       } else {
-        await containerRef.current.requestFullscreen();
-        // On mobile, force landscape for the best video viewing experience
-        if (window.matchMedia("(max-width: 1024px)").matches) {
-          try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+        // iOS Safari: only the <video> can fullscreen
+        if (video && typeof video.webkitEnterFullscreen === "function" && !container.requestFullscreen) {
+          video.webkitEnterFullscreen();
+        } else if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          (container as any).webkitRequestFullscreen();
+        }
+        // Lock landscape only on touch devices that support it
+        const isCoarse = window.matchMedia("(pointer: coarse)").matches;
+        const orientation: any = (screen as any).orientation;
+        if (isCoarse && orientation && typeof orientation.lock === "function") {
+          orientation.lock("landscape").catch(() => {});
         }
       }
     } catch {}
@@ -592,12 +606,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
   const toggleOrientation = useCallback(async () => {
     try {
-      const orientation = screen.orientation;
-      if (orientation.type.includes("portrait")) {
-        await (orientation as any).lock("landscape");
-      } else {
-        await (orientation as any).lock("portrait");
-      }
+      const orientation: any = (screen as any).orientation;
+      if (!orientation || typeof orientation.lock !== "function") return;
+      const isPortrait = orientation.type?.includes("portrait");
+      orientation.lock(isPortrait ? "landscape" : "portrait").catch(() => {});
     } catch {}
   }, []);
 
@@ -609,6 +621,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       } catch {}
     } else if (hlsRef.current) {
       setIsSwitchingQuality(true);
+      setPendingQuality(index);
       try {
         if (index === -1) {
           hlsRef.current.currentLevel = -1;
@@ -620,8 +633,20 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         }
       } catch {}
       setCurrentQuality(index);
-      // Fallback: hide overlay after 5s if LEVEL_SWITCHED never fires
-      setTimeout(() => setIsSwitchingQuality(false), 5000);
+      // Fallback: revert pending state if LEVEL_SWITCHED never fires
+      clearTimeout(qualitySwitchTimerRef.current);
+      qualitySwitchTimerRef.current = setTimeout(() => {
+        setIsSwitchingQuality(false);
+        setPendingQuality(null);
+        try {
+          const cur = hlsRef.current?.currentLevel;
+          if (typeof cur === "number" && cur >= 0) {
+            const lvl = hlsRef.current?.levels?.[cur];
+            setActiveHeight(lvl?.height ?? null);
+            setCurrentQuality(cur);
+          }
+        } catch {}
+      }, 5000);
     }
     setShowQualityMenu(false);
   }, [playlist.type, isYTReady]);
