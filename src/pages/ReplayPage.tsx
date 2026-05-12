@@ -73,6 +73,36 @@ const ReplayPage = () => {
   const [replayResult, setReplayResult] = useState<{ replay_password: string; remaining_balance: number } | null>(null);
   const [isStreamLive, setIsStreamLive] = useState(true);
 
+  // Token-based 14-day replay access
+  const [tokenInput, setTokenInput] = useState("");
+  const [activeToken, setActiveToken] = useState<string>(() => {
+    const url = new URLSearchParams(window.location.search);
+    return url.get("t") || localStorage.getItem("replay_token") || "";
+  });
+  const [tokenAccess, setTokenAccess] = useState<{ valid: boolean; replay_expires_at?: string; shows?: any[]; error?: string } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [activeReplay, setActiveReplay] = useState<{ id: string; title: string; type: string; url: string } | null>(null);
+
+  const checkToken = async (code: string) => {
+    if (!code) return;
+    setTokenLoading(true);
+    const { data, error } = await supabase.rpc("get_replay_access", { _token_code: code });
+    setTokenLoading(false);
+    const result = data as any;
+    if (error || !result?.valid) {
+      setTokenAccess({ valid: false, error: result?.error || error?.message || "Token tidak valid" });
+      return;
+    }
+    setTokenAccess(result);
+    setActiveToken(code);
+    localStorage.setItem("replay_token", code);
+  };
+
+  useEffect(() => {
+    if (activeToken) checkToken(activeToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       const [showsRes, streamRes] = await Promise.all([
