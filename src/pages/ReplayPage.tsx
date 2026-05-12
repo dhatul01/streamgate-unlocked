@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import SharedNavbar from "@/components/viewer/SharedNavbar";
-import { Search, Calendar, Clock, Users, Coins, Play, Copy, Lock, Ticket } from "lucide-react";
+import { Search, Calendar, Clock, Users, Coins, Play, Copy, Lock, Ticket, Film, KeyRound, Clock4 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
+const VideoPlayer = lazy(() => import("@/components/viewer/VideoPlayer"));
 
 interface Show {
   id: string;
@@ -70,6 +72,36 @@ const ReplayPage = () => {
   const [replayCopied, setReplayCopied] = useState(false);
   const [replayResult, setReplayResult] = useState<{ replay_password: string; remaining_balance: number } | null>(null);
   const [isStreamLive, setIsStreamLive] = useState(true);
+
+  // Token-based 14-day replay access
+  const [tokenInput, setTokenInput] = useState("");
+  const [activeToken, setActiveToken] = useState<string>(() => {
+    const url = new URLSearchParams(window.location.search);
+    return url.get("t") || localStorage.getItem("replay_token") || "";
+  });
+  const [tokenAccess, setTokenAccess] = useState<{ valid: boolean; replay_expires_at?: string; shows?: any[]; error?: string } | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [activeReplay, setActiveReplay] = useState<{ id: string; title: string; type: string; url: string } | null>(null);
+
+  const checkToken = async (code: string) => {
+    if (!code) return;
+    setTokenLoading(true);
+    const { data, error } = await supabase.rpc("get_replay_access", { _token_code: code });
+    setTokenLoading(false);
+    const result = data as any;
+    if (error || !result?.valid) {
+      setTokenAccess({ valid: false, error: result?.error || error?.message || "Token tidak valid" });
+      return;
+    }
+    setTokenAccess(result);
+    setActiveToken(code);
+    localStorage.setItem("replay_token", code);
+  };
+
+  useEffect(() => {
+    if (activeToken) checkToken(activeToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -200,9 +232,107 @@ const ReplayPage = () => {
 
       <div className="mx-auto max-w-6xl px-4 pt-20 pb-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-          <h1 className="text-3xl font-extrabold text-foreground">🎬 Replay Show</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Tonton ulang show yang sudah berlangsung</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-bold text-foreground tracking-tight">🎬 Replay Show</h1>
+          <p className="mt-3 text-sm md:text-base text-muted-foreground italic">Tonton ulang show yang sudah berlangsung — eksklusif untuk pemilik token</p>
         </motion.div>
+
+        {/* Token-based replay (14-day access) */}
+        <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-accent" />
+            <h2 className="font-serif text-xl font-bold text-foreground">Akses Replay via Token</h2>
+          </div>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Setiap token (link / membership / show) otomatis bisa dipakai untuk menonton replay selama <span className="font-semibold text-accent">14 hari</span> setelah masa berlaku tokennya berakhir.
+          </p>
+
+          {!tokenAccess?.valid ? (
+            <form
+              onSubmit={(e) => { e.preventDefault(); checkToken(tokenInput.trim()); }}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <Input
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="Masukkan kode token kamu"
+                className="bg-background font-mono"
+              />
+              <Button type="submit" disabled={tokenLoading || !tokenInput.trim()} className="btn-elegant">
+                {tokenLoading ? "Mengecek..." : "Buka Replay"}
+              </Button>
+              {tokenAccess?.error && (
+                <p className="text-xs text-destructive sm:basis-full">{tokenAccess.error}</p>
+              )}
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/30 bg-background/60 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock4 className="h-4 w-4 text-accent" />
+                  <span className="text-muted-foreground">Berlaku hingga</span>
+                  <span className="font-semibold text-foreground">
+                    {tokenAccess.replay_expires_at ? new Date(tokenAccess.replay_expires_at).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" }) : "—"}
+                  </span>
+                </div>
+                <button
+                  onClick={() => { localStorage.removeItem("replay_token"); setActiveToken(""); setTokenAccess(null); setTokenInput(""); setActiveReplay(null); }}
+                  className="text-xs text-muted-foreground underline hover:text-destructive"
+                >
+                  Keluar
+                </button>
+              </div>
+
+              {activeReplay && (
+                <div className="overflow-hidden rounded-2xl border border-border bg-black">
+                  <div className="flex items-center justify-between bg-card/80 px-4 py-2">
+                    <p className="font-serif text-sm font-semibold text-foreground">{activeReplay.title}</p>
+                    <button onClick={() => setActiveReplay(null)} className="text-xs text-muted-foreground hover:text-foreground">Tutup</button>
+                  </div>
+                  <Suspense fallback={<div className="aspect-video w-full bg-black" />}>
+                    <VideoPlayer
+                      playlist={{ type: activeReplay.type, url: activeReplay.url, label: activeReplay.title }}
+                      tokenCode={activeToken}
+                    />
+                  </Suspense>
+                </div>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {(tokenAccess.shows || []).length === 0 && (
+                  <p className="col-span-full text-center text-sm text-muted-foreground">Belum ada replay yang dipublikasikan admin.</p>
+                )}
+                {(tokenAccess.shows || []).map((s: any) => {
+                  const hasEmbed = !!s.replay_embed_url;
+                  return (
+                    <div key={s.id} className="group overflow-hidden rounded-xl border border-border bg-card transition hover:border-accent/50">
+                      <div className="relative h-32 overflow-hidden">
+                        {s.background_image_url ? (
+                          <img src={s.background_image_url} alt={s.title} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-secondary"><Film className="h-10 w-10 text-muted-foreground" /></div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                        <p className="absolute bottom-2 left-3 right-3 font-serif text-sm font-bold text-foreground">{s.title}</p>
+                      </div>
+                      <div className="space-y-2 p-3">
+                        <p className="text-[11px] text-muted-foreground">{s.schedule_date} {s.schedule_time}</p>
+                        <button
+                          disabled={!hasEmbed}
+                          onClick={() => setActiveReplay({ id: s.id, title: s.title, type: s.replay_embed_type || "m3u8", url: s.replay_embed_url })}
+                          className={`w-full rounded-lg py-2 text-xs font-semibold transition ${
+                            hasEmbed ? "btn-elegant" : "bg-muted text-muted-foreground cursor-not-allowed"
+                          }`}
+                        >
+                          {hasEmbed ? "▶ Tonton Replay" : "Belum tersedia"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Search */}
         <div className="relative mx-auto mb-8 max-w-md">
