@@ -288,24 +288,12 @@ const ReplayPage = () => {
                     <p className="font-serif text-sm font-semibold text-foreground">{activeReplay.title}</p>
                     <button onClick={() => setActiveReplay(null)} className="text-xs text-muted-foreground hover:text-foreground">Tutup</button>
                   </div>
-                  {activeReplay.type === "youtube" ? (
-                    <div className="relative aspect-video w-full">
-                      <iframe
-                        src={activeReplay.url.startsWith("enc:")
-                          ? `https://www.youtube.com/embed/${activeReplay.url}` // fallback (won't normally hit)
-                          : activeReplay.url}
-                        className="absolute inset-0 h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 pointer-events-none" />
-                    </div>
-                  ) : (
-                    <Suspense fallback={<div className="aspect-video w-full bg-black" />}>
-                      <VideoPlayer playlist={{ type: "m3u8", url: activeReplay.url, label: activeReplay.title }} tokenCode={activeToken} />
-                    </Suspense>
-                  )}
+                  <Suspense fallback={<div className="aspect-video w-full bg-black" />}>
+                    <VideoPlayer
+                      playlist={{ type: activeReplay.type, url: activeReplay.url, label: activeReplay.title }}
+                      tokenCode={activeToken}
+                    />
+                  </Suspense>
                 </div>
               )}
 
