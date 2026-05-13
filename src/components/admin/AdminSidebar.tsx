@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.webp";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog, Gauge, Image as ImageIcon } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog, Gauge, Image as ImageIcon, Film } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
