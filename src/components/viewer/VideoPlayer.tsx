@@ -725,13 +725,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         <>
           <div
             ref={ytContainerRef}
-            className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
+            className={`w-full h-full [&>div]:!w-full [&>div]:!h-full [&>iframe]:!w-full [&>iframe]:!h-full [&>div>iframe]:!w-full [&>div>iframe]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!pointer-events-none ${isFullscreen ? "relative max-h-screen aspect-video" : "absolute inset-0 [&_iframe]:!absolute [&_iframe]:!inset-0"}`}
+            style={{ pointerEvents: "none" }}
           />
-          {/* Full overlay to block all YouTube UI navigation and links */}
+          {/* Full overlay to block ALL YouTube UI navigation, links, and touch interaction */}
           <div
-            className="absolute inset-0 z-10 cursor-pointer"
+            className="absolute inset-0 z-10 cursor-pointer select-none"
             onClick={handleSurfaceClick}
             onContextMenu={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{ pointerEvents: "auto", touchAction: "manipulation", WebkitUserSelect: "none", userSelect: "none" }}
           />
         </>
       )}

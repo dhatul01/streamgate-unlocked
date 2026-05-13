@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.webp";
-import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog, Gauge, Image as ImageIcon } from "lucide-react";
+import { Radio, Key, Monitor, Settings, LogOut, Theater, FileText, ClipboardList, Users, Menu, Coins, Package, BarChart3, Shield, Activity, ScrollText, Globe, UserCog, Gauge, Image as ImageIcon, Film } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
@@ -14,6 +14,7 @@ interface AdminSidebarProps {
 const allSections = [
   { id: "live", label: "Live & Playlist", icon: Radio, adminOnly: false },
   { id: "tokens", label: "Token Factory", icon: Key, adminOnly: false },
+  { id: "replay-tokens", label: "Token Replay", icon: Film, adminOnly: true },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "members", label: "Foto Member", icon: Users, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },
