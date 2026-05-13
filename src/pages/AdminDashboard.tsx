@@ -77,6 +77,7 @@ const AdminDashboard = () => {
     switch (activeSection) {
       case "live": return <LiveControl />;
       case "tokens": return <TokenFactory />;
+      case "replay-tokens": return userRole === "admin" ? <ReplayTokenManager /> : null;
       case "shows": return <ShowManager />;
       case "members": return <MemberManager />;
       case "orders": return <SubscriptionOrderManager />;
