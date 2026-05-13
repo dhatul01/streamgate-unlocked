@@ -14,6 +14,7 @@ interface AdminSidebarProps {
 const allSections = [
   { id: "live", label: "Live & Playlist", icon: Radio, adminOnly: false },
   { id: "tokens", label: "Token Factory", icon: Key, adminOnly: false },
+  { id: "replay-tokens", label: "Token Replay", icon: Film, adminOnly: true },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "members", label: "Foto Member", icon: Users, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },
