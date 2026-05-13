@@ -26,6 +26,7 @@ import IpManager from "@/components/admin/IpManager";
 import UserManager from "@/components/admin/UserManager";
 import RateLimitMonitor from "@/components/admin/RateLimitMonitor";
 import MediaLibrary from "@/components/admin/MediaLibrary";
+import ReplayTokenManager from "@/components/admin/ReplayTokenManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
