@@ -261,6 +261,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       const Hls = (await import("hls.js")).default;
       if (destroyed) return;
 
+      videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
       const decodedUrl = latestHlsUrlRef.current;
       if (!decodedUrl) return;
       if (!Hls.isSupported()) {
