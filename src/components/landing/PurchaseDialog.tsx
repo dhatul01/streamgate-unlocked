@@ -88,13 +88,37 @@ const PurchaseDialog = ({
                 {selectedShow.lineup && <p>👥 {selectedShow.lineup}</p>}
               </div>
             </div>
+            {pakasirError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+                <div className="flex items-start gap-2 text-xs text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">QRIS gagal dimuat</p>
+                    <p className="text-destructive/80">{pakasirError}</p>
+                    {pakasirAttempts && pakasirAttempts > 1 ? (
+                      <p className="mt-1 text-[10px] text-muted-foreground">Percobaan ke-{pakasirAttempts}.</p>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  onClick={onPakasirRetry || onConfirmRegular}
+                  disabled={pakasirLoading}
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                >
+                  {pakasirLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  {pakasirLoading ? "Mencoba ulang..." : "Coba Ulang QRIS"}
+                </Button>
+              </div>
+            )}
             <Button
               onClick={onConfirmRegular}
               disabled={!phone.trim() || pakasirLoading}
               className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg"
             >
-              <Radio className="h-4 w-4 tv:h-6 tv:w-6" />
-              {pakasirLoading ? "Membuat QRIS..." : "Lanjut Bayar via QRIS"}
+              {pakasirLoading ? <Loader2 className="h-4 w-4 animate-spin tv:h-6 tv:w-6" /> : <Radio className="h-4 w-4 tv:h-6 tv:w-6" />}
+              {pakasirLoading ? "Membuat QRIS..." : pakasirError ? "Buat QRIS Baru" : "Lanjut Bayar via QRIS"}
             </Button>
           </div>
         )}
