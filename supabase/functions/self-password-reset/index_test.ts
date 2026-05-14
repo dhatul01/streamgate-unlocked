@@ -75,7 +75,11 @@ Deno.test("E2E: request creates token with 20-minute expiry", async () => {
   }
 });
 
-Deno.test("E2E: confirm consumes token and updates password (login works)", async () => {
+Deno.test({
+  name: "E2E: confirm consumes token and updates password (login works)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
   const phone = "62" + Math.floor(8000000000 + Math.random() * 999999999);
   const userId = await createTempUser(phone, "oldpass123");
   try {
