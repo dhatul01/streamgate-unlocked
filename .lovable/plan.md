@@ -1,45 +1,105 @@
-## 1. Landing Page – Elegan & Serif
+# Sistem Reseller / Sub-Admin
 
-- Tambah Google Font **Playfair Display** (serif klasik mirip Times New Roman tapi lebih elegan untuk web) untuk semua heading, dan **Inter** untuk body.
-- Update `index.html` (preconnect + link font) dan `tailwind.config.ts` (`fontFamily.serif: ["Playfair Display", "Times New Roman", "serif"]`).
-- Apply class `font-serif` ke judul hero, judul section, judul kartu show, judul "Live", "Replay", "Schedule".
-- Refresh tombol utama (`Tonton Live`, `Beli Token`, CTA hero) jadi style elegan: gradient halus primary→primary-glow, border tipis, shadow elegan, hover scale 1.02, transisi 300ms, sudut `rounded-xl`.
-- Tidak mengubah struktur/komponen lain — hanya token visual & class.
+Membangun sistem reseller terpisah dari admin & moderator. Reseller bisa login, beli/dapat kuota token dari admin, generate token baru (unik, tidak duplikat), dan setiap aksi tercatat di audit log.
 
-## 2. Sistem Replay – Embed per Kartu + 14 Hari Token
+## 1. Database (migration)
 
-### Database (migration)
-- `shows`: tambah kolom `replay_embed_url text default ''` dan `replay_embed_type text default 'm3u8'` (`'m3u8' | 'youtube'`).
-- `tokens`: tambah kolom `replay_expires_at timestamptz` (nullable). Diisi otomatis = `expires_at + 14 days` saat token dibuat (trigger `BEFORE INSERT`).
-- Backfill semua token existing: `replay_expires_at = expires_at + interval '14 days'`.
+**Tabel baru:**
 
-### RPC baru
-- `get_replay_access(_token_code text) returns json` — SECURITY DEFINER:
-  - validasi token tidak `blocked`, dan `now() <= replay_expires_at`.
-  - return list show `is_replay = true` beserta `replay_embed_url` + `replay_embed_type` (di-XOR untuk YouTube seperti playlist saat ini).
-- `get_public_shows` tetap mask `replay_embed_url` (kosong) — URL hanya keluar via RPC token.
+- `resellers`
+  - `user_id` (uuid, unique) — referensi ke auth.users
+  - `username` (text, unique)
+  - `full_name`, `phone`, `whatsapp`
+  - `token_quota` (int, default 0) — sisa kuota token yang bisa dibuat
+  - `total_tokens_created` (int, default 0)
+  - `commission_rate` (numeric, default 0) — % komisi (info saja)
+  - `is_active` (bool, default true)
 
-### Admin UI (`ShowManager.tsx`)
-- Pada form edit show, tambah dua field di section Replay:
-  - **Tipe Embed Replay** (select: m3u8 / youtube)
-  - **URL Embed Replay** (input)
-- Hanya muncul jika `is_replay` aktif atau show sudah selesai.
+- `reseller_quota_logs` — riwayat top-up kuota oleh admin
+  - `reseller_id`, `amount` (int, +/-), `reason`, `created_by` (admin user_id)
 
-### ReplayPage
-- Pastikan **semua** show dengan `is_replay = true` ditarik (audit query saat ini, hilangkan filter yang membatasi). 
-- Saat user punya token aktif (cek via `get_replay_access`), tampilkan player langsung pakai `replay_embed_url`:
-  - `m3u8` → komponen `VideoPlayer` existing (HLS.js)
-  - `youtube` → iframe dengan overlay transparan & no-referrer (pola sama seperti live)
-- Banner di atas: "Akses replay token kamu berlaku sampai {tanggal}" (dari `replay_expires_at`).
+- `reseller_audit_logs` — semua aksi reseller
+  - `reseller_id`, `action` (text: login, create_token, reset_token, view_token), `target_token_id` (nullable), `metadata` (jsonb), `ip_address`, `user_agent`
 
-### LivePage / Halaman lain
-- Pastikan show `is_replay = true` **tidak lagi** ditampilkan di Live/Schedule (audit; kemungkinan sudah benar tapi cek `LivePage` & `Index`).
+**Tambahan:**
+- Tambahkan kolom `created_by_reseller_id` (uuid, nullable) di tabel `tokens` agar token reseller dapat ditelusuri.
+- Tambahkan enum value `'reseller'` ke `app_role`.
+
+**RPC Security Definer baru:**
+
+- `reseller_create_token(_code, _duration_type, _expires_at, _max_devices)` 
+  - Verifikasi `auth.uid()` adalah reseller aktif dengan `token_quota > 0`
+  - Pastikan `_code` unik dengan cek `EXISTS` di `tokens` — jika sudah ada → error
+  - Auto-generate code default `RSL-<random8>` jika kosong; loop sampai unik (maks 5x)
+  - INSERT token baru dengan `created_by_reseller_id = reseller.id`, `is_public = false`
+  - Decrement `token_quota`, increment `total_tokens_created`
+  - Insert audit log + quota log
+  - Return token info
+
+- `reseller_get_my_tokens()` — list token milik reseller
+- `reseller_get_my_stats()` — total tokens, kuota, earnings, dll
+- `admin_topup_reseller_quota(_reseller_id, _amount, _reason)` — admin only
+- `admin_create_reseller(_user_id, _username, _full_name, _phone)` — admin only
+
+**RLS Policies:**
+- `resellers`: admin manage all, reseller read own row
+- `reseller_quota_logs`: admin manage, reseller read own
+- `reseller_audit_logs`: admin manage, reseller insert/read own
+- `tokens`: tambahkan policy "Resellers can read own tokens" via `created_by_reseller_id`
+
+## 2. Frontend
+
+**Halaman baru:**
+
+- `src/pages/ResellerLogin.tsx` (`/reseller`) — form email/password, cek role `reseller` setelah login
+- `src/pages/ResellerDashboard.tsx` (`/reseller/dashboard`) — proteksi auth + role
+  - Tab: **Stats** (kuota, total token, earnings), **Buat Token**, **Token Saya**, **Audit Log**
+
+**Komponen reseller:**
+
+- `src/components/reseller/ResellerSidebar.tsx`
+- `src/components/reseller/ResellerStats.tsx`
+- `src/components/reseller/ResellerTokenCreator.tsx` — form generate token (durasi, max device, code custom optional). Memanggil `reseller_create_token` RPC. Anti-duplicate dijamin di RPC + UI menampilkan error jika code bentrok.
+- `src/components/reseller/ResellerTokenList.tsx` — tabel token milik reseller, status, copy link
+- `src/components/reseller/ResellerAuditLog.tsx` — riwayat aksi sendiri
+
+**Admin panel — komponen baru:**
+
+- `src/components/admin/ResellerManager.tsx` (admin only)
+  - List reseller, search, top-up kuota, aktif/non-aktif, reset password, lihat stats per reseller
+  - Tombol "Buat Reseller Baru" — panggil edge function `manage-reseller-account`
+- `src/components/admin/ResellerAuditView.tsx` — view audit log semua reseller (filterable)
+
+Tambahkan menu di `AdminSidebar.tsx`: "Reseller" dan "Audit Reseller" (admin only).
+Tambahkan route di `AdminDashboard.tsx`.
+
+## 3. Edge Function
+
+`supabase/functions/manage-reseller-account/index.ts` (mirror dari `manage-moderator-account`):
+- Action `create`: buat auth user + role `reseller` + entry di `resellers`
+- Action `delete`: hapus reseller + auth user
+- Action `reset_password`: admin reset password reseller
+
+## 4. Routing & Navigasi
+
+- App.tsx: tambah lazy route `/reseller` dan `/reseller/dashboard`
+- ResellerDashboard cek `user_roles` mengandung `reseller`, jika tidak → redirect ke `/reseller`
+
+## 5. Anti-duplicate guarantee
+
+- RPC `reseller_create_token` melakukan cek `EXISTS (SELECT 1 FROM tokens WHERE code = _code)` sebelum insert
+- Unique constraint di `tokens.code` (sudah ada) menjadi safeguard kedua
+- Auto-generate menggunakan `gen_random_uuid()` substring + prefix `RSL-` sehingga collision praktis nol
+- Token reseller selalu fresh (`status='active'`, `locked_fingerprint=NULL`, `replay_expires_at` di-set lewat trigger existing)
 
 ## Files
-- `index.html`, `tailwind.config.ts`, `src/index.css` (font + tombol class)
-- `src/pages/Index.tsx`, `src/components/viewer/ShowCard.tsx`, hero/CTA components — apply `font-serif` + tombol baru
-- New migration: kolom `replay_embed_url`, `replay_embed_type`, `replay_expires_at`, trigger, RPC `get_replay_access`, update `get_public_shows`
-- `src/components/admin/ShowManager.tsx` — field embed replay
-- `src/pages/ReplayPage.tsx` — token check + player embed + banner expiry
 
-Tidak menyentuh logic auth, koin, atau token live existing.
+**Created:**
+- `supabase/migrations/<ts>_reseller_system.sql`
+- `supabase/functions/manage-reseller-account/index.ts`
+- `src/pages/ResellerLogin.tsx`, `src/pages/ResellerDashboard.tsx`
+- `src/components/reseller/{ResellerSidebar,ResellerStats,ResellerTokenCreator,ResellerTokenList,ResellerAuditLog}.tsx`
+- `src/components/admin/{ResellerManager,ResellerAuditView}.tsx`
+
+**Edited:**
+- `src/App.tsx` (routes), `src/components/admin/AdminSidebar.tsx`, `src/pages/AdminDashboard.tsx`
