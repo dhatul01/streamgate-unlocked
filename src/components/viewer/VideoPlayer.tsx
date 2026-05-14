@@ -372,6 +372,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         if (!destroyed) setIsSwitchingQuality(false);
       });
 
+      const markPlaybackSmooth = () => {
+        hasHlsPlaybackStartedRef.current = true;
+        setIsLoading(false);
+        setIsPlaying(true);
+      };
+      videoRef.current?.addEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
+
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         if (destroyed) return;
         setIsSwitchingQuality(false);
@@ -474,6 +482,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     return () => {
       destroyed = true;
+      videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
