@@ -1060,7 +1060,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <button
           onClick={toggleOrientation}
-          className="hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title="Rotate"
           tabIndex={0}
           aria-label="Putar layar"
