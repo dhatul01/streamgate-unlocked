@@ -268,22 +268,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         // Live stream tuning — buffer LEBIH BESAR supaya tidak patah-patah.
         // Trade-off: latensi naik ~5–10 detik dibanding sebelumnya, tapi
         // playback jauh lebih mulus terutama di koneksi mobile yang fluktuatif.
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 10,
+        liveSyncDurationCount: 6,
+        liveMaxLatencyDurationCount: 14,
         liveDurationInfinity: true,
-        maxBufferLength: 60,            // up from 20s
-        maxMaxBufferLength: 120,        // up from 40s
-        maxBufferSize: 120 * 1000 * 1000, // up from 30MB → 120MB
-        maxBufferHole: 1.0,             // toleransi gap lebih besar → tidak gampang stall
+        maxBufferLength: 90,
+        maxMaxBufferLength: 180,
+        maxBufferSize: 180 * 1000 * 1000,
+        maxBufferHole: 1.5,
+        maxFragLookUpTolerance: 0.35,
         highBufferWatchdogPeriod: 3,
-        nudgeOffset: 0.2,
-        nudgeMaxRetry: 10,
-        backBufferLength: 60,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 20,
+        backBufferLength: 90,
         // ABR — biarkan hls.js naik level secara konservatif agar tidak
         // bouncing antar resolusi (penyebab utama "patah-patah" yang terasa).
-        abrEwmaDefaultEstimate: 1_500_000,
-        abrBandWidthFactor: 0.85,
-        abrBandWidthUpFactor: 0.6,
+        abrEwmaDefaultEstimate: 700_000,
+        abrEwmaFastLive: 6,
+        abrEwmaSlowLive: 18,
+        abrBandWidthFactor: 0.7,
+        abrBandWidthUpFactor: 0.45,
         abrMaxWithRealBitrate: true,
         // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
         fragLoadingMaxRetry: 8,
