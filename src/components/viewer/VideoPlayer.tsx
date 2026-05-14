@@ -501,6 +501,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       destroyed = true;
       videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
       videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("waiting", onWaiting);
+      videoRef.current?.removeEventListener("stalled", onWaiting);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
