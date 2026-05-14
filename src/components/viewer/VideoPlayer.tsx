@@ -383,9 +383,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
           data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT;
 
-        // Keep loading overlay up while we try to recover the manifest so the user
-        // sees a spinner instead of a blank black screen.
-        if (isManifestError) setIsLoading(true);
+        // Only show the connecting overlay before first playback; after that,
+        // recover silently so brief CDN hiccups don't cover the video repeatedly.
+        if (isManifestError && !hasHlsPlaybackStartedRef.current) setIsLoading(true);
         else if (!data.fatal) setIsLoading(false);
 
         if (data.fatal || isManifestError) {
