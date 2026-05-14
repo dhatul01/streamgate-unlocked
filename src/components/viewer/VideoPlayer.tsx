@@ -904,7 +904,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"} ${forcedLandscape ? "force-landscape" : ""}`}
     >
       {/* Loading overlay */}
-      {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
           <div className="flex flex-col items-center gap-3 tv:gap-5">
