@@ -388,13 +388,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       videoRef.current?.addEventListener("playing", markPlaybackSmooth);
       videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
 
-      // Silent buffer/stall hint: never toggles the overlay after first playback.
-      const onWaiting = () => {
-        if (destroyed || !hlsRef.current) return;
-        if (!hasHlsPlaybackStartedRef.current) return;
-        // Nudge the loader without remounting or showing the overlay.
-        try { hlsRef.current.startLoad(videoRef.current?.currentTime ?? -1); } catch {}
-      };
       videoRef.current?.addEventListener("waiting", onWaiting);
       videoRef.current?.addEventListener("stalled", onWaiting);
 
