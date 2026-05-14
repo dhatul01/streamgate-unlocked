@@ -24,6 +24,7 @@ import { SHOW_CATEGORIES } from "@/types/show";
 import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 import HeroVideoBackground from "@/components/viewer/HeroVideoBackground";
 import { LandingShowsSkeleton } from "@/components/viewer/SkeletonLoaders";
+import { QRCodeSVG } from "qrcode.react";
 import ShowTimezoneStrip from "@/components/viewer/ShowTimezoneStrip";
 import LandingStats from "@/components/viewer/LandingStats";
 
@@ -76,7 +77,10 @@ const Index = () => {
     announcement_enabled: "",
   });
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
-  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("qris");
+  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done" | "pakasir_qr" | "pakasir_done">("qris");
+  const [pakasirLoading, setPakasirLoading] = useState(false);
+  const [pakasirData, setPakasirData] = useState<{ qr_string: string; total_payment: number; expires_at: string; order_id: string } | null>(null);
+  const [pakasirResult, setPakasirResult] = useState<{ token_code: string; show_title: string } | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
   const [phone, setPhone] = useState("");
@@ -438,27 +442,45 @@ const Index = () => {
     }
   };
 
-  const handleConfirmRegular = () => {
-    if (!selectedShow || !settings.whatsapp_number) return;
-    const now = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
-    const msg = encodeURIComponent(
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🎬 *PESANAN TIKET BARU*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `🎭 *Show:* ${selectedShow.title}\n` +
-      `💰 *Harga:* ${selectedShow.price}\n` +
-      `${selectedShow.schedule_date ? `📅 *Jadwal:* ${selectedShow.schedule_date} ${selectedShow.schedule_time}\n` : ""}` +
-      `${selectedShow.lineup ? `👥 *Lineup:* ${selectedShow.lineup}\n` : ""}` +
-      `\n` +
-      `📋 *DATA PEMBELI*\n` +
-      `📧 Email: ${email}\n` +
-      `🕐 Waktu Order: ${now}\n\n` +
-      `📸 *Bukti pembayaran akan dikirim menyusul*\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `_Dikirim dari RealTime48_ ✨`
-    );
-    window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
-    setSelectedShow(null);
+  const handleConfirmRegular = async () => {
+    if (!selectedShow) return;
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (cleanPhone.length < 8) {
+      toast({ title: "Nomor WhatsApp tidak valid", variant: "destructive" });
+      return;
+    }
+    setPakasirLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pakasir-create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ show_id: selectedShow.id, phone: cleanPhone, email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || "Gagal membuat QRIS");
+      setPakasirData({ qr_string: data.qr_string, total_payment: data.total_payment, expires_at: data.expires_at, order_id: data.order_id });
+      setPurchaseStep("pakasir_qr");
+      const showTitle = selectedShow.title;
+      const start = Date.now();
+      const tick = async () => {
+        if (Date.now() - start > 30 * 60 * 1000) return;
+        try {
+          const { data: s } = await supabase.rpc("get_pakasir_order_status", { _order_id: data.order_id });
+          const r = s as any;
+          if (r?.status === "completed" && r?.token_code) {
+            setPakasirResult({ token_code: r.token_code, show_title: showTitle });
+            setPurchaseStep("pakasir_done");
+            toast({ title: "✅ Pembayaran terkonfirmasi", description: "Token telah dikirim ke WhatsApp Anda." });
+            return;
+          }
+        } catch {}
+        setTimeout(tick, 4000);
+      };
+      setTimeout(tick, 4000);
+    } catch (e: any) {
+      toast({ title: "Gagal membuat QRIS", description: e?.message, variant: "destructive" });
+    }
+    setPakasirLoading(false);
   };
 
   const regularShows = shows.filter((s) => !s.is_subscription && !isShowReplayMode(s));
@@ -942,8 +964,25 @@ const Index = () => {
                     <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground tv:text-sm">
                       <Mail className="h-3.5 w-3.5" /> Email Anda
                     </label>
-                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background tv:h-12 tv:text-base" />
-                  </div>
+            {!selectedShow.is_subscription && purchaseStep === "info" && (
+              <div className="space-y-4 tv:space-y-6">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 tv:p-6">
+                  <p className="text-sm text-muted-foreground tv:text-base">
+                    💳 Bayar otomatis via QRIS Pakasir. Token akan dikirim ke WhatsApp Anda setelah pembayaran terkonfirmasi.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground tv:text-sm">
+                    <MessageCircle className="h-3.5 w-3.5" /> Nomor WhatsApp <span className="text-destructive">*</span>
+                  </label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background tv:h-12 tv:text-base" />
+                  <p className="mt-1 text-[10px] text-muted-foreground">Token live + info replay akan dikirim ke nomor ini.</p>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground tv:text-sm">
+                    <Mail className="h-3.5 w-3.5" /> Email (opsional)
+                  </label>
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@contoh.com" className="bg-background tv:h-12 tv:text-base" />
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 tv:p-5">
                   <p className="mb-2 text-xs font-semibold text-foreground tv:text-sm">📋 Ringkasan Pesanan</p>
@@ -956,14 +995,52 @@ const Index = () => {
                 </div>
                 <Button
                   onClick={handleConfirmRegular}
-                  disabled={!email.trim()}
+                  disabled={!phone.trim() || pakasirLoading}
                   className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg"
                 >
-                  <MessageCircle className="h-4 w-4 tv:h-6 tv:w-6" /> Kirim Pesanan via WhatsApp
+                  <Radio className="h-4 w-4 tv:h-6 tv:w-6" />
+                  {pakasirLoading ? "Membuat QRIS..." : "Lanjut Bayar via QRIS"}
                 </Button>
-                <p className="text-[10px] text-center text-muted-foreground tv:text-xs">
-                  * Anda akan diarahkan ke WhatsApp untuk mengirim data pesanan dan bukti transfer secara manual ke admin
-                </p>
+              </div>
+            )}
+
+            {!selectedShow.is_subscription && purchaseStep === "pakasir_qr" && pakasirData && (
+              <div className="space-y-4 text-center">
+                <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+                  <p className="text-xs text-muted-foreground">Total bayar</p>
+                  <p className="text-2xl font-bold text-warning">Rp {pakasirData.total_payment.toLocaleString("id-ID")}</p>
+                </div>
+                <div className="mx-auto inline-block rounded-xl bg-white p-4">
+                  <QRCodeSVG value={pakasirData.qr_string} size={220} level="M" />
+                </div>
+                <p className="text-sm text-foreground">Scan QRIS dengan e-wallet / m-banking</p>
+                <p className="text-xs text-muted-foreground">Order: <span className="font-mono">{pakasirData.order_id}</span></p>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-left">
+                  <p className="text-xs text-muted-foreground">
+                    ⏳ Setelah membayar, token akan otomatis dikirim ke WhatsApp <span className="font-semibold text-foreground">{phone}</span>. Halaman ini akan update otomatis.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!selectedShow.is_subscription && purchaseStep === "pakasir_done" && pakasirResult && (
+              <div className="space-y-4 text-center">
+                <CheckCircle className="mx-auto h-14 w-14 text-success" />
+                <h4 className="text-lg font-bold text-foreground">Pembayaran Berhasil!</h4>
+                <p className="text-sm text-muted-foreground">Token sudah dikirim ke WhatsApp Anda.</p>
+                <div className="rounded-lg bg-secondary p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Token Akses</p>
+                  <p className="font-mono text-lg font-bold text-primary">{pakasirResult.token_code}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 gap-2"
+                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/live?t=${pakasirResult.token_code}`); toast({ title: "Link disalin!" }); }}>
+                    <Copy className="h-4 w-4" /> Salin Link
+                  </Button>
+                  <Button className="flex-1 gap-2" onClick={() => { window.location.href = `/live?t=${pakasirResult.token_code}`; }}>
+                    <Radio className="h-4 w-4" /> Tonton
+                  </Button>
+                </div>
               </div>
             )}
 
