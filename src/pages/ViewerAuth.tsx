@@ -64,25 +64,38 @@ const ViewerAuth = () => {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    setForgotError(null);
+    const id = forgotIdentifier.trim();
+    if (id.length < 5) {
+      setForgotError("Masukkan nomor HP atau email yang valid.");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("self-password-reset", {
-        body: { action: "request", identifier: forgotIdentifier.trim() },
+        body: { action: "request", identifier: id },
       });
       if (error) {
-        toast({ title: "Gagal", description: error.message, variant: "destructive" });
+        const msg = error.message || "Tidak bisa terhubung ke server. Coba lagi.";
+        setForgotError(msg);
+        toast({ title: "Gagal", description: msg, variant: "destructive" });
         setLoading(false);
         return;
       }
       const result = data as { success?: boolean; error?: string };
       if (!result?.success) {
-        toast({ title: "Gagal", description: result?.error || "Terjadi kesalahan", variant: "destructive" });
+        const msg = result?.error || "Terjadi kesalahan. Silakan coba lagi.";
+        setForgotError(msg);
+        toast({ title: "Gagal", description: msg, variant: "destructive" });
         setLoading(false);
         return;
       }
       setForgotSubmitted(true);
+      toast({ title: "Permintaan terkirim", description: "Cek WhatsApp kamu untuk link reset." });
     } catch (err) {
-      toast({ title: "Gagal", description: (err as Error).message, variant: "destructive" });
+      const msg = (err as Error).message || "Terjadi kesalahan jaringan.";
+      setForgotError(msg);
+      toast({ title: "Gagal", description: msg, variant: "destructive" });
     }
     setLoading(false);
   };
