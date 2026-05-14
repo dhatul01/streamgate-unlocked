@@ -256,6 +256,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       setIsLoading(false);
       setIsPlaying(true);
     };
+    // Silent buffer/stall hint: never toggles the overlay after first playback.
+    const onWaiting = () => {
+      if (destroyed || !hlsRef.current) return;
+      if (!hasHlsPlaybackStartedRef.current) return;
+      try { hlsRef.current.startLoad(videoRef.current?.currentTime ?? -1); } catch {}
+    };
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
@@ -382,6 +388,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       videoRef.current?.addEventListener("playing", markPlaybackSmooth);
       videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
 
+      videoRef.current?.addEventListener("waiting", onWaiting);
+      videoRef.current?.addEventListener("stalled", onWaiting);
+
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         if (destroyed) return;
         setIsSwitchingQuality(false);
@@ -393,10 +402,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
           data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT;
 
-        // Only show the connecting overlay before first playback; after that,
-        // recover silently so brief CDN hiccups don't cover the video repeatedly.
-        if (isManifestError && !hasHlsPlaybackStartedRef.current) setIsLoading(true);
-        else if (!data.fatal) setIsLoading(false);
+        // Overlay rule: only show "Connecting..." before first playback.
+        // Once playback has started, ALL recovery is silent — never re-show overlay.
+        if (hasHlsPlaybackStartedRef.current) {
+          setIsLoading(false);
+        } else if (isManifestError) {
+          setIsLoading(true);
+        } else if (!data.fatal) {
+          setIsLoading(false);
+        }
 
         if (data.fatal || isManifestError) {
           const attempt = ++reconnectAttemptRef.current;
@@ -486,6 +500,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       destroyed = true;
       videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
       videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("waiting", onWaiting);
+      videoRef.current?.removeEventListener("stalled", onWaiting);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
