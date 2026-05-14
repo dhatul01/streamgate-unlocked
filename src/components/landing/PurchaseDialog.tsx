@@ -27,6 +27,9 @@ interface Props {
   pakasirData: PakasirData | null;
   pakasirResult: PakasirResult | null;
   pakasirLoading: boolean;
+  pakasirError?: string | null;
+  pakasirAttempts?: number;
+  onPakasirRetry?: () => void;
   uploadingProof: boolean;
   phone: string;
   setPhone: (v: string) => void;
@@ -39,6 +42,7 @@ interface Props {
 
 const PurchaseDialog = ({
   selectedShow, onClose, purchaseStep, pakasirData, pakasirResult, pakasirLoading,
+  pakasirError, pakasirAttempts, onPakasirRetry,
   uploadingProof, phone, setPhone, email, setEmail,
   onConfirmRegular, onUploadProof, onSubmitSubscription,
 }: Props) => {
