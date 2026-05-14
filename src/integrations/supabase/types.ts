@@ -859,6 +859,111 @@ export type Database = {
         }
         Relationships: []
       }
+      reseller_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string
+          metadata: Json
+          reseller_id: string
+          target_token_id: string | null
+          user_agent: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string
+          metadata?: Json
+          reseller_id: string
+          target_token_id?: string | null
+          user_agent?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string
+          metadata?: Json
+          reseller_id?: string
+          target_token_id?: string | null
+          user_agent?: string
+        }
+        Relationships: []
+      }
+      reseller_quota_logs: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          reseller_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          reseller_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          reseller_id?: string
+        }
+        Relationships: []
+      }
+      resellers: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          phone: string
+          token_quota: number
+          total_tokens_created: number
+          updated_at: string
+          user_id: string
+          username: string
+          whatsapp: string
+        }
+        Insert: {
+          commission_rate?: number
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          token_quota?: number
+          total_tokens_created?: number
+          updated_at?: string
+          user_id: string
+          username: string
+          whatsapp?: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          token_quota?: number
+          total_tokens_created?: number
+          updated_at?: string
+          user_id?: string
+          username?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
@@ -1159,6 +1264,7 @@ export type Database = {
           buyer_user_id: string | null
           code: string
           created_at: string
+          created_by_reseller_id: string | null
           duration_type: string
           expires_at: string
           id: string
@@ -1174,6 +1280,7 @@ export type Database = {
           buyer_user_id?: string | null
           code: string
           created_at?: string
+          created_by_reseller_id?: string | null
           duration_type: string
           expires_at: string
           id?: string
@@ -1189,6 +1296,7 @@ export type Database = {
           buyer_user_id?: string | null
           code?: string
           created_at?: string
+          created_by_reseller_id?: string | null
           duration_type?: string
           expires_at?: string
           id?: string
@@ -1321,6 +1429,10 @@ export type Database = {
         Returns: Json
       }
       admin_reset_chat: { Args: never; Returns: Json }
+      admin_topup_reseller_quota: {
+        Args: { _amount: number; _reason: string; _reseller_id: string }
+        Returns: Json
+      }
       check_ip_banned: { Args: { _ip: string }; Returns: Json }
       check_rate_limit: {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
@@ -1487,6 +1599,20 @@ export type Database = {
             Args: { _identifier: string; _new_password?: string }
             Returns: Json
           }
+      reseller_create_token: {
+        Args: {
+          _code: string
+          _duration_type: string
+          _expires_at: string
+          _max_devices: number
+        }
+        Returns: Json
+      }
+      reseller_get_my_stats: { Args: never; Returns: Json }
+      reseller_log_action: {
+        Args: { _action: string; _metadata?: Json }
+        Returns: undefined
+      }
       reset_chat_daily: { Args: never; Returns: undefined }
       self_reset_token_session: {
         Args: { _fingerprint: string; _token_code: string }
@@ -1500,7 +1626,7 @@ export type Database = {
       viewer_heartbeat: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "reseller"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1628,7 +1754,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "reseller"],
     },
   },
 } as const
