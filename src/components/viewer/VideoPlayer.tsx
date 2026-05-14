@@ -254,7 +254,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       const Hls = (await import("hls.js")).default;
       if (destroyed) return;
 
-      const decodedUrl = latestHlsUrlRef.current || deobfuscate(obfuscate(playlist.url));
+      const decodedUrl = latestHlsUrlRef.current;
+      if (!decodedUrl) return;
       if (!Hls.isSupported()) {
         videoRef.current!.src = decodedUrl;
         if (autoPlay) videoRef.current!.play().catch(() => {});
