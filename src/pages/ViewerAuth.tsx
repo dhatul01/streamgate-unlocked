@@ -19,6 +19,7 @@ const ViewerAuth = () => {
   const [loading, setLoading] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
   const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
   const navigate = useNavigate();
@@ -63,25 +64,38 @@ const ViewerAuth = () => {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    setForgotError(null);
+    const id = forgotIdentifier.trim();
+    if (id.length < 5) {
+      setForgotError("Masukkan nomor HP atau email yang valid.");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("self-password-reset", {
-        body: { action: "request", identifier: forgotIdentifier.trim() },
+        body: { action: "request", identifier: id },
       });
       if (error) {
-        toast({ title: "Gagal", description: error.message, variant: "destructive" });
+        const msg = error.message || "Tidak bisa terhubung ke server. Coba lagi.";
+        setForgotError(msg);
+        toast({ title: "Gagal", description: msg, variant: "destructive" });
         setLoading(false);
         return;
       }
       const result = data as { success?: boolean; error?: string };
       if (!result?.success) {
-        toast({ title: "Gagal", description: result?.error || "Terjadi kesalahan", variant: "destructive" });
+        const msg = result?.error || "Terjadi kesalahan. Silakan coba lagi.";
+        setForgotError(msg);
+        toast({ title: "Gagal", description: msg, variant: "destructive" });
         setLoading(false);
         return;
       }
       setForgotSubmitted(true);
+      toast({ title: "Permintaan terkirim", description: "Cek WhatsApp kamu untuk link reset." });
     } catch (err) {
-      toast({ title: "Gagal", description: (err as Error).message, variant: "destructive" });
+      const msg = (err as Error).message || "Terjadi kesalahan jaringan.";
+      setForgotError(msg);
+      toast({ title: "Gagal", description: msg, variant: "destructive" });
     }
     setLoading(false);
   };
@@ -170,13 +184,19 @@ const ViewerAuth = () => {
                     Masukkan nomor HP atau email yang terdaftar. Link reset akan langsung dikirim via WhatsApp—tanpa perlu konfirmasi admin.
                   </p>
                 </div>
+                {forgotError && (
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                    <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{forgotError}</span>
+                  </div>
+                )}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">Nomor HP / Email</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={forgotIdentifier}
-                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      onChange={(e) => { setForgotIdentifier(e.target.value); if (forgotError) setForgotError(null); }}
                       placeholder="08xxxxxxxxxx atau email@contoh.com"
                       required
                       className="bg-background pl-10"
