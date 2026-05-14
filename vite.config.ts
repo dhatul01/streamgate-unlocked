@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false,
+      filename: "pwa-worker.js",
       devOptions: {
         enabled: false,
       },
