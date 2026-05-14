@@ -270,6 +270,8 @@ export function useShowPurchase() {
     selectedShow, setSelectedShow, purchaseStep, setPurchaseStep,
     uploadingProof, proofUrl, phone, setPhone, email, setEmail,
     handleBuy, handleUploadProof, handleSubmitSubscription,
+    // Pakasir
+    pakasirLoading, pakasirData, pakasirResult, handlePakasirCreate,
     // Coin
     coinUser, coinBalance, coinUsername, coinShowTarget, setCoinShowTarget,
     coinRedeeming, coinResult, setCoinResult, handleCoinBuy, handleCoinRedeem,
