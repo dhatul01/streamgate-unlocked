@@ -176,18 +176,12 @@ const checkForNewerBuild = (): Promise<void> => {
         sessionStorage.setItem(RELOAD_FLAG, "1");
         localStorage.setItem(SIG_KEY, remoteSignature);
         try {
-          if ("caches" in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-          if (!isPreviewHost && !isInIframe && "serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-        } catch {
-          // ignore — still try to reload
-        }
-        safeReload("fresh-build");
+          sessionStorage.removeItem(RELOAD_LOCK_KEY);
+          sessionStorage.removeItem(RELOAD_COUNT_KEY);
+          localStorage.removeItem(RELOAD_LAST_AT_KEY);
+        } catch {}
+        await hardPurgeCaches();
+        safeReload("fresh-build", { force: true });
       } else {
         localStorage.setItem(SIG_KEY, remoteSignature);
         sessionStorage.removeItem("rt48_freshness_reload");
