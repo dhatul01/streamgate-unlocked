@@ -441,27 +441,45 @@ const Index = () => {
     }
   };
 
-  const handleConfirmRegular = () => {
-    if (!selectedShow || !settings.whatsapp_number) return;
-    const now = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
-    const msg = encodeURIComponent(
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🎬 *PESANAN TIKET BARU*\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `🎭 *Show:* ${selectedShow.title}\n` +
-      `💰 *Harga:* ${selectedShow.price}\n` +
-      `${selectedShow.schedule_date ? `📅 *Jadwal:* ${selectedShow.schedule_date} ${selectedShow.schedule_time}\n` : ""}` +
-      `${selectedShow.lineup ? `👥 *Lineup:* ${selectedShow.lineup}\n` : ""}` +
-      `\n` +
-      `📋 *DATA PEMBELI*\n` +
-      `📧 Email: ${email}\n` +
-      `🕐 Waktu Order: ${now}\n\n` +
-      `📸 *Bukti pembayaran akan dikirim menyusul*\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `_Dikirim dari RealTime48_ ✨`
-    );
-    window.open(`https://wa.me/${settings.whatsapp_number}?text=${msg}`, "_blank");
-    setSelectedShow(null);
+  const handleConfirmRegular = async () => {
+    if (!selectedShow) return;
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (cleanPhone.length < 8) {
+      toast({ title: "Nomor WhatsApp tidak valid", variant: "destructive" });
+      return;
+    }
+    setPakasirLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pakasir-create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ show_id: selectedShow.id, phone: cleanPhone, email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || "Gagal membuat QRIS");
+      setPakasirData({ qr_string: data.qr_string, total_payment: data.total_payment, expires_at: data.expires_at, order_id: data.order_id });
+      setPurchaseStep("pakasir_qr");
+      const showTitle = selectedShow.title;
+      const start = Date.now();
+      const tick = async () => {
+        if (Date.now() - start > 30 * 60 * 1000) return;
+        try {
+          const { data: s } = await supabase.rpc("get_pakasir_order_status", { _order_id: data.order_id });
+          const r = s as any;
+          if (r?.status === "completed" && r?.token_code) {
+            setPakasirResult({ token_code: r.token_code, show_title: showTitle });
+            setPurchaseStep("pakasir_done");
+            toast({ title: "✅ Pembayaran terkonfirmasi", description: "Token telah dikirim ke WhatsApp Anda." });
+            return;
+          }
+        } catch {}
+        setTimeout(tick, 4000);
+      };
+      setTimeout(tick, 4000);
+    } catch (e: any) {
+      toast({ title: "Gagal membuat QRIS", description: e?.message, variant: "destructive" });
+    }
+    setPakasirLoading(false);
   };
 
   const regularShows = shows.filter((s) => !s.is_subscription && !isShowReplayMode(s));
