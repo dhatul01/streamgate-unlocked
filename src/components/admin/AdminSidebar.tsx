@@ -17,6 +17,7 @@ const allSections = [
   { id: "replay-tokens", label: "Token Replay", icon: Film, adminOnly: true },
   { id: "resellers", label: "Reseller", icon: Briefcase, adminOnly: true },
   { id: "reseller-audit", label: "Audit Reseller", icon: AuditIcon, adminOnly: true },
+  { id: "bot-token-history", label: "Riwayat Token Bot", icon: Bot, adminOnly: true },
   { id: "shows", label: "Show Manager", icon: Theater, adminOnly: false },
   { id: "members", label: "Foto Member", icon: Users, adminOnly: false },
   { id: "orders", label: "Order Langganan", icon: ClipboardList, adminOnly: false },
