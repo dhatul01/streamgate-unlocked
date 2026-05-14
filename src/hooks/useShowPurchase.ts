@@ -8,11 +8,16 @@ export function useShowPurchase() {
 
   // Purchase modal state
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
-  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done">("info");
+  const [purchaseStep, setPurchaseStep] = useState<"qris" | "upload" | "info" | "done" | "pakasir_qr" | "pakasir_done">("info");
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofUrl, setProofUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+
+  // Pakasir state
+  const [pakasirLoading, setPakasirLoading] = useState(false);
+  const [pakasirData, setPakasirData] = useState<{ qr_string: string; total_payment: number; expires_at: string; order_id: string } | null>(null);
+  const [pakasirResult, setPakasirResult] = useState<{ token_code: string; show_title: string } | null>(null);
 
   // Coin state
   const [coinUser, setCoinUser] = useState<any>(null);
