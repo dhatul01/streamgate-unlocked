@@ -205,15 +205,20 @@ serve(async (req) => {
           await sendReply(`❌ ${r?.error || 'Gagal membuat token'}`);
         } else {
           const durationLabel = { daily: '1 hari', weekly: '7 hari', monthly: '30 hari' }[r.duration_type as string] || r.duration_type;
-          await sendReply(buildTokenMessage({
+          let body = buildTokenMessage({
             code: r.code,
             durationLabel,
             expiresAt: r.expires_at,
             replayExpiresAt: r.replay_expires_at,
             maxDevices: r.max_devices,
-            remainingQuota: isAdmin ? null : r.remaining_quota,
+            remainingQuota: null,
             resellerName: isAdmin ? undefined : r.reseller_username,
-          }) + (r.show_title ? `\n🎬 Show: *${r.show_title}*` : ''));
+          });
+          if (r.show_title) body += `\n🎬 Show: *${r.show_title}*`;
+          if (forcedSingleDevice && requestedMax > 1) {
+            body = `⚠️ *Perhatian:* Kamu meminta ${requestedMax} perangkat, tapi show ini *non-membership* sehingga max perangkat dipaksa menjadi *1*.\n\n` + body;
+          }
+          await sendReply(body);
         }
       }
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
