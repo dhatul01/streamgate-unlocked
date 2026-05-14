@@ -110,8 +110,9 @@ Deno.test({
     assertEquals(signinErr, null, signinErr?.message);
     assert(signin?.session, "should receive a session");
   } finally {
-    await cleanup(userId);
-  }
+      await cleanup(userId);
+    }
+  },
 });
 
 Deno.test("E2E: confirm rejects already-used token", async () => {
