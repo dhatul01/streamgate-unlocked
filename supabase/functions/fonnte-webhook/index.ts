@@ -6,17 +6,57 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const SITE_URL = 'https://realtime48stream.my.id';
+
+const normalizePhone = (num: string) => {
+  const digits = (num || '').replace(/[^0-9]/g, '');
+  if (digits.startsWith('62')) return digits.slice(2);
+  if (digits.startsWith('0')) return digits.slice(1);
+  return digits;
+};
+
+const formatDate = (iso: string) => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('id-ID', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta',
+    }) + ' WIB';
+  } catch { return iso; }
+};
+
+const buildTokenMessage = (opts: {
+  code: string; durationLabel: string; expiresAt: string; replayExpiresAt: string;
+  maxDevices: number; remainingQuota: number | null; resellerName?: string;
+}) => {
+  const live = `${SITE_URL}/live?t=${opts.code}`;
+  const replay = `${SITE_URL}/replay?t=${opts.code}`;
+  let msg = `🎟️ *Token Baru Siap Pakai*\n\n`;
+  msg += `🔑 Kode: *${opts.code}*\n`;
+  msg += `📅 Durasi: ${opts.durationLabel}\n`;
+  msg += `⏰ Aktif s/d: ${formatDate(opts.expiresAt)}\n`;
+  msg += `📱 Max Perangkat: ${opts.maxDevices}\n\n`;
+  msg += `▶️ *Tonton Live*\n${live}\n\n`;
+  msg += `🎬 *Replay* (s/d ${formatDate(opts.replayExpiresAt)})\n${replay}\n`;
+  if (opts.remainingQuota !== null) {
+    msg += `\n📊 Sisa kuota: *${opts.remainingQuota}* token`;
+  }
+  if (opts.resellerName) {
+    msg += `\n👤 Reseller: ${opts.resellerName}`;
+  }
+  return msg;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // Verify webhook secret token from URL query parameter
     const url = new URL(req.url);
     const secretParam = (url.searchParams.get('secret') || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const WEBHOOK_SECRET = (Deno.env.get('FONNTE_WEBHOOK_SECRET') || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
     if (!WEBHOOK_SECRET || secretParam !== WEBHOOK_SECRET) {
-      console.error('Webhook secret mismatch or not configured');
+      console.error('Webhook secret mismatch');
       return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -43,168 +83,212 @@ serve(async (req) => {
       }
     }
 
-    // Skip group messages immediately
     const isGroup = body.isgroup === 'true' || body.isgroup === true;
     if (isGroup) {
-      return new Response(JSON.stringify({ success: true, skipped: 'group_message' }), {
+      return new Response(JSON.stringify({ success: true, skipped: 'group' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const rawSender = (body.sender || body.from || '').replace(/[^0-9]/g, '');
+    const sender = normalizePhone(body.sender || body.from || '');
     const message = (body.message || body.text || body.body || '').trim();
-    const rawAdmin = ADMIN_WA.replace(/[^0-9]/g, '');
+    const normalizedAdmin = normalizePhone(ADMIN_WA);
 
-    // Normalize: strip leading 62 or 0 to get core number
-    const normalizePhone = (num: string) => {
-      if (num.startsWith('62')) return num.slice(2);
-      if (num.startsWith('0')) return num.slice(1);
-      return num;
-    };
-    const sender = normalizePhone(rawSender);
-    const normalizedAdmin = normalizePhone(rawAdmin);
+    console.log('Sender:', sender, '| Admin:', normalizedAdmin, '| Msg:', message);
 
-    console.log('Sender:', sender, '| Admin:', normalizedAdmin, '| Match:', sender === normalizedAdmin);
-    console.log('Message:', message);
-
-    if (!sender || sender !== normalizedAdmin) {
-      return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!sender) {
+      return new Response(JSON.stringify({ success: false, error: 'No sender' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const isAdmin = sender === normalizedAdmin;
+
+    // Lookup reseller
+    let reseller: any = null;
+    if (!isAdmin) {
+      const { data } = await supabase.rpc('lookup_reseller_by_phone', { _phone: sender });
+      reseller = data;
+      if (!reseller) {
+        return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    const sendReply = async (msg: string) => {
+      if (!FONNTE_TOKEN) return;
+      const target = sender.startsWith('62') ? sender : '62' + sender;
+      await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: { 'Authorization': FONNTE_TOKEN },
+        body: new URLSearchParams({ target, message: msg }),
+      });
+    };
 
     const upperMsg = message.toUpperCase();
     const parts = upperMsg.split(/\s+/);
     const command = parts[0];
+
+    // ===================== SHARED: BUAT TOKEN =====================
+    if (command === 'BUAT') {
+      const durationRaw = parts[1] || '';
+      const maxDev = parts[2] ? Math.max(1, Math.min(5, parseInt(parts[2]) || 1)) : 1;
+      const validDur = ['HARIAN', 'MINGGUAN', 'BULANAN'].includes(durationRaw);
+      if (!validDur) {
+        await sendReply(
+          `❌ Format salah.\n\n` +
+          `Contoh:\n` +
+          `• BUAT HARIAN\n` +
+          `• BUAT MINGGUAN\n` +
+          `• BUAT BULANAN 2\n\n` +
+          `Angka di akhir = max perangkat (default 1).`
+        );
+        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const { data, error } = await supabase.rpc('bot_create_token', {
+        _actor_phone: sender,
+        _duration_type: durationRaw.toLowerCase(),
+        _max_devices: maxDev,
+        _is_admin: isAdmin,
+      });
+      if (error) {
+        await sendReply(`❌ Gagal: ${error.message}`);
+      } else {
+        const r = data as any;
+        if (!r?.success) {
+          await sendReply(`❌ ${r?.error || 'Gagal membuat token'}`);
+        } else {
+          const durationLabel = { daily: '1 hari', weekly: '7 hari', monthly: '30 hari' }[r.duration_type as string] || r.duration_type;
+          await sendReply(buildTokenMessage({
+            code: r.code,
+            durationLabel,
+            expiresAt: r.expires_at,
+            replayExpiresAt: r.replay_expires_at,
+            maxDevices: r.max_devices,
+            remainingQuota: isAdmin ? null : r.remaining_quota,
+            resellerName: isAdmin ? undefined : r.reseller_username,
+          }));
+        }
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ===================== RESELLER COMMANDS =====================
+    if (!isAdmin) {
+      if (command === 'KUOTA' || command === 'SALDO') {
+        await sendReply(
+          `📊 *KUOTA RESELLER*\n\n` +
+          `👤 ${reseller.full_name || reseller.username}\n` +
+          `🏷️ Prefix: ${reseller.prefix}\n` +
+          `🎫 Sisa kuota: *${reseller.token_quota}* token\n` +
+          `📈 Total dibuat: ${reseller.total_tokens_created}`
+        );
+      } else if (command === 'TOKEN' || command === 'LIST') {
+        const { data: tokens } = await supabase.from('tokens')
+          .select('code, expires_at, status')
+          .eq('created_by_reseller_id', reseller.id)
+          .order('created_at', { ascending: false }).limit(5);
+        let msg = `🎫 *5 Token Terakhir*\n\n`;
+        if (!tokens || tokens.length === 0) msg += `Belum ada token.`;
+        else tokens.forEach((t: any, i: number) => {
+          msg += `${i + 1}. *${t.code}*\n   ${t.status} • s/d ${formatDate(t.expires_at)}\n\n`;
+        });
+        await sendReply(msg);
+      } else if (command === 'HELP' || command === 'MENU') {
+        await sendReply(
+          `📋 *MENU RESELLER*\n\n` +
+          `🎟️ *BUAT [DURASI] [MAX]*\n` +
+          `   Buat token baru.\n` +
+          `   • BUAT HARIAN\n` +
+          `   • BUAT MINGGUAN 2\n` +
+          `   • BUAT BULANAN\n\n` +
+          `📊 *KUOTA* — Cek sisa kuota\n` +
+          `🎫 *TOKEN* — 5 token terakhir\n` +
+          `📋 *HELP* — Menu ini\n\n` +
+          `Prefix kamu: *${reseller.prefix}*`
+        );
+      } else {
+        await sendReply(`❓ Perintah tidak dikenal. Ketik *HELP* untuk melihat menu.`);
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ===================== ADMIN COMMANDS =====================
     const orderId = parts[1] || '';
 
-    const sendReply = async (msg: string) => {
-      if (!FONNTE_TOKEN) return;
-      await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: { 'Authorization': FONNTE_TOKEN },
-        body: new URLSearchParams({ target: sender, message: msg }),
-      });
-    };
-
     if (command === 'YA' && orderId) {
-      const { data: order } = await supabase
-        .from('coin_orders').select('*').eq('short_id', orderId).eq('status', 'pending').maybeSingle();
-
-      if (!order) {
-        await sendReply(`❌ Order ${orderId} tidak ditemukan atau sudah diproses.`);
-        return new Response(JSON.stringify({ success: false }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-
-      const { data, error } = await supabase.rpc('confirm_coin_order', { _order_id: order.id });
-      if (error || !data?.success) {
-        await sendReply(`❌ Gagal konfirmasi: ${data?.error || error?.message}`);
-      } else {
-        await sendReply(`✅ Order ${orderId} dikonfirmasi! Saldo baru: ${data.new_balance} koin`);
+      const { data: order } = await supabase.from('coin_orders').select('*').eq('short_id', orderId).eq('status', 'pending').maybeSingle();
+      if (!order) { await sendReply(`❌ Order ${orderId} tidak ditemukan.`); }
+      else {
+        const { data, error } = await supabase.rpc('confirm_coin_order', { _order_id: order.id });
+        if (error || !data?.success) await sendReply(`❌ Gagal: ${data?.error || error?.message}`);
+        else await sendReply(`✅ Order ${orderId} dikonfirmasi! Saldo: ${data.new_balance} koin`);
       }
     } else if (command === 'TIDAK' && orderId) {
-      const { data: order } = await supabase
-        .from('coin_orders').select('*').eq('short_id', orderId).eq('status', 'pending').maybeSingle();
-
-      if (!order) {
-        await sendReply(`❌ Order ${orderId} tidak ditemukan.`);
-      } else {
-        await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id);
-        await sendReply(`❌ Order ${orderId} ditolak.`);
-      }
+      const { data: order } = await supabase.from('coin_orders').select('*').eq('short_id', orderId).eq('status', 'pending').maybeSingle();
+      if (!order) await sendReply(`❌ Order ${orderId} tidak ditemukan.`);
+      else { await supabase.from('coin_orders').update({ status: 'rejected' }).eq('id', order.id); await sendReply(`❌ Order ${orderId} ditolak.`); }
     } else if (command === 'SALDO') {
-      // Total admin earnings
       const { data: earnings } = await supabase.from('admin_earnings').select('amount');
-      const totalEarnings = (earnings || []).reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-
-      // Total withdrawn
+      const totalEarnings = (earnings || []).reduce((s: number, e: any) => s + (e.amount || 0), 0);
       const { data: withdrawals } = await supabase.from('admin_withdrawals').select('amount, status');
-      const totalWithdrawn = (withdrawals || []).filter((w: any) => w.status === 'completed').reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
-      const pendingWithdraw = (withdrawals || []).filter((w: any) => w.status === 'pending').reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
-
-      // Pending coin orders
+      const totalWithdrawn = (withdrawals || []).filter((w: any) => w.status === 'completed').reduce((s: number, w: any) => s + (w.amount || 0), 0);
+      const pendingWithdraw = (withdrawals || []).filter((w: any) => w.status === 'pending').reduce((s: number, w: any) => s + (w.amount || 0), 0);
       const { count: pendingOrders } = await supabase.from('coin_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending');
-
       await sendReply(
-        `💰 *SALDO ADMIN*\n\n` +
-        `Total Pendapatan: ${totalEarnings} koin\n` +
-        `Sudah Ditarik: ${totalWithdrawn} koin\n` +
-        `Penarikan Pending: ${pendingWithdraw} koin\n` +
-        `Saldo Bersih: ${totalEarnings - totalWithdrawn} koin\n\n` +
-        `📦 Order Koin Pending: ${pendingOrders || 0}`
+        `💰 *SALDO ADMIN*\n\nTotal: ${totalEarnings} koin\nDitarik: ${totalWithdrawn}\nPending tarik: ${pendingWithdraw}\nBersih: ${totalEarnings - totalWithdrawn}\n\n📦 Order pending: ${pendingOrders || 0}`
       );
     } else if (command === 'STATUS') {
-      // Pending coin orders
-      const { data: coinPending } = await supabase.from('coin_orders').select('short_id, coin_amount, price, created_at').eq('status', 'pending').order('created_at', { ascending: false }).limit(10);
-
-      // Pending subscription orders
-      const { data: subPending } = await supabase.from('subscription_orders').select('short_id, phone, created_at, show_id').eq('status', 'pending').order('created_at', { ascending: false }).limit(10);
-
-      // Pending password resets
-      const { data: resetPending } = await supabase.from('password_reset_requests').select('short_id, identifier, created_at').eq('status', 'pending').order('created_at', { ascending: false }).limit(5);
-
-      // Active viewers (streams)
+      const { data: coinPending } = await supabase.from('coin_orders').select('short_id, coin_amount, price').eq('status', 'pending').order('created_at', { ascending: false }).limit(10);
+      const { data: subPending } = await supabase.from('subscription_orders').select('short_id, phone').eq('status', 'pending').order('created_at', { ascending: false }).limit(10);
       const { data: stream } = await supabase.from('streams').select('is_live').limit(1).maybeSingle();
-
-      let msg = `📊 *STATUS SISTEM*\n\n`;
-      msg += `🔴 Live: ${stream?.is_live ? 'YA' : 'TIDAK'}\n\n`;
-
-      msg += `📦 *Order Koin Pending (${(coinPending || []).length}):*\n`;
-      if ((coinPending || []).length === 0) msg += `  Tidak ada\n`;
-      else (coinPending || []).forEach((o: any) => { msg += `  • ${o.short_id} — ${o.coin_amount} koin (${o.price})\n`; });
-
-      msg += `\n🎫 *Order Membership Pending (${(subPending || []).length}):*\n`;
-      if ((subPending || []).length === 0) msg += `  Tidak ada\n`;
-      else (subPending || []).forEach((o: any) => { msg += `  • ${o.short_id} — ${o.phone}\n`; });
-
-      msg += `\n🔑 *Reset Password Pending (${(resetPending || []).length}):*\n`;
-      if ((resetPending || []).length === 0) msg += `  Tidak ada\n`;
-      else (resetPending || []).forEach((r: any) => { msg += `  • ${r.short_id} — ${r.identifier}\n`; });
-
+      let msg = `📊 *STATUS*\n\n🔴 Live: ${stream?.is_live ? 'YA' : 'TIDAK'}\n\n📦 Koin pending (${(coinPending || []).length}):\n`;
+      if (!coinPending?.length) msg += `  -\n`; else (coinPending || []).forEach((o: any) => msg += `  • ${o.short_id} — ${o.coin_amount} (${o.price})\n`);
+      msg += `\n🎫 Membership pending (${(subPending || []).length}):\n`;
+      if (!subPending?.length) msg += `  -\n`; else (subPending || []).forEach((o: any) => msg += `  • ${o.short_id} — ${o.phone}\n`);
       await sendReply(msg);
     } else if (command === 'BROADCAST') {
       const broadcastMsg = message.substring(message.indexOf(' ') + 1).trim();
       if (!broadcastMsg || broadcastMsg.toUpperCase() === 'BROADCAST') {
-        await sendReply('❌ Format: BROADCAST [pesan]\nContoh: BROADCAST Show malam ini jam 8!');
+        await sendReply('❌ Format: BROADCAST [pesan]');
       } else {
-        // Get all unique phone numbers from confirmed orders
         const { data: coinPhones } = await supabase.from('coin_orders').select('phone').eq('status', 'confirmed');
         const { data: subPhones } = await supabase.from('subscription_orders').select('phone').eq('status', 'confirmed');
-        const { data: resetPhones } = await supabase.from('password_reset_requests').select('phone');
-
         const allPhones = new Set<string>();
-        [...(coinPhones || []), ...(subPhones || []), ...(resetPhones || [])].forEach((r: any) => {
+        [...(coinPhones || []), ...(subPhones || [])].forEach((r: any) => {
           const p = (r.phone || '').replace(/[^0-9]/g, '');
           if (p.length >= 10) allPhones.add(p);
         });
-
-        if (allPhones.size === 0) {
-          await sendReply('❌ Tidak ada nomor user yang tersimpan.');
-        } else {
-          const targets = Array.from(allPhones).join(',');
+        if (allPhones.size === 0) await sendReply('❌ Tidak ada nomor.');
+        else {
           if (FONNTE_TOKEN) {
             await fetch('https://api.fonnte.com/send', {
               method: 'POST',
               headers: { 'Authorization': FONNTE_TOKEN },
-              body: new URLSearchParams({ target: targets, message: `📢 *PENGUMUMAN*\n\n${broadcastMsg}` }),
+              body: new URLSearchParams({ target: Array.from(allPhones).join(','), message: `📢 *PENGUMUMAN*\n\n${broadcastMsg}` }),
             });
           }
-          await sendReply(`✅ Broadcast terkirim ke ${allPhones.size} nomor!`);
+          await sendReply(`✅ Broadcast ke ${allPhones.size} nomor!`);
         }
       }
     } else if (command === 'HELP' || command === 'MENU') {
       await sendReply(
-        `📋 *DAFTAR PERINTAH ADMIN*\n\n` +
-        `✅ *YA [ID]* — Konfirmasi order koin\n` +
-        `   Contoh: YA C1\n\n` +
-        `❌ *TIDAK [ID]* — Tolak order koin\n` +
-        `   Contoh: TIDAK C1\n\n` +
-        `💰 *SALDO* — Cek saldo & pendapatan admin\n\n` +
-        `📊 *STATUS* — Lihat order pending & status sistem\n\n` +
-        `📢 *BROADCAST [pesan]* — Kirim pengumuman ke semua user\n` +
-        `   Contoh: BROADCAST Show malam ini jam 8!\n\n` +
-        `📋 *HELP* — Tampilkan menu ini`
+        `📋 *MENU ADMIN*\n\n` +
+        `🎟️ *BUAT [DURASI] [MAX]*\n` +
+        `   Buat token baru (prefix ADM-).\n` +
+        `   • BUAT HARIAN\n` +
+        `   • BUAT MINGGUAN 2\n\n` +
+        `✅ *YA [ID]* — Konfirmasi order\n` +
+        `❌ *TIDAK [ID]* — Tolak order\n` +
+        `💰 *SALDO* — Saldo admin\n` +
+        `📊 *STATUS* — Order pending\n` +
+        `📢 *BROADCAST [pesan]* — Pengumuman\n` +
+        `📋 *HELP* — Menu ini`
       );
+    } else {
+      await sendReply(`❓ Perintah tidak dikenal. Ketik *HELP*.`);
     }
 
     return new Response(JSON.stringify({ success: true, action: command }), {
@@ -212,8 +296,9 @@ serve(async (req) => {
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Webhook error:', msg);
     return new Response(JSON.stringify({ success: false, error: msg }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
