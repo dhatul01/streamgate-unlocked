@@ -475,7 +475,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist.type, playlist.url, autoPlay, obfuscate, deobfuscate]);
+  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate]);
 
   // Load YouTube IFrame API
   useEffect(() => {
