@@ -14,8 +14,8 @@ import "./index.css";
 const RELOAD_COUNT_KEY = "rt48_reload_count";
 const RELOAD_LAST_AT_KEY = "rt48_reload_last_at";
 const RELOAD_LOCK_KEY = "rt48_reload_lock";
-const MAX_RELOADS_PER_SESSION = 2;
-const MIN_RELOAD_INTERVAL_MS = 30_000; // 30s debounce
+const MAX_RELOADS_PER_SESSION = 4;
+const MIN_RELOAD_INTERVAL_MS = 20_000; // 20s debounce
 
 const safeReload = (reason: string): boolean => {
   try {
@@ -98,9 +98,13 @@ const checkForNewerBuild = (): Promise<void> => {
 
   inflightCheck = (async () => {
     try {
-      const res = await fetch(`/index.html?_=${Date.now()}`, {
-        cache: "no-store",
+      // `nosw=1` is on the SW navigateFallbackDenylist-equivalent path: combined
+      // with `cache: "reload"` it forces a true network round-trip and bypasses
+      // any precache, so we always see the live deploy.
+      const res = await fetch(`/index.html?nosw=1&_=${Date.now()}`, {
+        cache: "reload",
         credentials: "same-origin",
+        headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
       });
       if (!res.ok) return;
       const html = await res.text();
