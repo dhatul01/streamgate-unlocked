@@ -95,6 +95,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const qualitySwitchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [forcedLandscape, setForcedLandscape] = useState(false);
   const [ytMuted, setYtMuted] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [cloudflareKey, setCloudflareKey] = useState(0);
@@ -763,12 +764,44 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   }, []);
 
   const toggleOrientation = useCallback(async () => {
-    try {
-      const orientation: any = (screen as any).orientation;
-      if (!orientation || typeof orientation.lock !== "function") return;
-      const isPortrait = orientation.type?.includes("portrait");
-      orientation.lock(isPortrait ? "landscape" : "portrait").catch(() => {});
-    } catch {}
+    const container = containerRef.current;
+    const video = videoRef.current as any;
+    const doc = document as any;
+    const orientation: any = (screen as any).orientation;
+    const inFs = !!(document.fullscreenElement || doc.webkitFullscreenElement);
+
+    // 1) Try native Screen Orientation API (mobile Chrome/Edge/Firefox).
+    //    Spec requires fullscreen first — enter it if needed.
+    if (orientation && typeof orientation.lock === "function" && container) {
+      try {
+        if (!inFs) {
+          if (container.requestFullscreen) await container.requestFullscreen();
+          else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen();
+          else if (video && typeof video.webkitEnterFullscreen === "function") video.webkitEnterFullscreen();
+        }
+        const isPortrait = orientation.type?.includes("portrait");
+        await orientation.lock(isPortrait ? "landscape" : "portrait");
+        return;
+      } catch {
+        // fall through to CSS fallback
+      }
+    }
+
+    // 2) CSS fallback for desktop browsers and Safari iPad/iOS that don't
+    //    expose orientation.lock — rotate the container 90deg in fullscreen.
+    setForcedLandscape((prev) => {
+      const next = !prev;
+      try {
+        if (next && !inFs && container) {
+          if (container.requestFullscreen) container.requestFullscreen().catch(() => {});
+          else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen();
+        } else if (!next && inFs) {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+        }
+      } catch {}
+      return next;
+    });
   }, []);
 
   const handleQualityChange = useCallback((index: number, ytKey?: string) => {
@@ -847,7 +880,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useEffect(() => {
     const onFsChange = () => {
       const doc = document as any;
-      setIsFullscreen(!!(document.fullscreenElement || doc.webkitFullscreenElement));
+      const fs = !!(document.fullscreenElement || doc.webkitFullscreenElement);
+      setIsFullscreen(fs);
+      if (!fs) setForcedLandscape(false);
     };
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
@@ -866,7 +901,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   return (
     <div
       ref={containerRef}
-      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"}`}
+      className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"} ${forcedLandscape ? "force-landscape" : ""}`}
     >
       {/* Loading overlay */}
       {isLoading && (
@@ -1025,7 +1060,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <button
           onClick={toggleOrientation}
-          className="hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title="Rotate"
           tabIndex={0}
           aria-label="Putar layar"
