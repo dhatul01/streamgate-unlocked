@@ -166,32 +166,42 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
 
       hls = new Hls({
-        // Live stream tuning
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 6,
+        // Live stream tuning — buffer LEBIH BESAR supaya tidak patah-patah.
+        // Trade-off: latensi naik ~5–10 detik dibanding sebelumnya, tapi
+        // playback jauh lebih mulus terutama di koneksi mobile yang fluktuatif.
+        liveSyncDurationCount: 4,
+        liveMaxLatencyDurationCount: 10,
         liveDurationInfinity: true,
-        maxBufferLength: 20,
-        maxMaxBufferLength: 40,
-        maxBufferSize: 30 * 1000 * 1000,
-        maxBufferHole: 0.5,
-        backBufferLength: 30,
-        abrEwmaDefaultEstimate: 1_000_000,
-        abrBandWidthFactor: 0.9,
-        abrBandWidthUpFactor: 0.7,
+        maxBufferLength: 60,            // up from 20s
+        maxMaxBufferLength: 120,        // up from 40s
+        maxBufferSize: 120 * 1000 * 1000, // up from 30MB → 120MB
+        maxBufferHole: 1.0,             // toleransi gap lebih besar → tidak gampang stall
+        highBufferWatchdogPeriod: 3,
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 10,
+        backBufferLength: 60,
+        // ABR — biarkan hls.js naik level secara konservatif agar tidak
+        // bouncing antar resolusi (penyebab utama "patah-patah" yang terasa).
+        abrEwmaDefaultEstimate: 1_500_000,
+        abrBandWidthFactor: 0.85,
+        abrBandWidthUpFactor: 0.6,
+        abrMaxWithRealBitrate: true,
         // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
-        fragLoadingMaxRetry: 6,
-        fragLoadingRetryDelay: 1000,
+        fragLoadingMaxRetry: 8,
+        fragLoadingRetryDelay: 800,
         fragLoadingMaxRetryTimeout: 30_000,
-        manifestLoadingMaxRetry: 6,
-        manifestLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetry: 8,
+        manifestLoadingRetryDelay: 800,
         manifestLoadingMaxRetryTimeout: 30_000,
-        levelLoadingMaxRetry: 6,
-        levelLoadingRetryDelay: 1000,
+        levelLoadingMaxRetry: 8,
+        levelLoadingRetryDelay: 800,
         levelLoadingMaxRetryTimeout: 30_000,
         // Faster start
         startFragPrefetch: true,
         testBandwidth: true,
-        progressive: true,
+        // `progressive: true` mem-stream fragmen yang belum selesai download —
+        // di banyak encoder ini malah bikin micro-stall. Matikan untuk smoothness.
+        progressive: false,
         lowLatencyMode: false,
         debug: false,
       });
