@@ -92,6 +92,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
+  const loadedHlsUrlRef = useRef<string | null>(null);
+  const hlsSourceReadyRef = useRef(false);
   // Reconnect tracking — exponential backoff for 7-hour stability
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
@@ -171,13 +173,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useEffect(() => {
     setIsLoading(true);
     hlsInitRef.current = false;
+    loadedHlsUrlRef.current = null;
+    hlsSourceReadyRef.current = false;
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [playlist.type, playlist.url]);
+  }, [playlist.type]);
 
   // Obfuscate helper: encode/decode video source at runtime
   const obfuscate = useCallback((str: string) => btoa(unescape(encodeURIComponent(str))), []);
