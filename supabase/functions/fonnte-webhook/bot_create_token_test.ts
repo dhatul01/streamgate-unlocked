@@ -56,7 +56,6 @@ Deno.test("bot_create_token: rejects unregistered phone", async () => {
     _duration_type: "harian",
     _max_devices: 1,
     _is_admin: false,
-    _show_id: null,
   });
   assertEquals((data as any).success, false);
   assert(/tidak terdaftar/i.test((data as any).error));
