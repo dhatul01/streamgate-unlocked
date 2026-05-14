@@ -1507,6 +1507,7 @@ export type Database = {
           _duration_type: string
           _is_admin?: boolean
           _max_devices?: number
+          _show_id?: string
         }
         Returns: Json
       }
