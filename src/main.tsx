@@ -48,18 +48,19 @@ const RELOAD_LOCK_KEY = "rt48_reload_lock";
 const MAX_RELOADS_PER_SESSION = 4;
 const MIN_RELOAD_INTERVAL_MS = 20_000; // 20s debounce
 
-const safeReload = (reason: string): boolean => {
+const safeReload = (reason: string, opts?: { force?: boolean }): boolean => {
+  const force = opts?.force === true;
   try {
-    if (sessionStorage.getItem(RELOAD_LOCK_KEY)) return false;
+    if (!force && sessionStorage.getItem(RELOAD_LOCK_KEY)) return false;
 
     const count = Number(sessionStorage.getItem(RELOAD_COUNT_KEY) || "0");
-    if (count >= MAX_RELOADS_PER_SESSION) {
+    if (!force && count >= MAX_RELOADS_PER_SESSION) {
       console.warn(`[rt48] reload (${reason}) blocked: hit session cap`);
       return false;
     }
 
     const lastAt = Number(localStorage.getItem(RELOAD_LAST_AT_KEY) || "0");
-    if (lastAt && Date.now() - lastAt < MIN_RELOAD_INTERVAL_MS) {
+    if (!force && lastAt && Date.now() - lastAt < MIN_RELOAD_INTERVAL_MS) {
       console.warn(`[rt48] reload (${reason}) blocked: debounce window`);
       return false;
     }
@@ -70,8 +71,32 @@ const safeReload = (reason: string): boolean => {
   } catch {
     // storage unavailable — fall through and reload anyway, but only once
   }
-  window.location.reload();
-  return true;
+  // Use a cache-busting query param so the hard reload skips disk/HTTP cache.
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("rt48-bust", Date.now().toString());
+    window.location.replace(url.toString());
+    return true;
+  } catch {
+    window.location.reload();
+    return true;
+  }
+};
+
+// Hard purge: clear every storage layer that might be holding old assets.
+const hardPurgeCaches = async (): Promise<void> => {
+  const tasks: Promise<unknown>[] = [];
+  if ("caches" in window) {
+    tasks.push(caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))));
+  }
+  if ("serviceWorker" in navigator) {
+    tasks.push(
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+    );
+  }
+  await Promise.allSettled(tasks);
 };
 
 // --- Aggressive cache invalidation ---
@@ -91,20 +116,16 @@ const safeReload = (reason: string): boolean => {
       localStorage.setItem(VERSION_KEY, current);
       if (!alreadyReloaded) {
         sessionStorage.setItem(RELOAD_FLAG, "1");
-        Promise.all([
-          "caches" in window
-            ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            : Promise.resolve(),
-          !isPreviewHost && !isInIframe && "serviceWorker" in navigator
-            ? navigator.serviceWorker
-                .getRegistrations()
-                .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-            : Promise.resolve(),
-        ])
-          .catch(() => undefined)
-          .finally(() => {
-            safeReload("version-bump");
-          });
+        // Reset reload caps so a legitimate version bump can never be blocked
+        // by the safety guards meant to break reload loops.
+        try {
+          sessionStorage.removeItem(RELOAD_LOCK_KEY);
+          sessionStorage.removeItem(RELOAD_COUNT_KEY);
+          localStorage.removeItem(RELOAD_LAST_AT_KEY);
+        } catch {}
+        hardPurgeCaches().finally(() => {
+          safeReload("version-bump", { force: true });
+        });
         return;
       }
     } else {
@@ -155,18 +176,12 @@ const checkForNewerBuild = (): Promise<void> => {
         sessionStorage.setItem(RELOAD_FLAG, "1");
         localStorage.setItem(SIG_KEY, remoteSignature);
         try {
-          if ("caches" in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-          if (!isPreviewHost && !isInIframe && "serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-        } catch {
-          // ignore — still try to reload
-        }
-        safeReload("fresh-build");
+          sessionStorage.removeItem(RELOAD_LOCK_KEY);
+          sessionStorage.removeItem(RELOAD_COUNT_KEY);
+          localStorage.removeItem(RELOAD_LAST_AT_KEY);
+        } catch {}
+        await hardPurgeCaches();
+        safeReload("fresh-build", { force: true });
       } else {
         localStorage.setItem(SIG_KEY, remoteSignature);
         sessionStorage.removeItem("rt48_freshness_reload");

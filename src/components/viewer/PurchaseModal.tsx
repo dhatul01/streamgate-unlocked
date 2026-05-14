@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MessageCircle, Upload, CheckCircle, Mail, Loader2, Copy, Radio } from "lucide-react";
+import { MessageCircle, Upload, CheckCircle, Mail, Loader2, Copy, Radio, AlertTriangle, RefreshCw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,16 @@ interface PurchaseModalProps {
   pakasirLoading?: boolean;
   pakasirData?: { qr_string: string; total_payment: number; expires_at: string; order_id: string } | null;
   pakasirResult?: { token_code: string; show_title: string } | null;
+  pakasirError?: string | null;
+  pakasirAttempts?: number;
+  onPakasirRetry?: () => void;
 }
 
 const PurchaseModal = ({
   show, purchaseStep, uploadingProof, phone, setPhone, email, setEmail,
   onClose, onConfirmRegular, onUploadProof, onSubmitSubscription,
   pakasirLoading, pakasirData, pakasirResult,
+  pakasirError, pakasirAttempts, onPakasirRetry,
 }: PurchaseModalProps) => {
   const { toast } = useToast();
   const liveLink = pakasirResult ? `${window.location.origin}/live?t=${pakasirResult.token_code}` : "";
@@ -70,9 +74,33 @@ const PurchaseModal = ({
               {show.schedule_date && <p>📅 {show.schedule_date} {show.schedule_time}</p>}
             </div>
           </div>
+          {pakasirError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+              <div className="flex items-start gap-2 text-xs text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">QRIS gagal dimuat</p>
+                  <p className="text-destructive/80">{pakasirError}</p>
+                  {pakasirAttempts && pakasirAttempts > 1 ? (
+                    <p className="mt-1 text-[10px] text-muted-foreground">Percobaan ke-{pakasirAttempts}. Periksa koneksi atau coba beberapa saat lagi.</p>
+                  ) : null}
+                </div>
+              </div>
+              <Button
+                onClick={onPakasirRetry || onConfirmRegular}
+                disabled={pakasirLoading}
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+              >
+                {pakasirLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                {pakasirLoading ? "Mencoba ulang..." : "Coba Ulang QRIS"}
+              </Button>
+            </div>
+          )}
           <Button onClick={onConfirmRegular} disabled={!phone.trim() || pakasirLoading} className="w-full gap-2 bg-success hover:bg-success/90 text-primary-foreground tv:py-6 tv:text-lg">
             {pakasirLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
-            {pakasirLoading ? "Membuat QRIS..." : "Lanjut Bayar via QRIS"}
+            {pakasirLoading ? "Membuat QRIS..." : pakasirError ? "Buat QRIS Baru" : "Lanjut Bayar via QRIS"}
           </Button>
         </div>
       )}

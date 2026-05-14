@@ -18,6 +18,8 @@ export function useShowPurchase() {
   const [pakasirLoading, setPakasirLoading] = useState(false);
   const [pakasirData, setPakasirData] = useState<{ qr_string: string; total_payment: number; expires_at: string; order_id: string } | null>(null);
   const [pakasirResult, setPakasirResult] = useState<{ token_code: string; show_title: string } | null>(null);
+  const [pakasirError, setPakasirError] = useState<string | null>(null);
+  const [pakasirAttempts, setPakasirAttempts] = useState(0);
 
   // Coin state
   const [coinUser, setCoinUser] = useState<any>(null);
@@ -113,6 +115,7 @@ export function useShowPurchase() {
     setPurchaseStep(show.is_subscription ? "qris" : "info");
     setProofUrl(""); setPhone(""); setEmail("");
     setPakasirData(null); setPakasirResult(null); setPakasirLoading(false);
+    setPakasirError(null); setPakasirAttempts(0);
   };
 
   // Pakasir flow for non-membership shows
@@ -133,7 +136,11 @@ export function useShowPurchase() {
       return;
     }
     setPakasirLoading(true);
+    setPakasirError(null);
+    setPakasirAttempts((n) => n + 1);
     try {
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), 20000);
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pakasir-create-payment`, {
         method: "POST",
         headers: {
@@ -141,9 +148,13 @@ export function useShowPurchase() {
           "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ show_id: selectedShow.id, phone: cleanPhone, email }),
+        signal: ctrl.signal,
       });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.error || "Gagal membuat QRIS");
+      clearTimeout(timeoutId);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success || !data?.qr_string) {
+        throw new Error(data?.error || `QRIS belum bisa dibuat (HTTP ${res.status})`);
+      }
       setPakasirData({
         qr_string: data.qr_string,
         total_payment: data.total_payment,
@@ -151,12 +162,23 @@ export function useShowPurchase() {
         order_id: data.order_id,
       });
       setPurchaseStep("pakasir_qr");
+      setPakasirError(null);
       // Start polling
       pollPakasirOrder(data.order_id, selectedShow.title);
     } catch (e: any) {
-      toast({ title: "Gagal membuat QRIS", description: e?.message, variant: "destructive" });
+      const msg = e?.name === "AbortError"
+        ? "Timeout membuat QRIS. Coba lagi."
+        : (e?.message || "Gagal terhubung ke gateway pembayaran.");
+      setPakasirError(msg);
+      toast({ title: "QRIS gagal dibuat", description: msg, variant: "destructive" });
     }
     setPakasirLoading(false);
+  };
+
+  const handlePakasirRetry = async () => {
+    setPakasirData(null);
+    setPakasirError(null);
+    await handlePakasirCreate();
   };
 
   const pollPakasirOrder = async (orderId: string, showTitle: string) => {
@@ -311,6 +333,7 @@ export function useShowPurchase() {
     handleBuy, handleUploadProof, handleSubmitSubscription,
     // Pakasir
     pakasirLoading, pakasirData, pakasirResult, handlePakasirCreate,
+    pakasirError, pakasirAttempts, handlePakasirRetry,
     // Coin
     coinUser, coinBalance, coinUsername, coinShowTarget, setCoinShowTarget,
     coinRedeeming, coinResult, setCoinResult, handleCoinBuy, handleCoinRedeem,

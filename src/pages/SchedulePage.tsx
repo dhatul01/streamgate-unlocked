@@ -96,6 +96,9 @@ const SchedulePage = () => {
           pakasirLoading={purchase.pakasirLoading}
           pakasirData={purchase.pakasirData}
           pakasirResult={purchase.pakasirResult}
+          pakasirError={purchase.pakasirError}
+          pakasirAttempts={purchase.pakasirAttempts}
+          onPakasirRetry={purchase.handlePakasirRetry}
         />
       )}
 
