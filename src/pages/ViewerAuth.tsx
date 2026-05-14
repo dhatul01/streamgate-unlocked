@@ -196,7 +196,7 @@ const ViewerAuth = () => {
                     <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={forgotIdentifier}
-                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      onChange={(e) => { setForgotIdentifier(e.target.value); if (forgotError) setForgotError(null); }}
                       placeholder="08xxxxxxxxxx atau email@contoh.com"
                       required
                       className="bg-background pl-10"
