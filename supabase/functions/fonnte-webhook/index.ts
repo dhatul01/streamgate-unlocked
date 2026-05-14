@@ -38,9 +38,6 @@ const buildTokenMessage = (opts: {
   msg += `📱 Max Perangkat: ${opts.maxDevices}\n\n`;
   msg += `▶️ *Tonton Live*\n${live}\n\n`;
   msg += `🎬 *Replay* (s/d ${formatDate(opts.replayExpiresAt)})\n${replay}\n`;
-  if (opts.remainingQuota !== null) {
-    msg += `\n📊 Sisa kuota: *${opts.remainingQuota}* token`;
-  }
   if (opts.resellerName) {
     msg += `\n👤 Reseller: ${opts.resellerName}`;
   }
