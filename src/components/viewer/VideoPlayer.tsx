@@ -92,6 +92,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
+  const latestHlsUrlRef = useRef<string | null>(null);
   const loadedHlsUrlRef = useRef<string | null>(null);
   const hlsSourceReadyRef = useRef(false);
   // Reconnect tracking — exponential backoff for 7-hour stability
