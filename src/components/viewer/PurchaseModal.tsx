@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MessageCircle, Upload, CheckCircle, Mail, Loader2, Copy, Radio } from "lucide-react";
+import { MessageCircle, Upload, CheckCircle, Mail, Loader2, Copy, Radio, AlertTriangle, RefreshCw } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,16 @@ interface PurchaseModalProps {
   pakasirLoading?: boolean;
   pakasirData?: { qr_string: string; total_payment: number; expires_at: string; order_id: string } | null;
   pakasirResult?: { token_code: string; show_title: string } | null;
+  pakasirError?: string | null;
+  pakasirAttempts?: number;
+  onPakasirRetry?: () => void;
 }
 
 const PurchaseModal = ({
   show, purchaseStep, uploadingProof, phone, setPhone, email, setEmail,
   onClose, onConfirmRegular, onUploadProof, onSubmitSubscription,
   pakasirLoading, pakasirData, pakasirResult,
+  pakasirError, pakasirAttempts, onPakasirRetry,
 }: PurchaseModalProps) => {
   const { toast } = useToast();
   const liveLink = pakasirResult ? `${window.location.origin}/live?t=${pakasirResult.token_code}` : "";
