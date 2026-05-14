@@ -2,6 +2,54 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, 
 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 
+const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
+
+type StoredM3u8Quality = {
+  mode: "auto" | "manual";
+  height?: number | null;
+  bitrate?: number | null;
+  label?: string;
+};
+
+const getLevelLabel = (level: any) =>
+  level?.height ? `${level.height}p` : `${Math.round((level?.bitrate || 0) / 1000)}k`;
+
+const getLowestLevelIndex = (levels: any[] = []) => {
+  if (!levels.length) return -1;
+  return levels.reduce((best, level, index) => {
+    const currentScore = (level?.height || 99999) * 10_000_000 + (level?.bitrate || 999999999);
+    const bestLevel = levels[best];
+    const bestScore = (bestLevel?.height || 99999) * 10_000_000 + (bestLevel?.bitrate || 999999999);
+    return currentScore < bestScore ? index : best;
+  }, 0);
+};
+
+const readStoredM3u8Quality = (): StoredM3u8Quality | null => {
+  try {
+    const raw = localStorage.getItem(M3U8_QUALITY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredM3u8Quality = (quality: StoredM3u8Quality) => {
+  try { localStorage.setItem(M3U8_QUALITY_STORAGE_KEY, JSON.stringify(quality)); } catch {}
+};
+
+const findStoredLevelIndex = (levels: any[] = [], stored: StoredM3u8Quality | null) => {
+  if (!stored || stored.mode !== "manual") return -1;
+  if (stored.height) {
+    const exactHeight = levels.findIndex((level) => level?.height === stored.height);
+    if (exactHeight >= 0) return exactHeight;
+  }
+  if (stored.label) {
+    const exactLabel = levels.findIndex((level) => getLevelLabel(level) === stored.label);
+    if (exactLabel >= 0) return exactLabel;
+  }
+  return getLowestLevelIndex(levels);
+};
+
 interface VideoPlayerProps {
   playlist: {
     type: string;
@@ -197,6 +245,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         levelLoadingRetryDelay: 800,
         levelLoadingMaxRetryTimeout: 30_000,
         // Faster start
+        startLevel: 0,
         startFragPrefetch: true,
         testBandwidth: true,
         // `progressive: true` mem-stream fragmen yang belum selesai download —
@@ -215,14 +264,24 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         if (destroyed) return;
+        const hlsLevels = hls.levels || data.levels || [];
+        const storedQuality = readStoredM3u8Quality();
+        const preferredLevel = storedQuality?.mode === "auto"
+          ? -1
+          : findStoredLevelIndex(hlsLevels, storedQuality) >= 0
+            ? findStoredLevelIndex(hlsLevels, storedQuality)
+            : getLowestLevelIndex(hlsLevels);
         const levels = data.levels.map((l: any, i: number) => ({
-          label: l.height ? `${l.height}p` : `${Math.round((l.bitrate || 0) / 1000)}k`,
+          label: getLevelLabel(l),
           index: i,
           height: l.height,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        hls.currentLevel = -1;
-        setCurrentQuality(-1);
+        hls.currentLevel = preferredLevel;
+        hls.nextLevel = preferredLevel;
+        hls.loadLevel = preferredLevel;
+        setCurrentQuality(preferredLevel);
+        setActiveHeight(preferredLevel >= 0 ? hlsLevels[preferredLevel]?.height ?? null : null);
         setIsLoading(false);
         if (autoPlay) {
           const v = videoRef.current!;
