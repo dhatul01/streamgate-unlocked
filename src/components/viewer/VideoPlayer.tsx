@@ -213,7 +213,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       const Hls = (await import("hls.js")).default;
       if (destroyed) return;
 
-      const decodedUrl = deobfuscate(obfuscate(playlist.url));
+      const decodedUrl = latestHlsUrlRef.current || deobfuscate(obfuscate(playlist.url));
       if (!Hls.isSupported()) {
         videoRef.current!.src = decodedUrl;
         if (autoPlay) videoRef.current!.play().catch(() => {});
@@ -265,6 +265,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hlsRef.current = hls;
       hls.attachMedia(videoRef.current!);
+      loadedHlsUrlRef.current = decodedUrl;
+      hlsSourceReadyRef.current = false;
       hls.loadSource(decodedUrl);
       // NOTE: do NOT override video.src / currentSrc — hls.js relies on the
       // native MediaSource attachment, and intercepting these properties can
@@ -293,6 +295,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         setCurrentQuality(preferredLevel);
         setActiveHeight(preferredLevel >= 0 ? hlsLevels[preferredLevel]?.height ?? null : null);
         setIsLoading(false);
+        hlsSourceReadyRef.current = true;
         hls.startLoad(-1);
         if (autoPlay) {
           const v = videoRef.current!;
