@@ -65,27 +65,23 @@ const ViewerAuth = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("request_password_reset", {
-        _identifier: forgotIdentifier.trim(),
+      const { data, error } = await supabase.functions.invoke("self-password-reset", {
+        body: { action: "request", identifier: forgotIdentifier.trim() },
       });
-      const result = data as any;
-      if (error || !result?.success) {
-        toast({ title: "Gagal", description: result?.error || error?.message || "Terjadi kesalahan", variant: "destructive" });
+      if (error) {
+        toast({ title: "Gagal", description: error.message, variant: "destructive" });
         setLoading(false);
         return;
       }
-
-      await supabase.functions.invoke("notify-password-reset", {
-        body: {
-          short_id: result.short_id,
-          identifier: forgotIdentifier.trim(),
-          username: result.username,
-        },
-      });
-
+      const result = data as { success?: boolean; error?: string };
+      if (!result?.success) {
+        toast({ title: "Gagal", description: result?.error || "Terjadi kesalahan", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       setForgotSubmitted(true);
-    } catch {
-      toast({ title: "Gagal", description: "Terjadi kesalahan", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Gagal", description: (err as Error).message, variant: "destructive" });
     }
     setLoading(false);
   };
