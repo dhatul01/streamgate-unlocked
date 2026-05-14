@@ -76,7 +76,7 @@ Deno.test("bot_create_token: creates fresh token (no fingerprint, status active,
 
     const { data: rows } = await admin.from("tokens")
       .select("code, locked_fingerprint, buyer_user_id, status, show_id")
-      .in("code", [(a as any).code, (b as any).code]);
+      .in("code", [ar.code, br.code]);
     for (const t of rows ?? []) {
       assertEquals(t.locked_fingerprint, null, "fingerprint must be empty");
       assertEquals(t.buyer_user_id, null, "buyer_user_id must be empty");
