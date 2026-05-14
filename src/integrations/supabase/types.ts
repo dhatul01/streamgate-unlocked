@@ -892,6 +892,38 @@ export type Database = {
         }
         Relationships: []
       }
+      reseller_phones: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          phone: string
+          reseller_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          phone: string
+          reseller_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          phone?: string
+          reseller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_phones_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reseller_quota_logs: {
         Row: {
           amount: number
@@ -921,12 +953,14 @@ export type Database = {
       }
       resellers: {
         Row: {
+          bot_enabled: boolean
           commission_rate: number
           created_at: string
           full_name: string
           id: string
           is_active: boolean
           phone: string
+          prefix: string
           token_quota: number
           total_tokens_created: number
           updated_at: string
@@ -935,12 +969,14 @@ export type Database = {
           whatsapp: string
         }
         Insert: {
+          bot_enabled?: boolean
           commission_rate?: number
           created_at?: string
           full_name?: string
           id?: string
           is_active?: boolean
           phone?: string
+          prefix?: string
           token_quota?: number
           total_tokens_created?: number
           updated_at?: string
@@ -949,12 +985,14 @@ export type Database = {
           whatsapp?: string
         }
         Update: {
+          bot_enabled?: boolean
           commission_rate?: number
           created_at?: string
           full_name?: string
           id?: string
           is_active?: boolean
           phone?: string
+          prefix?: string
           token_quota?: number
           total_tokens_created?: number
           updated_at?: string
@@ -988,6 +1026,36 @@ export type Database = {
           id?: string
           ip_address?: string | null
           severity?: string
+        }
+        Relationships: []
+      }
+      self_password_resets: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone?: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1433,6 +1501,15 @@ export type Database = {
         Args: { _amount: number; _reason: string; _reseller_id: string }
         Returns: Json
       }
+      bot_create_token: {
+        Args: {
+          _actor_phone: string
+          _duration_type: string
+          _is_admin?: boolean
+          _max_devices?: number
+        }
+        Returns: Json
+      }
       check_ip_banned: { Args: { _ip: string }; Returns: Json }
       check_rate_limit: {
         Args: { _key: string; _max_requests: number; _window_seconds: number }
@@ -1441,6 +1518,7 @@ export type Database = {
       claim_referral: { Args: { _code: string }; Returns: Json }
       cleanup_old_otp_codes: { Args: never; Returns: undefined }
       cleanup_rate_limits: { Args: never; Returns: undefined }
+      cleanup_self_password_resets: { Args: never; Returns: undefined }
       cleanup_viewer_presence: { Args: never; Returns: undefined }
       confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
       create_token_session: {
@@ -1569,6 +1647,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      lookup_reseller_by_phone: { Args: { _phone: string }; Returns: Json }
       moderator_create_token: {
         Args: {
           _code: string
@@ -1614,6 +1693,14 @@ export type Database = {
         Returns: undefined
       }
       reset_chat_daily: { Args: never; Returns: undefined }
+      self_consume_password_reset: {
+        Args: { _token_hash: string }
+        Returns: Json
+      }
+      self_request_password_reset: {
+        Args: { _identifier: string; _token_hash: string }
+        Returns: Json
+      }
       self_reset_token_session: {
         Args: { _fingerprint: string; _token_code: string }
         Returns: Json

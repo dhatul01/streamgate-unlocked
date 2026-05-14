@@ -56,9 +56,11 @@ const ResetPassword = () => {
     }
     setLoading(true);
 
-    const { data, error } = await supabase.functions.invoke("apply-password-reset", {
-      body: { short_id: token, new_password: password },
-    });
+    // New self-service flow uses long token; legacy flow uses short_id starting with "r"
+    const isLegacy = token.length < 32;
+    const { data, error } = isLegacy
+      ? await supabase.functions.invoke("apply-password-reset", { body: { short_id: token, new_password: password } })
+      : await supabase.functions.invoke("self-password-reset", { body: { action: "confirm", token, new_password: password } });
 
     if (error || !data?.success) {
       toast({
