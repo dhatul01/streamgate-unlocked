@@ -24,6 +24,7 @@ import { SHOW_CATEGORIES } from "@/types/show";
 import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
 import HeroVideoBackground from "@/components/viewer/HeroVideoBackground";
 import { LandingShowsSkeleton } from "@/components/viewer/SkeletonLoaders";
+import { QRCodeSVG } from "qrcode.react";
 import ShowTimezoneStrip from "@/components/viewer/ShowTimezoneStrip";
 import LandingStats from "@/components/viewer/LandingStats";
 
