@@ -3,6 +3,38 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./index.css";
 
+const isInIframe = (() => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
+
+const isPreviewHost =
+  window.location.hostname.includes("id-preview--") ||
+  window.location.hostname.includes("lovableproject.com") ||
+  window.location.hostname.includes("localhost");
+
+const clearRuntimeCaches = async () => {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // ignore cache cleanup failures
+  }
+};
+
+if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+    .then(() => clearRuntimeCaches())
+    .catch(() => undefined);
+}
+
 // ---------------------------------------------------------------------------
 // Reload guard
 // ---------------------------------------------------------------------------
@@ -64,7 +96,7 @@ const safeReload = (reason: string): boolean => {
           "caches" in window
             ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
             : Promise.resolve(),
-          "serviceWorker" in navigator
+          !isPreviewHost && !isInIframe && "serviceWorker" in navigator
             ? navigator.serviceWorker
                 .getRegistrations()
                 .then((regs) => Promise.all(regs.map((r) => r.unregister())))
@@ -128,7 +160,7 @@ const checkForNewerBuild = (): Promise<void> => {
             const keys = await caches.keys();
             await Promise.all(keys.map((k) => caches.delete(k)));
           }
-          if ("serviceWorker" in navigator) {
+          if (!isPreviewHost && !isInIframe && "serviceWorker" in navigator) {
             const regs = await navigator.serviceWorker.getRegistrations();
             await Promise.all(regs.map((r) => r.unregister()));
           }
