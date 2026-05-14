@@ -131,18 +131,49 @@ serve(async (req) => {
     const command = parts[0];
 
     // ===================== SHARED: BUAT TOKEN =====================
+    // Format: BUAT <DURASI> [MAX] [SHOW <judul/kata kunci>]
     if (command === 'BUAT') {
       const durationRaw = parts[1] || '';
-      const maxDev = parts[2] ? Math.max(1, Math.min(5, parseInt(parts[2]) || 1)) : 1;
       const validDur = ['HARIAN', 'MINGGUAN', 'BULANAN'].includes(durationRaw);
+      // Parse optional SHOW <query>
+      let showId: string | null = null;
+      let showTitle: string | null = null;
+      let maxDev = 1;
+      const showIdx = parts.indexOf('SHOW');
+      if (showIdx > 1) {
+        const query = message.split(/\s+/).slice(showIdx + 1).join(' ').trim();
+        if (query) {
+          const { data: shows } = await supabase
+            .from('shows')
+            .select('id, title, is_active, is_subscription')
+            .ilike('title', `%${query}%`)
+            .eq('is_active', true)
+            .limit(2);
+          if (!shows || shows.length === 0) {
+            await sendReply(`❌ Show "${query}" tidak ditemukan / tidak aktif.`);
+            return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          if (shows.length > 1) {
+            await sendReply(`⚠️ Lebih dari 1 show cocok:\n${shows.map((s: any) => `• ${s.title}`).join('\n')}\n\nKetik judul lebih spesifik.`);
+            return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          showId = shows[0].id;
+          showTitle = shows[0].title;
+        }
+        // MAX (if provided) is parts[2] only when SHOW comes after position 2
+        if (showIdx > 2) maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+      } else if (parts[2]) {
+        maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+      }
+
       if (!validDur) {
         await sendReply(
           `❌ Format salah.\n\n` +
           `Contoh:\n` +
           `• BUAT HARIAN\n` +
-          `• BUAT MINGGUAN\n` +
-          `• BUAT BULANAN 2\n\n` +
-          `Angka di akhir = max perangkat (default 1).`
+          `• BUAT MINGGUAN 2\n` +
+          `• BUAT BULANAN SHOW Itadaki\n\n` +
+          `Catatan: untuk show non-membership, max perangkat dipaksa 1.`
         );
         return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -152,6 +183,7 @@ serve(async (req) => {
         _duration_type: durationRaw.toLowerCase(),
         _max_devices: maxDev,
         _is_admin: isAdmin,
+        _show_id: showId,
       });
       if (error) {
         await sendReply(`❌ Gagal: ${error.message}`);
@@ -169,7 +201,7 @@ serve(async (req) => {
             maxDevices: r.max_devices,
             remainingQuota: isAdmin ? null : r.remaining_quota,
             resellerName: isAdmin ? undefined : r.reseller_username,
-          }));
+          }) + (r.show_title ? `\n🎬 Show: *${r.show_title}*` : ''));
         }
       }
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
