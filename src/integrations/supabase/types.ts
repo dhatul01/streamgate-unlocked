@@ -640,6 +640,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pakasir_orders: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          order_id: string
+          phone: string
+          qr_string: string
+          show_id: string
+          status: string
+          token_code: string | null
+          token_id: string | null
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          order_id: string
+          phone: string
+          qr_string?: string
+          show_id: string
+          status?: string
+          token_code?: string | null
+          token_id?: string | null
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          order_id?: string
+          phone?: string
+          qr_string?: string
+          show_id?: string
+          status?: string
+          token_code?: string | null
+          token_id?: string | null
+        }
+        Relationships: []
+      }
       password_reset_requests: {
         Row: {
           created_at: string
@@ -1521,7 +1569,20 @@ export type Database = {
       cleanup_rate_limits: { Args: never; Returns: undefined }
       cleanup_self_password_resets: { Args: never; Returns: undefined }
       cleanup_viewer_presence: { Args: never; Returns: undefined }
+      complete_pakasir_order: {
+        Args: { _amount: number; _order_id: string }
+        Returns: Json
+      }
       confirm_coin_order: { Args: { _order_id: string }; Returns: Json }
+      create_pakasir_order: {
+        Args: {
+          _amount: number
+          _email: string
+          _phone: string
+          _show_id: string
+        }
+        Returns: Json
+      }
       create_token_session: {
         Args: { _fingerprint: string; _token_code: string; _user_agent: string }
         Returns: Json
@@ -1550,6 +1611,7 @@ export type Database = {
       get_my_password_reset_status: { Args: never; Returns: Json }
       get_or_create_referral_code: { Args: never; Returns: Json }
       get_order_count: { Args: { _show_id: string }; Returns: number }
+      get_pakasir_order_status: { Args: { _order_id: string }; Returns: Json }
       get_playlists_for_channel: {
         Args: { _moderator_username: string }
         Returns: {
@@ -1708,6 +1770,10 @@ export type Database = {
       }
       send_coin_gift: {
         Args: { _amount: number; _gift_type: string; _message: string }
+        Returns: Json
+      }
+      set_pakasir_qr: {
+        Args: { _expires_at: string; _order_id: string; _qr_string: string }
         Returns: Json
       }
       validate_token: { Args: { _code: string }; Returns: Json }
