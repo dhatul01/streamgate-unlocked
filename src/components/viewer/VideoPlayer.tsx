@@ -200,7 +200,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist.type]);
+  }, [playlist.type, hlsSourceIdentity]);
 
   // Obfuscate helper: encode/decode video source at runtime
   const obfuscate = useCallback((str: string) => btoa(unescape(encodeURIComponent(str))), []);
