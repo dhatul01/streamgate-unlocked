@@ -66,10 +66,10 @@ Deno.test("bot_create_token: creates fresh token (no fingerprint, status active,
   const { reseller, phone, prefix } = await setupReseller();
   try {
     const { data: a } = await admin.rpc("bot_create_token", {
-      _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false, _show_id: null,
+      _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
     const { data: b } = await admin.rpc("bot_create_token", {
-      _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false, _show_id: null,
+      _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
     assertEquals((a as any).success, true);
     assertEquals((b as any).success, true);
@@ -142,13 +142,13 @@ Deno.test("bot_create_token: rejects when quota=0 / bot disabled", async () => {
   const b = await setupReseller({ bot_enabled: false });
   try {
     const r1 = await admin.rpc("bot_create_token", {
-      _actor_phone: a.phone, _duration_type: "harian", _max_devices: 1, _is_admin: false, _show_id: null,
+      _actor_phone: a.phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
     assertEquals((r1.data as any).success, false);
     assert(/kuota habis/i.test((r1.data as any).error));
 
     const r2 = await admin.rpc("bot_create_token", {
-      _actor_phone: b.phone, _duration_type: "harian", _max_devices: 1, _is_admin: false, _show_id: null,
+      _actor_phone: b.phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
     assertEquals((r2.data as any).success, false);
     assert(/dinonaktifkan/i.test((r2.data as any).error));
@@ -162,7 +162,7 @@ Deno.test("bot_create_token: invalid duration rejected", async () => {
   const { reseller, phone } = await setupReseller();
   try {
     const { data } = await admin.rpc("bot_create_token", {
-      _actor_phone: phone, _duration_type: "tahunan", _max_devices: 1, _is_admin: false, _show_id: null,
+      _actor_phone: phone, _duration_type: "tahunan", _max_devices: 1, _is_admin: false,
     });
     assertEquals((data as any).success, false);
     assert(/durasi tidak valid/i.test((data as any).error));
