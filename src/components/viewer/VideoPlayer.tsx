@@ -2,6 +2,70 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, 
 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 
+const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
+
+type StoredM3u8Quality = {
+  mode: "auto" | "manual";
+  height?: number | null;
+  bitrate?: number | null;
+  label?: string;
+};
+
+type HlsQualityLevel = { height?: number; bitrate?: number };
+
+const getLevelLabel = (level?: HlsQualityLevel) =>
+  level?.height ? `${level.height}p` : `${Math.round((level?.bitrate || 0) / 1000)}k`;
+
+const getLowestLevelIndex = (levels: HlsQualityLevel[] = []) => {
+  if (!levels.length) return -1;
+  return levels.reduce((best, level, index) => {
+    const currentScore = (level?.height || 99999) * 10_000_000 + (level?.bitrate || 999999999);
+    const bestLevel = levels[best];
+    const bestScore = (bestLevel?.height || 99999) * 10_000_000 + (bestLevel?.bitrate || 999999999);
+    return currentScore < bestScore ? index : best;
+  }, 0);
+};
+
+const readStoredM3u8Quality = (): StoredM3u8Quality | null => {
+  try {
+    const raw = localStorage.getItem(M3U8_QUALITY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredM3u8Quality = (quality: StoredM3u8Quality) => {
+  try { localStorage.setItem(M3U8_QUALITY_STORAGE_KEY, JSON.stringify(quality)); } catch { /* ignore */ }
+};
+
+const findStoredLevelIndex = (levels: HlsQualityLevel[] = [], stored: StoredM3u8Quality | null) => {
+  if (!stored || stored.mode !== "manual") return -1;
+  if (stored.height) {
+    const exactHeight = levels.findIndex((level) => level?.height === stored.height);
+    if (exactHeight >= 0) return exactHeight;
+  }
+  if (stored.label) {
+    const exactLabel = levels.findIndex((level) => getLevelLabel(level) === stored.label);
+    if (exactLabel >= 0) return exactLabel;
+  }
+  return getLowestLevelIndex(levels);
+};
+
+const getHlsSourceIdentity = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    const mode = parsed.searchParams.get("mode");
+    if (mode === "play") return `${parsed.origin}${parsed.pathname}:play:${parsed.searchParams.get("pid") || ""}`;
+    if (mode === "sub") return `${parsed.origin}${parsed.pathname}:sub:${parsed.searchParams.get("u") || ""}`;
+    parsed.searchParams.delete("exp");
+    parsed.searchParams.delete("sig");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
 interface VideoPlayerProps {
   playlist: {
     type: string;
@@ -42,10 +106,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
+  const latestHlsUrlRef = useRef<string | null>(null);
+  const loadedHlsUrlRef = useRef<string | null>(null);
+  const hlsSourceReadyRef = useRef(false);
   // Reconnect tracking — exponential backoff for 7-hour stability
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
   const lastProgressRef = useRef({ time: 0, at: Date.now() });
+  const hlsSourceIdentity = useMemo(
+    () => playlist.type === "m3u8" ? getHlsSourceIdentity(playlist.url) : playlist.url,
+    [playlist.type, playlist.url]
+  );
 
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
@@ -121,13 +192,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useEffect(() => {
     setIsLoading(true);
     hlsInitRef.current = false;
+    loadedHlsUrlRef.current = null;
+    hlsSourceReadyRef.current = false;
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [playlist]);
+  }, [playlist.type, hlsSourceIdentity]);
 
   // Obfuscate helper: encode/decode video source at runtime
   const obfuscate = useCallback((str: string) => btoa(unescape(encodeURIComponent(str))), []);
@@ -146,6 +219,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return new TextDecoder().decode(result);
   }, []);
 
+  // Keep signed HLS URL fresh without remounting/reconnecting the player.
+  useEffect(() => {
+    if (playlist.type !== "m3u8") return;
+    const decodedUrl = deobfuscate(obfuscate(playlist.url));
+    latestHlsUrlRef.current = decodedUrl;
+    if (!hlsRef.current || !hlsSourceReadyRef.current || loadedHlsUrlRef.current === decodedUrl) return;
+
+    try {
+      const hls = hlsRef.current;
+      const lockedLevel = hls.currentLevel;
+      hls.stopLoad();
+      hls.loadSource(decodedUrl);
+      loadedHlsUrlRef.current = decodedUrl;
+      if (typeof lockedLevel === "number") {
+        hls.currentLevel = lockedLevel;
+        hls.nextLevel = lockedLevel;
+        hls.loadLevel = lockedLevel;
+        hls.startLevel = lockedLevel;
+      }
+      hls.startLoad(videoRef.current?.currentTime || -1);
+    } catch { /* ignore */ }
+  }, [playlist.type, playlist.url, obfuscate, deobfuscate]);
+
   // Init HLS for m3u8 — optimized with memory management
   useEffect(() => {
     if (playlist.type !== "m3u8" || !videoRef.current || hlsInitRef.current) return;
@@ -158,7 +254,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       const Hls = (await import("hls.js")).default;
       if (destroyed) return;
 
-      const decodedUrl = deobfuscate(obfuscate(playlist.url));
+      const decodedUrl = latestHlsUrlRef.current;
+      if (!decodedUrl) return;
       if (!Hls.isSupported()) {
         videoRef.current!.src = decodedUrl;
         if (autoPlay) videoRef.current!.play().catch(() => {});
@@ -196,7 +293,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         levelLoadingMaxRetry: 8,
         levelLoadingRetryDelay: 800,
         levelLoadingMaxRetryTimeout: 30_000,
-        // Faster start
+        // Start only after manifest is parsed so we can lock the lowest/user-selected level first.
+        autoStartLoad: false,
+        startLevel: 0,
         startFragPrefetch: true,
         testBandwidth: true,
         // `progressive: true` mem-stream fragmen yang belum selesai download —
@@ -208,6 +307,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hlsRef.current = hls;
       hls.attachMedia(videoRef.current!);
+      loadedHlsUrlRef.current = decodedUrl;
+      hlsSourceReadyRef.current = false;
       hls.loadSource(decodedUrl);
       // NOTE: do NOT override video.src / currentSrc — hls.js relies on the
       // native MediaSource attachment, and intercepting these properties can
@@ -215,15 +316,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         if (destroyed) return;
-        const levels = data.levels.map((l: any, i: number) => ({
-          label: l.height ? `${l.height}p` : `${Math.round((l.bitrate || 0) / 1000)}k`,
+        const hlsLevels: HlsQualityLevel[] = hls.levels || data.levels || [];
+        const storedQuality = readStoredM3u8Quality();
+        const storedLevel = findStoredLevelIndex(hlsLevels, storedQuality);
+        const preferredLevel = storedQuality?.mode === "auto"
+          ? -1
+          : storedLevel >= 0
+            ? storedLevel
+            : getLowestLevelIndex(hlsLevels);
+        const levels = hlsLevels.map((l, i: number) => ({
+          label: getLevelLabel(l),
           index: i,
           height: l.height,
         }));
         setQualities([{ label: "Auto", index: -1 }, ...levels]);
-        hls.currentLevel = -1;
-        setCurrentQuality(-1);
+        hls.currentLevel = preferredLevel;
+        hls.nextLevel = preferredLevel;
+        hls.loadLevel = preferredLevel;
+        hls.startLevel = preferredLevel;
+        setCurrentQuality(preferredLevel);
+        setActiveHeight(preferredLevel >= 0 ? hlsLevels[preferredLevel]?.height ?? null : null);
         setIsLoading(false);
+        hlsSourceReadyRef.current = true;
+        hls.startLoad(-1);
         if (autoPlay) {
           const v = videoRef.current!;
           v.play()
@@ -361,7 +476,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist, autoPlay, obfuscate, deobfuscate]);
+  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate]);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -634,12 +749,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       setPendingQuality(index);
       try {
         if (index === -1) {
+          writeStoredM3u8Quality({ mode: "auto" });
           hlsRef.current.currentLevel = -1;
           hlsRef.current.nextLevel = -1;
           hlsRef.current.loadLevel = -1;
         } else {
+          const selectedLevel = hlsRef.current.levels?.[index];
+          writeStoredM3u8Quality({
+            mode: "manual",
+            height: selectedLevel?.height ?? null,
+            bitrate: selectedLevel?.bitrate ?? null,
+            label: getLevelLabel(selectedLevel),
+          });
           hlsRef.current.nextLevel = index;
           hlsRef.current.currentLevel = index;
+          hlsRef.current.loadLevel = index;
         }
       } catch {}
       setCurrentQuality(index);
