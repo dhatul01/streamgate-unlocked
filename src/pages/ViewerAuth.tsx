@@ -19,6 +19,7 @@ const ViewerAuth = () => {
   const [loading, setLoading] = useState(false);
   const [forgotIdentifier, setForgotIdentifier] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
   const [adminWaNumber, setAdminWaNumber] = useState("6288809048431");
 
   const navigate = useNavigate();
