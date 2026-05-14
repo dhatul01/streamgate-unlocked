@@ -109,6 +109,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const latestHlsUrlRef = useRef<string | null>(null);
   const loadedHlsUrlRef = useRef<string | null>(null);
   const hlsSourceReadyRef = useRef(false);
+  const hasHlsPlaybackStartedRef = useRef(false);
   // Reconnect tracking — exponential backoff for 7-hour stability
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
@@ -194,6 +195,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     hlsInitRef.current = false;
     loadedHlsUrlRef.current = null;
     hlsSourceReadyRef.current = false;
+    hasHlsPlaybackStartedRef.current = false;
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
