@@ -89,6 +89,8 @@ const App = () => {
                   <Route path="/schedule" element={<SchedulePage />} />
                   <Route path="/install" element={<InstallPage />} />
                   <Route path="/about" element={<AboutPage />} />
+                  <Route path="/reseller" element={<ResellerLogin />} />
+                  <Route path="/reseller/dashboard" element={<ResellerDashboard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </RouteTransition>
