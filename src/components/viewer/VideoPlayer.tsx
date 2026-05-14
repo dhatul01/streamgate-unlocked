@@ -219,6 +219,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return new TextDecoder().decode(result);
   }, []);
 
+  // Keep signed HLS URL fresh without remounting/reconnecting the player.
+  useEffect(() => {
+    if (playlist.type !== "m3u8") return;
+    const decodedUrl = deobfuscate(obfuscate(playlist.url));
+    latestHlsUrlRef.current = decodedUrl;
+    if (!hlsRef.current || !hlsSourceReadyRef.current || loadedHlsUrlRef.current === decodedUrl) return;
+
+    try {
+      const hls = hlsRef.current;
+      const lockedLevel = hls.currentLevel;
+      hls.stopLoad();
+      hls.loadSource(decodedUrl);
+      loadedHlsUrlRef.current = decodedUrl;
+      if (typeof lockedLevel === "number") {
+        hls.currentLevel = lockedLevel;
+        hls.nextLevel = lockedLevel;
+        hls.loadLevel = lockedLevel;
+        hls.startLevel = lockedLevel;
+      }
+      hls.startLoad(videoRef.current?.currentTime || -1);
+    } catch { /* ignore */ }
+  }, [playlist.type, playlist.url, obfuscate, deobfuscate]);
+
   // Init HLS for m3u8 — optimized with memory management
   useEffect(() => {
     if (playlist.type !== "m3u8" || !videoRef.current || hlsInitRef.current) return;
