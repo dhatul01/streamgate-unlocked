@@ -95,6 +95,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const qualitySwitchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [forcedLandscape, setForcedLandscape] = useState(false);
   const [ytMuted, setYtMuted] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [cloudflareKey, setCloudflareKey] = useState(0);
