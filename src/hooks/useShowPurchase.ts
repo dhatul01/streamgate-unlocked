@@ -18,6 +18,8 @@ export function useShowPurchase() {
   const [pakasirLoading, setPakasirLoading] = useState(false);
   const [pakasirData, setPakasirData] = useState<{ qr_string: string; total_payment: number; expires_at: string; order_id: string } | null>(null);
   const [pakasirResult, setPakasirResult] = useState<{ token_code: string; show_title: string } | null>(null);
+  const [pakasirError, setPakasirError] = useState<string | null>(null);
+  const [pakasirAttempts, setPakasirAttempts] = useState(0);
 
   // Coin state
   const [coinUser, setCoinUser] = useState<any>(null);
