@@ -153,7 +153,7 @@ const ViewerAuth = () => {
                   Jika nomor HP atau email kamu terdaftar, link untuk membuat password baru akan langsung dikirim via WhatsApp. Cek WhatsApp kamu sekarang.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Link berlaku 30 menit. Tidak perlu menunggu konfirmasi admin.
+                  Link berlaku 20 menit. Tidak perlu menunggu konfirmasi admin.
                 </p>
                 <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
