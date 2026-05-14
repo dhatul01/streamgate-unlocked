@@ -299,8 +299,13 @@ const Index = () => {
     setCoinResult(null);
   };
 
-  const handleCoinRedeem = async () => {
+  const handleCoinRedeem = async (phoneInput?: string) => {
     if (!coinShowTarget) return;
+    const cleanPhone = (phoneInput || "").replace(/[^0-9]/g, "");
+    if (!cleanPhone || cleanPhone.length < 8) {
+      toast({ title: "Nomor WhatsApp tidak valid", description: "Masukkan nomor WhatsApp aktif untuk menerima token.", variant: "destructive" });
+      return;
+    }
     setCoinRedeeming(true);
     const { data, error } = await supabase.rpc("redeem_coins_for_token", { _show_id: coinShowTarget.id });
     setCoinRedeeming(false);
@@ -332,6 +337,30 @@ const Index = () => {
         localStorage.setItem(`access_passwords_${coinUser.id}`, JSON.stringify(storedAp));
         setAccessPasswords((prev) => ({ ...prev, [coinShowTarget.id]: result.access_password }));
       }
+    }
+
+    // WhatsApp notification with token + replay info
+    try {
+      const liveLink = `${window.location.origin}/live?t=${result.token_code}`;
+      const lines = [
+        `🎟️ *Pembelian Show Berhasil!*`,
+        ``,
+        `🎭 Show: *${coinShowTarget.title}*`,
+        coinShowTarget.schedule_date ? `📅 Jadwal: ${coinShowTarget.schedule_date} ${coinShowTarget.schedule_time || ""}`.trim() : "",
+        ``,
+        `🔑 Token: *${result.token_code}*`,
+        `🔗 Link Live: ${liveLink}`,
+        result.access_password ? `🔐 Sandi Akses Show: *${result.access_password}*` : "",
+        result.replay_password ? `🎬 Sandi Replay: *${result.replay_password}* (gunakan untuk akses replay setelah show selesai)` : "",
+        ``,
+        `Tombol *Tonton Live* aktif 2 jam sebelum show dimulai. Simpan pesan ini ya!`,
+      ].filter(Boolean);
+      await supabase.functions.invoke("send-whatsapp", {
+        body: { target: cleanPhone, message: lines.join("\n"), type: "coin_purchase" },
+      });
+      toast({ title: "📲 Token dikirim ke WhatsApp", description: `Cek nomor ${cleanPhone}.` });
+    } catch (e) {
+      console.warn("WA notify failed", e);
     }
   };
 
