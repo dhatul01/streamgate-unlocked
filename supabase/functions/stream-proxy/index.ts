@@ -50,10 +50,9 @@ function getRateLimitResponse(): Response {
 }
 
 // --- In-memory cache ---
-// m3u8 content cache: 6 second TTL (fresh enough for live HLS, ~2 segment intervals)
-// With 1000+ viewers refreshing every 6s, this reduces origin fetches from
-// ~167/sec to ~1 every 6 seconds — a 99.4% reduction
-const M3U8_CACHE_TTL_MS = 6000;
+// m3u8 content cache: keep live playlists fresh enough to avoid stale segment
+// windows while still absorbing bursts from many viewers.
+const M3U8_CACHE_TTL_MS = 2500;
 const PLAYLIST_URL_CACHE_TTL_MS = 60000; // DB URL lookup cache: 60 seconds (URLs rarely change)
 
 interface CacheEntry { content: string; cachedAt: number }
@@ -313,7 +312,7 @@ Deno.serve(async (req) => {
         headers: {
           ...corsHeaders,
           "Content-Type": "application/vnd.apple.mpegurl",
-          "Cache-Control": "no-cache, no-store",
+      "Cache-Control": "private, max-age=1, must-revalidate",
           "Access-Control-Expose-Headers": "Content-Type",
         },
       });
@@ -358,7 +357,7 @@ Deno.serve(async (req) => {
         headers: {
           ...corsHeaders,
           "Content-Type": "application/vnd.apple.mpegurl",
-          "Cache-Control": "no-cache, no-store",
+      "Cache-Control": "private, max-age=1, must-revalidate",
         },
       });
     }
