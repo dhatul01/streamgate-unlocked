@@ -116,20 +116,16 @@ const hardPurgeCaches = async (): Promise<void> => {
       localStorage.setItem(VERSION_KEY, current);
       if (!alreadyReloaded) {
         sessionStorage.setItem(RELOAD_FLAG, "1");
-        Promise.all([
-          "caches" in window
-            ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            : Promise.resolve(),
-          !isPreviewHost && !isInIframe && "serviceWorker" in navigator
-            ? navigator.serviceWorker
-                .getRegistrations()
-                .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-            : Promise.resolve(),
-        ])
-          .catch(() => undefined)
-          .finally(() => {
-            safeReload("version-bump");
-          });
+        // Reset reload caps so a legitimate version bump can never be blocked
+        // by the safety guards meant to break reload loops.
+        try {
+          sessionStorage.removeItem(RELOAD_LOCK_KEY);
+          sessionStorage.removeItem(RELOAD_COUNT_KEY);
+          localStorage.removeItem(RELOAD_LAST_AT_KEY);
+        } catch {}
+        hardPurgeCaches().finally(() => {
+          safeReload("version-bump", { force: true });
+        });
         return;
       }
     } else {
