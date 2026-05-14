@@ -246,7 +246,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         levelLoadingMaxRetry: 8,
         levelLoadingRetryDelay: 800,
         levelLoadingMaxRetryTimeout: 30_000,
-        // Faster start
+        // Start only after manifest is parsed so we can lock the lowest/user-selected level first.
+        autoStartLoad: false,
         startLevel: 0,
         startFragPrefetch: true,
         testBandwidth: true,
@@ -266,14 +267,15 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_: any, data: any) => {
         if (destroyed) return;
-        const hlsLevels = hls.levels || data.levels || [];
+        const hlsLevels: HlsQualityLevel[] = hls.levels || data.levels || [];
         const storedQuality = readStoredM3u8Quality();
+        const storedLevel = findStoredLevelIndex(hlsLevels, storedQuality);
         const preferredLevel = storedQuality?.mode === "auto"
           ? -1
-          : findStoredLevelIndex(hlsLevels, storedQuality) >= 0
-            ? findStoredLevelIndex(hlsLevels, storedQuality)
+          : storedLevel >= 0
+            ? storedLevel
             : getLowestLevelIndex(hlsLevels);
-        const levels = data.levels.map((l: any, i: number) => ({
+        const levels = hlsLevels.map((l, i: number) => ({
           label: getLevelLabel(l),
           index: i,
           height: l.height,
@@ -282,9 +284,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hls.currentLevel = preferredLevel;
         hls.nextLevel = preferredLevel;
         hls.loadLevel = preferredLevel;
+        hls.startLevel = preferredLevel;
         setCurrentQuality(preferredLevel);
         setActiveHeight(preferredLevel >= 0 ? hlsLevels[preferredLevel]?.height ?? null : null);
         setIsLoading(false);
+        hls.startLoad(-1);
         if (autoPlay) {
           const v = videoRef.current!;
           v.play()
