@@ -109,6 +109,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const latestHlsUrlRef = useRef<string | null>(null);
   const loadedHlsUrlRef = useRef<string | null>(null);
   const hlsSourceReadyRef = useRef(false);
+  const hasHlsPlaybackStartedRef = useRef(false);
   // Reconnect tracking — exponential backoff for 7-hour stability
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
@@ -194,6 +195,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     hlsInitRef.current = false;
     loadedHlsUrlRef.current = null;
     hlsSourceReadyRef.current = false;
+    hasHlsPlaybackStartedRef.current = false;
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -249,11 +251,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     let destroyed = false;
     let hls: any = null;
+    const markPlaybackSmooth = () => {
+      hasHlsPlaybackStartedRef.current = true;
+      setIsLoading(false);
+      setIsPlaying(true);
+    };
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
       if (destroyed) return;
 
+      videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
       const decodedUrl = latestHlsUrlRef.current;
       if (!decodedUrl) return;
       if (!Hls.isSupported()) {
@@ -266,22 +275,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         // Live stream tuning — buffer LEBIH BESAR supaya tidak patah-patah.
         // Trade-off: latensi naik ~5–10 detik dibanding sebelumnya, tapi
         // playback jauh lebih mulus terutama di koneksi mobile yang fluktuatif.
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 10,
+        liveSyncDurationCount: 6,
+        liveMaxLatencyDurationCount: 14,
         liveDurationInfinity: true,
-        maxBufferLength: 60,            // up from 20s
-        maxMaxBufferLength: 120,        // up from 40s
-        maxBufferSize: 120 * 1000 * 1000, // up from 30MB → 120MB
-        maxBufferHole: 1.0,             // toleransi gap lebih besar → tidak gampang stall
+        maxBufferLength: 90,
+        maxMaxBufferLength: 180,
+        maxBufferSize: 180 * 1000 * 1000,
+        maxBufferHole: 1.5,
+        maxFragLookUpTolerance: 0.35,
         highBufferWatchdogPeriod: 3,
-        nudgeOffset: 0.2,
-        nudgeMaxRetry: 10,
-        backBufferLength: 60,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 20,
+        backBufferLength: 90,
         // ABR — biarkan hls.js naik level secara konservatif agar tidak
         // bouncing antar resolusi (penyebab utama "patah-patah" yang terasa).
-        abrEwmaDefaultEstimate: 1_500_000,
-        abrBandWidthFactor: 0.85,
-        abrBandWidthUpFactor: 0.6,
+        abrEwmaDefaultEstimate: 700_000,
+        abrEwmaFastLive: 6,
+        abrEwmaSlowLive: 18,
+        abrBandWidthFactor: 0.7,
+        abrBandWidthUpFactor: 0.45,
         abrMaxWithRealBitrate: true,
         // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
         fragLoadingMaxRetry: 8,
@@ -367,6 +379,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         if (!destroyed) setIsSwitchingQuality(false);
       });
 
+      videoRef.current?.addEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
+
       hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         if (destroyed) return;
         setIsSwitchingQuality(false);
@@ -378,9 +393,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
           data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT;
 
-        // Keep loading overlay up while we try to recover the manifest so the user
-        // sees a spinner instead of a blank black screen.
-        if (isManifestError) setIsLoading(true);
+        // Only show the connecting overlay before first playback; after that,
+        // recover silently so brief CDN hiccups don't cover the video repeatedly.
+        if (isManifestError && !hasHlsPlaybackStartedRef.current) setIsLoading(true);
         else if (!data.fatal) setIsLoading(false);
 
         if (data.fatal || isManifestError) {
@@ -469,6 +484,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     return () => {
       destroyed = true;
+      videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
