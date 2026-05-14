@@ -136,6 +136,9 @@ serve(async (req) => {
       let showId: string | null = null;
       let showTitle: string | null = null;
       let maxDev = 1;
+      let requestedMax = 1;
+      let forcedSingleDevice = false;
+      let showIsSubscription = false;
       const showIdx = parts.indexOf('SHOW');
       if (showIdx > 1) {
         const query = message.split(/\s+/).slice(showIdx + 1).join(' ').trim();
@@ -156,11 +159,23 @@ serve(async (req) => {
           }
           showId = shows[0].id;
           showTitle = shows[0].title;
+          showIsSubscription = !!shows[0].is_subscription;
         }
-        // MAX (if provided) is parts[2] only when SHOW comes after position 2
-        if (showIdx > 2) maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+        if (showIdx > 2) requestedMax = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
       } else if (parts[2]) {
-        maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+        requestedMax = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+      }
+
+      // Enforce max_devices=1 for non-membership shows (or when no show bound)
+      if (showId && !showIsSubscription && requestedMax > 1) {
+        forcedSingleDevice = true;
+        maxDev = 1;
+      } else if (!showId && requestedMax > 1) {
+        // No show specified — default to single device for safety
+        forcedSingleDevice = true;
+        maxDev = 1;
+      } else {
+        maxDev = requestedMax;
       }
 
       if (!validDur) {
