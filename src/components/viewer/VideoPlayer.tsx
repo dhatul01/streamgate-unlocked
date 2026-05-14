@@ -251,6 +251,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     let destroyed = false;
     let hls: any = null;
+    const markPlaybackSmooth = () => {
+      hasHlsPlaybackStartedRef.current = true;
+      setIsLoading(false);
+      setIsPlaying(true);
+    };
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
@@ -372,11 +377,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         if (!destroyed) setIsSwitchingQuality(false);
       });
 
-      const markPlaybackSmooth = () => {
-        hasHlsPlaybackStartedRef.current = true;
-        setIsLoading(false);
-        setIsPlaying(true);
-      };
       videoRef.current?.addEventListener("playing", markPlaybackSmooth);
       videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
 
