@@ -1,59 +1,23 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { CreditCard, Coins, Film, Phone, Radio, Ticket } from "lucide-react";
 import logo from "@/assets/logo.webp";
-import heroBg from "@/assets/hero-bg.webp";
 import LandingFloatingEmojis from "@/components/viewer/LandingFloatingEmojis";
-import { Calendar, Clock, Users, MessageCircle, Ticket, Star, Upload, CheckCircle, Crown, Sparkles, Menu, X, Phone, Info, Radio, CreditCard, Mail, Coins, User, Copy, Play, Lock, Film } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import type { Show } from "@/types/show";
-import { useShowPurchase } from "@/hooks/useShowPurchase";
-import ShowCard from "@/components/viewer/ShowCard";
-import PurchaseModal from "@/components/viewer/PurchaseModal";
-import { SHOW_CATEGORIES } from "@/types/show";
 import PasswordResetBanner from "@/components/viewer/PasswordResetBanner";
-import HeroVideoBackground from "@/components/viewer/HeroVideoBackground";
-import { LandingShowsSkeleton } from "@/components/viewer/SkeletonLoaders";
-import { QRCodeSVG } from "qrcode.react";
 import ShowTimezoneStrip from "@/components/viewer/ShowTimezoneStrip";
 import LandingStats from "@/components/viewer/LandingStats";
-
-
-
-interface LandingDescription {
-  id: string;
-  title: string;
-  content: string;
-  icon: string;
-  image_url: string;
-  text_align: string;
-}
-
-interface SiteSettings {
-  whatsapp_number: string;
-  purchase_message: string;
-  site_title: string;
-  whatsapp_channel: string;
-  subscription_info: string;
-  landing_description_width: string;
-  landing_desc_subtitle: string;
-  landing_desc_title: string;
-  landing_desc_quote: string;
-  landing_desc_layout: string;
-  announcement_text: string;
-  announcement_enabled: string;
-  [key: string]: string;
-}
+import LandingNavbar from "@/components/landing/LandingNavbar";
+import HeroSection from "@/components/landing/HeroSection";
+import AnnouncementBanner from "@/components/landing/AnnouncementBanner";
+import DescriptionsSection from "@/components/landing/DescriptionsSection";
+import SubscriptionsSection from "@/components/landing/SubscriptionsSection";
+import ShowsSection from "@/components/landing/ShowsSection";
+import PurchaseDialog, { type PurchaseStep, type PakasirData, type PakasirResult } from "@/components/landing/PurchaseDialog";
+import CoinPurchaseDialog, { type CoinResult } from "@/components/landing/CoinPurchaseDialog";
+import ReplayPasswordDialog from "@/components/landing/ReplayPasswordDialog";
+import type { LandingDescription, SiteSettings, MenuItem } from "@/components/landing/types";
 
 const Index = () => {
   const { toast } = useToast();
