@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.webp";
-import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download, Share } from "lucide-react";
+import { Menu, User, Coins, Crown, Radio, CreditCard, Home, Play, Download, Share, LogOut } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -186,6 +186,18 @@ const SharedNavbar = ({ activePage }: SharedNavbarProps) => {
                       <Coins className="h-3.5 w-3.5" /> Coin Shop
                     </a>
                   </div>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      sessionStorage.removeItem("login_prompt_shown");
+                      toast({ title: "✅ Berhasil logout", description: "Sampai jumpa lagi!" });
+                      setSheetOpen(false);
+                      setTimeout(() => { window.location.href = "/"; }, 600);
+                    }}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/20"
+                  >
+                    <LogOut className="h-3.5 w-3.5" /> Logout
+                  </button>
                 </div>
               )}
               {!coinUser && (
