@@ -29,6 +29,7 @@ import MediaLibrary from "@/components/admin/MediaLibrary";
 import ReplayTokenManager from "@/components/admin/ReplayTokenManager";
 import ResellerManager from "@/components/admin/ResellerManager";
 import ResellerAuditView from "@/components/admin/ResellerAuditView";
+import BotTokenHistory from "@/components/admin/BotTokenHistory";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
