@@ -51,14 +51,16 @@ async function cleanup(resellerId: string, showIds: string[] = []) {
 }
 
 Deno.test("bot_create_token: rejects unregistered phone", async () => {
-  const { data } = await admin.rpc("bot_create_token", {
+  const r = await admin.rpc("bot_create_token", {
     _actor_phone: "6289000000000",
     _duration_type: "harian",
     _max_devices: 1,
     _is_admin: false,
   });
-  assertEquals((data as any).success, false);
-  assert(/tidak terdaftar/i.test((data as any).error));
+  console.log("DEBUG unregistered:", JSON.stringify(r));
+  const data = r.data as any;
+  assertEquals(data?.success, false);
+  assert(/tidak terdaftar/i.test(data?.error));
 });
 
 Deno.test("bot_create_token: creates fresh token (no fingerprint, status active, unique code)", async () => {
