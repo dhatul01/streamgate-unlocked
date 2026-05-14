@@ -191,37 +191,39 @@ document.addEventListener("visibilitychange", () => {
 });
 window.setInterval(() => void checkForNewerBuild(), 60_000);
 
-const updateSW = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    void updateSW(true).then(() => safeReload("sw-need-refresh"));
-  },
-  onRegisteredSW(_swUrl, registration) {
-    if (!registration) return;
+if (!isPreviewHost && !isInIframe) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      void updateSW(true).then(() => safeReload("sw-need-refresh"));
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
 
-    const checkForUpdates = () => {
-      void registration.update().catch(() => undefined);
-    };
+      const checkForUpdates = () => {
+        void registration.update().catch(() => undefined);
+      };
 
-    window.addEventListener("load", checkForUpdates, { once: true });
-    window.addEventListener("focus", checkForUpdates);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        checkForUpdates();
-      }
-    });
-
-    window.setInterval(checkForUpdates, 60_000);
-
-    // When a new SW takes control mid-session, force a reload so the freshly
-    // cached assets are used immediately — but go through safeReload so we
-    // never get caught in a loop if the SW keeps re-activating.
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        safeReload("sw-controllerchange");
+      window.addEventListener("load", checkForUpdates, { once: true });
+      window.addEventListener("focus", checkForUpdates);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          checkForUpdates();
+        }
       });
-    }
-  },
-});
+
+      window.setInterval(checkForUpdates, 60_000);
+
+      // When a new SW takes control mid-session, force a reload so the freshly
+      // cached assets are used immediately — but go through safeReload so we
+      // never get caught in a loop if the SW keeps re-activating.
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          safeReload("sw-controllerchange");
+        });
+      }
+    },
+  });
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
