@@ -167,7 +167,7 @@ const ViewerAuth = () => {
                 <div className="rounded-lg bg-primary/10 p-3 text-center">
                   <KeyRound className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <p className="text-xs text-muted-foreground">
-                    Masukkan nomor HP atau email yang terdaftar. Admin akan mereview dan mengirim link reset via WhatsApp.
+                    Masukkan nomor HP atau email yang terdaftar. Link reset akan langsung dikirim via WhatsApp—tanpa perlu konfirmasi admin.
                   </p>
                 </div>
                 <div>
