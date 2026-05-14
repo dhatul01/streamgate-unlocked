@@ -66,16 +66,19 @@ Deno.test("bot_create_token: rejects unregistered phone", async () => {
 Deno.test("bot_create_token: creates fresh token (no fingerprint, status active, unique code)", async () => {
   const { reseller, phone, prefix } = await setupReseller();
   try {
-    const { data: a } = await admin.rpc("bot_create_token", {
+    const r1 = await admin.rpc("bot_create_token", {
       _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
-    const { data: b } = await admin.rpc("bot_create_token", {
+    console.log("DEBUG r1:", JSON.stringify(r1));
+    const r2 = await admin.rpc("bot_create_token", {
       _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
-    assertEquals((a as any).success, true);
-    assertEquals((b as any).success, true);
-    assertNotEquals((a as any).code, (b as any).code, "two tokens must be different");
-    assert(((a as any).code as string).startsWith(prefix + "-"));
+    console.log("DEBUG r2:", JSON.stringify(r2));
+    const a = r1.data as any, b = r2.data as any;
+    assertEquals(a?.success, true);
+    assertEquals(b?.success, true);
+    assertNotEquals(a.code, b.code, "two tokens must be different");
+    assert((a.code as string).startsWith(prefix + "-"));
 
     const { data: rows } = await admin.from("tokens")
       .select("code, locked_fingerprint, buyer_user_id, status, show_id")
