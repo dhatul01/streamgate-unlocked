@@ -454,16 +454,26 @@ const Index = () => {
       return;
     }
     setPakasirLoading(true);
+    setPakasirError(null);
+    setPakasirAttempts((n) => n + 1);
+    setPakasirData(null);
     try {
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), 20000);
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pakasir-create-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         body: JSON.stringify({ show_id: selectedShow.id, phone: cleanPhone, email }),
+        signal: ctrl.signal,
       });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.error || "Gagal membuat QRIS");
+      clearTimeout(timeoutId);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success || !data?.qr_string) {
+        throw new Error(data?.error || `QRIS belum bisa dibuat (HTTP ${res.status})`);
+      }
       setPakasirData({ qr_string: data.qr_string, total_payment: data.total_payment, expires_at: data.expires_at, order_id: data.order_id });
       setPurchaseStep("pakasir_qr");
+      setPakasirError(null);
       const showTitle = selectedShow.title;
       const start = Date.now();
       const tick = async () => {
@@ -482,7 +492,11 @@ const Index = () => {
       };
       setTimeout(tick, 4000);
     } catch (e: any) {
-      toast({ title: "Gagal membuat QRIS", description: e?.message, variant: "destructive" });
+      const msg = e?.name === "AbortError"
+        ? "Timeout membuat QRIS. Coba lagi."
+        : (e?.message || "Gagal terhubung ke gateway pembayaran.");
+      setPakasirError(msg);
+      toast({ title: "QRIS gagal dibuat", description: msg, variant: "destructive" });
     }
     setPakasirLoading(false);
   };
