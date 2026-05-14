@@ -11,10 +11,12 @@ type StoredM3u8Quality = {
   label?: string;
 };
 
-const getLevelLabel = (level: any) =>
+type HlsQualityLevel = { height?: number; bitrate?: number };
+
+const getLevelLabel = (level?: HlsQualityLevel) =>
   level?.height ? `${level.height}p` : `${Math.round((level?.bitrate || 0) / 1000)}k`;
 
-const getLowestLevelIndex = (levels: any[] = []) => {
+const getLowestLevelIndex = (levels: HlsQualityLevel[] = []) => {
   if (!levels.length) return -1;
   return levels.reduce((best, level, index) => {
     const currentScore = (level?.height || 99999) * 10_000_000 + (level?.bitrate || 999999999);
@@ -34,10 +36,10 @@ const readStoredM3u8Quality = (): StoredM3u8Quality | null => {
 };
 
 const writeStoredM3u8Quality = (quality: StoredM3u8Quality) => {
-  try { localStorage.setItem(M3U8_QUALITY_STORAGE_KEY, JSON.stringify(quality)); } catch {}
+  try { localStorage.setItem(M3U8_QUALITY_STORAGE_KEY, JSON.stringify(quality)); } catch { /* ignore */ }
 };
 
-const findStoredLevelIndex = (levels: any[] = [], stored: StoredM3u8Quality | null) => {
+const findStoredLevelIndex = (levels: HlsQualityLevel[] = [], stored: StoredM3u8Quality | null) => {
   if (!stored || stored.mode !== "manual") return -1;
   if (stored.height) {
     const exactHeight = levels.findIndex((level) => level?.height === stored.height);
