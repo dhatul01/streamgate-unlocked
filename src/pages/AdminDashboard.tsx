@@ -80,6 +80,8 @@ const AdminDashboard = () => {
       case "live": return <LiveControl />;
       case "tokens": return <TokenFactory />;
       case "replay-tokens": return userRole === "admin" ? <ReplayTokenManager /> : null;
+      case "resellers": return userRole === "admin" ? <ResellerManager /> : null;
+      case "reseller-audit": return userRole === "admin" ? <ResellerAuditView /> : null;
       case "shows": return <ShowManager />;
       case "members": return <MemberManager />;
       case "orders": return <SubscriptionOrderManager />;
