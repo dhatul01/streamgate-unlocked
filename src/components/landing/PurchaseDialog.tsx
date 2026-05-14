@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle, Copy, Mail, MessageCircle, Radio, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle, Copy, Loader2, Mail, MessageCircle, Radio, RefreshCw, Upload } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
