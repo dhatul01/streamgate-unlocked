@@ -595,6 +595,9 @@ const Index = () => {
         pakasirData={pakasirData}
         pakasirResult={pakasirResult}
         pakasirLoading={pakasirLoading}
+        pakasirError={(purchase as any).pakasirError ?? null}
+        pakasirAttempts={(purchase as any).pakasirAttempts ?? 0}
+        onPakasirRetry={(purchase as any).handlePakasirRetry}
         uploadingProof={uploadingProof}
         phone={phone}
         setPhone={setPhone}
