@@ -150,10 +150,10 @@ const ViewerAuth = () => {
                 <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
                 <p className="text-sm font-medium text-foreground">Permintaan Terkirim!</p>
                 <p className="text-xs text-muted-foreground">
-                  Admin akan mengecek dan menyetujui permintaan reset password kamu. Setelah disetujui, kamu akan menerima link via WhatsApp untuk membuat password baru.
+                  Jika nomor HP atau email kamu terdaftar, link untuk membuat password baru akan langsung dikirim via WhatsApp. Cek WhatsApp kamu sekarang.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Notifikasi akan dikirim via WhatsApp saat sudah disetujui.
+                  Link berlaku 30 menit. Tidak perlu menunggu konfirmasi admin.
                 </p>
                 <Button type="button" variant="outline" className="w-full" onClick={() => { setMode("login"); setForgotSubmitted(false); setForgotIdentifier(""); }}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Login
