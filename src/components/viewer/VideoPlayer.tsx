@@ -52,6 +52,20 @@ const findStoredLevelIndex = (levels: HlsQualityLevel[] = [], stored: StoredM3u8
   return getLowestLevelIndex(levels);
 };
 
+const getHlsSourceIdentity = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    const mode = parsed.searchParams.get("mode");
+    if (mode === "play") return `${parsed.origin}${parsed.pathname}:play:${parsed.searchParams.get("pid") || ""}`;
+    if (mode === "sub") return `${parsed.origin}${parsed.pathname}:sub:${parsed.searchParams.get("u") || ""}`;
+    parsed.searchParams.delete("exp");
+    parsed.searchParams.delete("sig");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
 interface VideoPlayerProps {
   playlist: {
     type: string;
@@ -99,6 +113,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
   const lastProgressRef = useRef({ time: 0, at: Date.now() });
+  const hlsSourceIdentity = useMemo(
+    () => playlist.type === "m3u8" ? getHlsSourceIdentity(playlist.url) : playlist.url,
+    [playlist.type, playlist.url]
+  );
 
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
