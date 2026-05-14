@@ -944,26 +944,7 @@ const Index = () => {
             <h3 className="mb-1 text-lg font-bold text-foreground tv:text-2xl">{selectedShow.title}</h3>
             <p className="mb-4 text-sm text-muted-foreground tv:text-base">{selectedShow.price}</p>
 
-            {/* Regular show: collect email then send WhatsApp */}
-            {!selectedShow.is_subscription && purchaseStep === "info" && (
-              <div className="space-y-4 tv:space-y-6">
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 tv:p-6">
-                  <p className="text-sm text-muted-foreground tv:text-base">
-                    Silakan scan QRIS di bawah, lalu kirim bukti transfer secara manual ke admin via WhatsApp.
-                  </p>
-                </div>
-                {selectedShow.qris_image_url ? (
-                  <img src={selectedShow.qris_image_url} alt="QRIS" className="mx-auto w-full max-w-sm rounded-lg object-contain" />
-                ) : (
-                  <div className="rounded-lg border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground tv:text-base tv:p-12">
-                    QRIS belum tersedia
-                  </div>
-                )}
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground tv:text-sm">
-                      <Mail className="h-3.5 w-3.5" /> Email Anda
-                    </label>
+            {/* Regular show: Pakasir QRIS auto flow */}
             {!selectedShow.is_subscription && purchaseStep === "info" && (
               <div className="space-y-4 tv:space-y-6">
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 tv:p-6">
