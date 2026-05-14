@@ -763,12 +763,44 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   }, []);
 
   const toggleOrientation = useCallback(async () => {
-    try {
-      const orientation: any = (screen as any).orientation;
-      if (!orientation || typeof orientation.lock !== "function") return;
-      const isPortrait = orientation.type?.includes("portrait");
-      orientation.lock(isPortrait ? "landscape" : "portrait").catch(() => {});
-    } catch {}
+    const container = containerRef.current;
+    const video = videoRef.current as any;
+    const doc = document as any;
+    const orientation: any = (screen as any).orientation;
+    const inFs = !!(document.fullscreenElement || doc.webkitFullscreenElement);
+
+    // 1) Try native Screen Orientation API (mobile Chrome/Edge/Firefox).
+    //    Spec requires fullscreen first — enter it if needed.
+    if (orientation && typeof orientation.lock === "function" && container) {
+      try {
+        if (!inFs) {
+          if (container.requestFullscreen) await container.requestFullscreen();
+          else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen();
+          else if (video && typeof video.webkitEnterFullscreen === "function") video.webkitEnterFullscreen();
+        }
+        const isPortrait = orientation.type?.includes("portrait");
+        await orientation.lock(isPortrait ? "landscape" : "portrait");
+        return;
+      } catch {
+        // fall through to CSS fallback
+      }
+    }
+
+    // 2) CSS fallback for desktop browsers and Safari iPad/iOS that don't
+    //    expose orientation.lock — rotate the container 90deg in fullscreen.
+    setForcedLandscape((prev) => {
+      const next = !prev;
+      try {
+        if (next && !inFs && container) {
+          if (container.requestFullscreen) container.requestFullscreen().catch(() => {});
+          else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen();
+        } else if (!next && inFs) {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+        }
+      } catch {}
+      return next;
+    });
   }, []);
 
   const handleQualityChange = useCallback((index: number, ytKey?: string) => {
