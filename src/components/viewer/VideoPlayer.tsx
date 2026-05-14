@@ -693,12 +693,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       setPendingQuality(index);
       try {
         if (index === -1) {
+          writeStoredM3u8Quality({ mode: "auto" });
           hlsRef.current.currentLevel = -1;
           hlsRef.current.nextLevel = -1;
           hlsRef.current.loadLevel = -1;
         } else {
+          const selectedLevel = hlsRef.current.levels?.[index];
+          writeStoredM3u8Quality({
+            mode: "manual",
+            height: selectedLevel?.height ?? null,
+            bitrate: selectedLevel?.bitrate ?? null,
+            label: getLevelLabel(selectedLevel),
+          });
           hlsRef.current.nextLevel = index;
           hlsRef.current.currentLevel = index;
+          hlsRef.current.loadLevel = index;
         }
       } catch {}
       setCurrentQuality(index);
