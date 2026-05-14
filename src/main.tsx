@@ -3,6 +3,46 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./index.css";
 
+// ---------------------------------------------------------------------------
+// Reload guard
+// ---------------------------------------------------------------------------
+// Forced reloads are useful to push a new build to users, but if anything
+// goes wrong (network flaps, SW that re-activates on every load, server
+// returning a different HTML hash on each request) we can end up in a reload
+// loop. These helpers cap how often, and how many times per session, we are
+// allowed to call window.location.reload().
+const RELOAD_COUNT_KEY = "rt48_reload_count";
+const RELOAD_LAST_AT_KEY = "rt48_reload_last_at";
+const RELOAD_LOCK_KEY = "rt48_reload_lock";
+const MAX_RELOADS_PER_SESSION = 2;
+const MIN_RELOAD_INTERVAL_MS = 30_000; // 30s debounce
+
+const safeReload = (reason: string): boolean => {
+  try {
+    if (sessionStorage.getItem(RELOAD_LOCK_KEY)) return false;
+
+    const count = Number(sessionStorage.getItem(RELOAD_COUNT_KEY) || "0");
+    if (count >= MAX_RELOADS_PER_SESSION) {
+      console.warn(`[rt48] reload (${reason}) blocked: hit session cap`);
+      return false;
+    }
+
+    const lastAt = Number(localStorage.getItem(RELOAD_LAST_AT_KEY) || "0");
+    if (lastAt && Date.now() - lastAt < MIN_RELOAD_INTERVAL_MS) {
+      console.warn(`[rt48] reload (${reason}) blocked: debounce window`);
+      return false;
+    }
+
+    sessionStorage.setItem(RELOAD_LOCK_KEY, "1");
+    sessionStorage.setItem(RELOAD_COUNT_KEY, String(count + 1));
+    localStorage.setItem(RELOAD_LAST_AT_KEY, String(Date.now()));
+  } catch {
+    // storage unavailable — fall through and reload anyway, but only once
+  }
+  window.location.reload();
+  return true;
+};
+
 // --- Aggressive cache invalidation ---
 // 1. Compares the build-time version to the one in localStorage. When they
 //    differ, all caches and old service workers are removed and the page is
@@ -32,7 +72,7 @@ import "./index.css";
         ])
           .catch(() => undefined)
           .finally(() => {
-            window.location.reload();
+            safeReload("version-bump");
           });
         return;
       }
@@ -47,49 +87,63 @@ import "./index.css";
 // Check the latest index.html from the network on every load. If it advertises
 // a newer build version than what is currently running, purge caches and reload
 // so the user always sees the freshest deploy without waiting for the SW.
-const checkForNewerBuild = async () => {
-  try {
-    const res = await fetch(`/index.html?_=${Date.now()}`, {
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    if (!res.ok) return;
-    const html = await res.text();
-    const match = html.match(/__APP_VERSION__\s*=\s*["']?(\d+)["']?/);
-    // Vite inlines define values into the bundle, not into index.html, so the
-    // marker above won't always be present. Fall back to hashing the script
-    // tag's src — when Vite emits a new build, the hashed asset filename
-    // changes, which is a reliable freshness signal.
-    const scriptMatch = html.match(/src="(\/assets\/[^"]+\.js)"/);
-    const remoteSignature = match?.[1] || scriptMatch?.[1] || "";
-    if (!remoteSignature) return;
-    const SIG_KEY = "rt48_build_signature";
-    const previous = localStorage.getItem(SIG_KEY);
-    if (previous && previous !== remoteSignature) {
-      const RELOAD_FLAG = "rt48_freshness_reload";
-      if (sessionStorage.getItem(RELOAD_FLAG)) return;
-      sessionStorage.setItem(RELOAD_FLAG, "1");
-      localStorage.setItem(SIG_KEY, remoteSignature);
-      try {
-        if ("caches" in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
+let inflightCheck: Promise<void> | null = null;
+let lastCheckAt = 0;
+const CHECK_DEBOUNCE_MS = 15_000;
+
+const checkForNewerBuild = (): Promise<void> => {
+  if (inflightCheck) return inflightCheck;
+  if (Date.now() - lastCheckAt < CHECK_DEBOUNCE_MS) return Promise.resolve();
+  lastCheckAt = Date.now();
+
+  inflightCheck = (async () => {
+    try {
+      const res = await fetch(`/index.html?_=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (!res.ok) return;
+      const html = await res.text();
+      const match = html.match(/__APP_VERSION__\s*=\s*["']?(\d+)["']?/);
+      // Vite inlines define values into the bundle, not into index.html, so the
+      // marker above won't always be present. Fall back to the script tag's
+      // hashed src — when Vite emits a new build, the hashed asset filename
+      // changes, which is a reliable freshness signal.
+      const scriptMatch = html.match(/src="(\/assets\/[^"]+\.js)"/);
+      const remoteSignature = match?.[1] || scriptMatch?.[1] || "";
+      if (!remoteSignature) return;
+      const SIG_KEY = "rt48_build_signature";
+      const previous = localStorage.getItem(SIG_KEY);
+      if (previous && previous !== remoteSignature) {
+        const RELOAD_FLAG = "rt48_freshness_reload";
+        if (sessionStorage.getItem(RELOAD_FLAG)) return;
+        sessionStorage.setItem(RELOAD_FLAG, "1");
+        localStorage.setItem(SIG_KEY, remoteSignature);
+        try {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+          }
+        } catch {
+          // ignore — still try to reload
         }
-        if ("serviceWorker" in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((r) => r.unregister()));
-        }
-      } catch {
-        // ignore — still try to reload
+        safeReload("fresh-build");
+      } else {
+        localStorage.setItem(SIG_KEY, remoteSignature);
+        sessionStorage.removeItem("rt48_freshness_reload");
       }
-      window.location.reload();
-    } else {
-      localStorage.setItem(SIG_KEY, remoteSignature);
-      sessionStorage.removeItem("rt48_freshness_reload");
+    } catch {
+      // network offline — keep current build
+    } finally {
+      inflightCheck = null;
     }
-  } catch {
-    // localStorage / caches unavailable — proceed normally
-  }
+  })();
+
+  return inflightCheck;
 };
 
 // Run immediately and again whenever the tab regains focus / visibility, so
@@ -104,7 +158,7 @@ window.setInterval(() => void checkForNewerBuild(), 60_000);
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    void updateSW(true).then(() => window.location.reload());
+    void updateSW(true).then(() => safeReload("sw-need-refresh"));
   },
   onRegisteredSW(_swUrl, registration) {
     if (!registration) return;
@@ -124,13 +178,11 @@ const updateSW = registerSW({
     window.setInterval(checkForUpdates, 60_000);
 
     // When a new SW takes control mid-session, force a reload so the freshly
-    // cached assets are used immediately.
+    // cached assets are used immediately — but go through safeReload so we
+    // never get caught in a loop if the SW keeps re-activating.
     if ("serviceWorker" in navigator) {
-      let reloading = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (reloading) return;
-        reloading = true;
-        window.location.reload();
+        safeReload("sw-controllerchange");
       });
     }
   },
