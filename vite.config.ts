@@ -24,15 +24,19 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
+      filename: "pwa-worker.js",
+      devOptions: {
+        enabled: false,
+      },
       includeAssets: ["logo.png", "logo.webp", "placeholder.svg"],
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        // IMPORTANT: do NOT precache HTML/JS/CSS — that's what causes stale
-        // shells. Only precache truly static assets. HTML+JS+CSS are served
-        // via NetworkFirst runtimeCaching below so users always get the
-        // freshest deploy on every visit.
+        // IMPORTANT: do NOT precache/cache HTML/JS/CSS — that's what causes
+        // stale shells. Only precache truly static assets so published users
+        // receive the newest app code directly from the network.
         globPatterns: ["**/*.{ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
         navigateFallback: null,
         navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//],
@@ -40,28 +44,6 @@ export default defineConfig(({ mode }) => ({
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkOnly",
-          },
-          {
-            // HTML navigations — always try network first so fresh deploys land instantly.
-            urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "html-cache",
-              networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
-          {
-            // JS/CSS chunks — NetworkFirst with short fallback so old chunks
-            // are still available offline but new builds win when online.
-            urlPattern: ({ request }) =>
-              request.destination === "script" || request.destination === "style",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "asset-cache",
-              networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
           },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -123,6 +123,15 @@ export function useShowPurchase() {
       toast({ title: "Nomor HP tidak valid", variant: "destructive" });
       return;
     }
+    const amount = parseInt((selectedShow.price || "").replace(/[^0-9]/g, ""), 10) || 0;
+    if (amount < 1000) {
+      toast({
+        title: "Harga belum valid untuk QRIS Pakasir",
+        description: "Atur harga show minimal Rp 1.000 agar QRIS dinamis bisa dibuat.",
+        variant: "destructive",
+      });
+      return;
+    }
     setPakasirLoading(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pakasir-create-payment`, {

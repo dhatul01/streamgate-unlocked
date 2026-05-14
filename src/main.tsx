@@ -1,7 +1,38 @@
 import { createRoot } from "react-dom/client";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./index.css";
+
+const isInIframe = (() => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
+
+const isPreviewHost =
+  window.location.hostname.includes("id-preview--") ||
+  window.location.hostname.includes("lovableproject.com") ||
+  window.location.hostname.includes("localhost");
+
+const clearRuntimeCaches = async () => {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // ignore cache cleanup failures
+  }
+};
+
+if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+    .then(() => clearRuntimeCaches())
+    .catch(() => undefined);
+}
 
 // ---------------------------------------------------------------------------
 // Reload guard
@@ -64,7 +95,7 @@ const safeReload = (reason: string): boolean => {
           "caches" in window
             ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
             : Promise.resolve(),
-          "serviceWorker" in navigator
+          !isPreviewHost && !isInIframe && "serviceWorker" in navigator
             ? navigator.serviceWorker
                 .getRegistrations()
                 .then((regs) => Promise.all(regs.map((r) => r.unregister())))
@@ -128,7 +159,7 @@ const checkForNewerBuild = (): Promise<void> => {
             const keys = await caches.keys();
             await Promise.all(keys.map((k) => caches.delete(k)));
           }
-          if ("serviceWorker" in navigator) {
+          if (!isPreviewHost && !isInIframe && "serviceWorker" in navigator) {
             const regs = await navigator.serviceWorker.getRegistrations();
             await Promise.all(regs.map((r) => r.unregister()));
           }
@@ -158,38 +189,5 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") void checkForNewerBuild();
 });
 window.setInterval(() => void checkForNewerBuild(), 60_000);
-
-const updateSW = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    void updateSW(true).then(() => safeReload("sw-need-refresh"));
-  },
-  onRegisteredSW(_swUrl, registration) {
-    if (!registration) return;
-
-    const checkForUpdates = () => {
-      void registration.update().catch(() => undefined);
-    };
-
-    window.addEventListener("load", checkForUpdates, { once: true });
-    window.addEventListener("focus", checkForUpdates);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        checkForUpdates();
-      }
-    });
-
-    window.setInterval(checkForUpdates, 60_000);
-
-    // When a new SW takes control mid-session, force a reload so the freshly
-    // cached assets are used immediately — but go through safeReload so we
-    // never get caught in a loop if the SW keeps re-activating.
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        safeReload("sw-controllerchange");
-      });
-    }
-  },
-});
 
 createRoot(document.getElementById("root")!).render(<App />);
