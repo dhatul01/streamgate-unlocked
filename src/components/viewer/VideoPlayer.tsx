@@ -984,19 +984,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       {/* Custom controls overlay */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 tv:gap-4 bg-gradient-to-t from-background/80 to-transparent p-3 tv:p-6 transition-opacity ${
+        className={`absolute inset-x-0 bottom-0 z-20 flex flex-nowrap items-center gap-1.5 sm:gap-2 tv:gap-4 bg-gradient-to-t from-background/85 via-background/40 to-transparent px-2 py-2 sm:px-3 sm:py-3 tv:px-6 tv:py-6 transition-opacity ${
           showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
+        style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         onContextMenu={(e) => e.preventDefault()}
       >
         <button
           onClick={togglePlay}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition hover:bg-primary tv:h-14 tv:w-14"
+          aria-label={isPlaying ? "Pause" : "Play"}
+          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-primary/80 text-primary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-primary tv:h-14 tv:w-14"
         >
           {isPlaying ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
           )}
         </button>
 
@@ -1004,36 +1006,37 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         {playlist.type === "youtube" && (
           <button
             onClick={toggleYtMute}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14"
+            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-secondary tv:h-14 tv:w-14"
             title={ytMuted ? "Unmute" : "Mute"}
+            aria-label={ytMuted ? "Unmute" : "Mute"}
           >
             {ytMuted ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             )}
           </button>
         )}
 
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
 
         {qualities.length > 0 && (
-          <div className="relative" data-quality-menu>
+          <div className="relative shrink-0" data-quality-menu>
             <button
               onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
-              className="flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 tv:px-4 tv:py-2 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex h-11 max-w-[110px] sm:max-w-none touch-manipulation items-center gap-1 rounded-full bg-secondary/80 px-3 tv:h-14 tv:px-4 text-xs tv:text-base text-secondary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               tabIndex={0}
               aria-label="Pilih kualitas video"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              <span>
+              <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span className="truncate">
                 {currentQuality === -1
                   ? `Auto${activeHeight ? ` · ${activeHeight}p` : ""}`
                   : qualities.find(q => q.index === currentQuality)?.label || "Auto"}
               </span>
             </button>
             {showQualityMenu && (
-              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[120px] tv:min-w-[160px]">
+              <div className="absolute bottom-full right-0 mb-2 rounded-lg bg-card/95 border border-border p-1 shadow-xl backdrop-blur-md min-w-[140px] tv:min-w-[160px] max-h-[50vh] overflow-y-auto">
                 {qualities.map((q) => {
                   const isActive = currentQuality === q.index;
                   const isPending = pendingQuality === q.index;
@@ -1042,7 +1045,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                       key={q.index}
                       onClick={(e) => { e.stopPropagation(); handleQualityChange(q.index, q.ytKey); }}
                       tabIndex={0}
-                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`flex w-full min-h-[40px] items-center justify-between gap-2 rounded-md px-3 py-2 tv:px-4 tv:py-2 text-left text-xs tv:text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         isActive
                           ? "bg-primary text-primary-foreground font-semibold"
                           : "text-foreground hover:bg-secondary"
@@ -1060,25 +1063,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
         <button
           onClick={toggleOrientation}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title="Rotate"
           tabIndex={0}
           aria-label="Putar layar"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
         </button>
 
         <button
           onClick={toggleFullscreen}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title={isFullscreen ? "Keluar fullscreen" : "Fullscreen"}
           tabIndex={0}
           aria-label={isFullscreen ? "Keluar fullscreen" : "Masuk fullscreen"}
         >
           {isFullscreen ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
           )}
         </button>
       </div>
