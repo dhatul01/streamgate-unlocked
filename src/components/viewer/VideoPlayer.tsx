@@ -256,6 +256,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       setIsLoading(false);
       setIsPlaying(true);
     };
+    // Silent buffer/stall hint: never toggles the overlay after first playback.
+    const onWaiting = () => {
+      if (destroyed || !hlsRef.current) return;
+      if (!hasHlsPlaybackStartedRef.current) return;
+      try { hlsRef.current.startLoad(videoRef.current?.currentTime ?? -1); } catch {}
+    };
 
     const initHls = async () => {
       const Hls = (await import("hls.js")).default;
