@@ -51,34 +51,28 @@ async function cleanup(resellerId: string, showIds: string[] = []) {
 }
 
 Deno.test("bot_create_token: rejects unregistered phone", async () => {
-  const r = await admin.rpc("bot_create_token", {
-    _actor_phone: "6289000000000",
-    _duration_type: "harian",
-    _max_devices: 1,
-    _is_admin: false,
+  const { data } = await admin.rpc("bot_create_token", {
+    _actor_phone: "6289000000000", _duration_type: "harian", _max_devices: 1, _is_admin: false,
   });
-  console.log("DEBUG unregistered:", JSON.stringify(r));
-  const data = r.data as any;
-  assertEquals(data?.success, false);
-  assert(/tidak terdaftar/i.test(data?.error));
+  const d = data as any;
+  assertEquals(d?.success, false);
+  assert(/tidak terdaftar/i.test(d?.error));
 });
 
 Deno.test("bot_create_token: creates fresh token (no fingerprint, status active, unique code)", async () => {
   const { reseller, phone, prefix } = await setupReseller();
   try {
-    const r1 = await admin.rpc("bot_create_token", {
+    const { data: a } = await admin.rpc("bot_create_token", {
       _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
-    console.log("DEBUG r1:", JSON.stringify(r1));
-    const r2 = await admin.rpc("bot_create_token", {
+    const { data: b } = await admin.rpc("bot_create_token", {
       _actor_phone: phone, _duration_type: "harian", _max_devices: 1, _is_admin: false,
     });
-    console.log("DEBUG r2:", JSON.stringify(r2));
-    const a = r1.data as any, b = r2.data as any;
-    assertEquals(a?.success, true);
-    assertEquals(b?.success, true);
-    assertNotEquals(a.code, b.code, "two tokens must be different");
-    assert((a.code as string).startsWith(prefix + "-"));
+    const ar = a as any, br = b as any;
+    assertEquals(ar?.success, true);
+    assertEquals(br?.success, true);
+    assertNotEquals(ar.code, br.code, "two tokens must be different");
+    assert((ar.code as string).startsWith(prefix + "-"));
 
     const { data: rows } = await admin.from("tokens")
       .select("code, locked_fingerprint, buyer_user_id, status, show_id")
