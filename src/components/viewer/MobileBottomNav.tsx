@@ -4,7 +4,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const items = [
   { href: "/", label: "Beranda", icon: Home, match: (p: string) => p === "/" },
-  { href: "/schedule", label: "Jadwal", icon: Radio, match: (p: string) => p.startsWith("/schedule") },
+  { href: "/replay", label: "Replay", icon: Radio, match: (p: string) => p.startsWith("/replay") },
   { href: "/live", label: "Live", icon: Play, match: (p: string) => p.startsWith("/live"), highlight: true },
   { href: "/coins", label: "Koin", icon: Coins, match: (p: string) => p.startsWith("/coins") },
   { href: "/profile", label: "Profil", icon: User, match: (p: string) => p.startsWith("/profile") || p.startsWith("/auth") },

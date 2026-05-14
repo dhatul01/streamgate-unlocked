@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Coins, Copy, Radio } from "lucide-react";
+import { CheckCircle, Coins, Copy, Radio, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Show } from "@/types/show";
 
@@ -10,11 +12,14 @@ interface CoinDialogProps {
   coinRedeeming: boolean;
   coinResult: { token_code: string; remaining_balance: number; replay_password?: string; access_password?: string } | null;
   onClose: () => void;
-  onRedeem: () => void;
+  onRedeem: (phone: string) => void;
 }
 
 const CoinDialog = ({ show, coinBalance, coinRedeeming, coinResult, onClose, onRedeem }: CoinDialogProps) => {
   const { toast } = useToast();
+  const [phone, setPhone] = useState("");
+  const cleanPhone = phone.replace(/[^0-9]/g, "");
+  const phoneValid = cleanPhone.length >= 8;
 
   return (
     <Dialog open={!!show} onOpenChange={onClose}>
@@ -61,10 +66,27 @@ const CoinDialog = ({ show, coinBalance, coinRedeeming, coinResult, onClose, onR
                 </Button>
               </div>
             ) : (
-              <Button className="w-full gap-2" onClick={onRedeem} disabled={coinRedeeming}>
-                <Coins className="h-4 w-4" />
-                {coinRedeeming ? "Memproses..." : `Bayar ${show?.coin_price} Koin`}
-              </Button>
+              <>
+                <div>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <MessageCircle className="h-3.5 w-3.5" /> Nomor WhatsApp <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="08xxxxxxxxxx"
+                    inputMode="tel"
+                    className="bg-background"
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Token live + info replay akan dikirim ke nomor WhatsApp ini.
+                  </p>
+                </div>
+                <Button className="w-full gap-2" onClick={() => onRedeem(cleanPhone)} disabled={coinRedeeming || !phoneValid}>
+                  <Coins className="h-4 w-4" />
+                  {coinRedeeming ? "Memproses..." : `Bayar ${show?.coin_price} Koin`}
+                </Button>
+              </>
             )}
           </div>
         ) : (
