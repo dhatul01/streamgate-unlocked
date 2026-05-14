@@ -92,7 +92,7 @@ serve(async (req) => {
         `🔐 *Reset Password RealTime48*\n\n` +
         `Hai! Kamu (atau seseorang) meminta reset password.\n\n` +
         `Klik link di bawah untuk membuat password baru:\n${link}\n\n` +
-        `⏰ Berlaku 30 menit.\n` +
+        `⏰ Berlaku 20 menit.\n` +
         `Abaikan pesan ini kalau bukan kamu.`;
 
       const phone = res.phone || identifier.replace(/[^0-9]/g, '');
