@@ -38,9 +38,6 @@ const buildTokenMessage = (opts: {
   msg += `📱 Max Perangkat: ${opts.maxDevices}\n\n`;
   msg += `▶️ *Tonton Live*\n${live}\n\n`;
   msg += `🎬 *Replay* (s/d ${formatDate(opts.replayExpiresAt)})\n${replay}\n`;
-  if (opts.remainingQuota !== null) {
-    msg += `\n📊 Sisa kuota: *${opts.remainingQuota}* token`;
-  }
   if (opts.resellerName) {
     msg += `\n👤 Reseller: ${opts.resellerName}`;
   }
@@ -139,6 +136,9 @@ serve(async (req) => {
       let showId: string | null = null;
       let showTitle: string | null = null;
       let maxDev = 1;
+      let requestedMax = 1;
+      let forcedSingleDevice = false;
+      let showIsSubscription = false;
       const showIdx = parts.indexOf('SHOW');
       if (showIdx > 1) {
         const query = message.split(/\s+/).slice(showIdx + 1).join(' ').trim();
@@ -159,11 +159,23 @@ serve(async (req) => {
           }
           showId = shows[0].id;
           showTitle = shows[0].title;
+          showIsSubscription = !!shows[0].is_subscription;
         }
-        // MAX (if provided) is parts[2] only when SHOW comes after position 2
-        if (showIdx > 2) maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+        if (showIdx > 2) requestedMax = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
       } else if (parts[2]) {
-        maxDev = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+        requestedMax = Math.max(1, Math.min(5, parseInt(parts[2]) || 1));
+      }
+
+      // Enforce max_devices=1 for non-membership shows (or when no show bound)
+      if (showId && !showIsSubscription && requestedMax > 1) {
+        forcedSingleDevice = true;
+        maxDev = 1;
+      } else if (!showId && requestedMax > 1) {
+        // No show specified — default to single device for safety
+        forcedSingleDevice = true;
+        maxDev = 1;
+      } else {
+        maxDev = requestedMax;
       }
 
       if (!validDur) {
@@ -193,15 +205,20 @@ serve(async (req) => {
           await sendReply(`❌ ${r?.error || 'Gagal membuat token'}`);
         } else {
           const durationLabel = { daily: '1 hari', weekly: '7 hari', monthly: '30 hari' }[r.duration_type as string] || r.duration_type;
-          await sendReply(buildTokenMessage({
+          let body = buildTokenMessage({
             code: r.code,
             durationLabel,
             expiresAt: r.expires_at,
             replayExpiresAt: r.replay_expires_at,
             maxDevices: r.max_devices,
-            remainingQuota: isAdmin ? null : r.remaining_quota,
+            remainingQuota: null,
             resellerName: isAdmin ? undefined : r.reseller_username,
-          }) + (r.show_title ? `\n🎬 Show: *${r.show_title}*` : ''));
+          });
+          if (r.show_title) body += `\n🎬 Show: *${r.show_title}*`;
+          if (forcedSingleDevice && requestedMax > 1) {
+            body = `⚠️ *Perhatian:* Kamu meminta ${requestedMax} perangkat, tapi show ini *non-membership* sehingga max perangkat dipaksa menjadi *1*.\n\n` + body;
+          }
+          await sendReply(body);
         }
       }
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
