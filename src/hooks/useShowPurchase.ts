@@ -333,6 +333,7 @@ export function useShowPurchase() {
     handleBuy, handleUploadProof, handleSubmitSubscription,
     // Pakasir
     pakasirLoading, pakasirData, pakasirResult, handlePakasirCreate,
+    pakasirError, pakasirAttempts, handlePakasirRetry,
     // Coin
     coinUser, coinBalance, coinUsername, coinShowTarget, setCoinShowTarget,
     coinRedeeming, coinResult, setCoinResult, handleCoinBuy, handleCoinRedeem,
