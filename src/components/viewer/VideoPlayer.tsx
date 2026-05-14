@@ -177,7 +177,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist]);
+  }, [playlist.type, playlist.url]);
 
   // Obfuscate helper: encode/decode video source at runtime
   const obfuscate = useCallback((str: string) => btoa(unescape(encodeURIComponent(str))), []);
@@ -426,7 +426,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist, autoPlay, obfuscate, deobfuscate]);
+  }, [playlist.type, playlist.url, autoPlay, obfuscate, deobfuscate]);
 
   // Load YouTube IFrame API
   useEffect(() => {
