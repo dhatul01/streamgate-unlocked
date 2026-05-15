@@ -205,4 +205,70 @@ document.addEventListener("visibilitychange", () => {
 });
 window.setInterval(() => void checkForNewerBuild(), 60_000);
 
+// ---------------------------------------------------------------------------
+// Service worker change detector
+// ---------------------------------------------------------------------------
+// Chrome (and other Chromium browsers) keep an old service worker active until
+// every tab on the origin is closed. When a new SW is installed, we proactively
+// detect it and force a hard reload so users immediately get the new build.
+if (
+  !isPreviewHost &&
+  !isInIframe &&
+  "serviceWorker" in navigator
+) {
+  const SW_RELOAD_FLAG = "rt48_sw_reload";
+
+  const triggerSwReload = async (reason: string) => {
+    if (sessionStorage.getItem(SW_RELOAD_FLAG)) return;
+    sessionStorage.setItem(SW_RELOAD_FLAG, "1");
+    try {
+      sessionStorage.removeItem(RELOAD_LOCK_KEY);
+      sessionStorage.removeItem(RELOAD_COUNT_KEY);
+      localStorage.removeItem(RELOAD_LAST_AT_KEY);
+    } catch {}
+    await hardPurgeCaches();
+    safeReload(reason, { force: true });
+  };
+
+  // When the active SW controlling this page changes, the user is on a new
+  // version — reload immediately.
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    void triggerSwReload("sw-controllerchange");
+  });
+
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      const watchWorker = (worker: ServiceWorker | null) => {
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (
+            worker.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
+            void triggerSwReload("sw-installed");
+          }
+          if (worker.state === "activated") {
+            void triggerSwReload("sw-activated");
+          }
+        });
+      };
+
+      watchWorker(reg.installing);
+      watchWorker(reg.waiting);
+      reg.addEventListener("updatefound", () => watchWorker(reg.installing));
+
+      // Poll the registration so Chrome picks up new SW bytes even when the
+      // tab is left open for a long time.
+      const pollUpdate = () => {
+        reg.update().catch(() => undefined);
+      };
+      window.setInterval(pollUpdate, 60_000);
+      window.addEventListener("focus", pollUpdate);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") pollUpdate();
+      });
+    });
+  }).catch(() => undefined);
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
