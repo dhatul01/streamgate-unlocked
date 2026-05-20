@@ -361,12 +361,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hls.startLoad(-1);
         if (autoPlay) {
           const v = videoRef.current!;
+          // Start muted for guaranteed autoplay; user can unmute via overlay button.
+          v.muted = true;
+          setVideoMuted(true);
           v.play()
             .then(() => setIsPlaying(true))
-            .catch(() => {
-              v.muted = true;
-              v.play().then(() => setIsPlaying(true)).catch(() => {});
-            });
+            .catch(() => {});
         }
       });
 
@@ -558,7 +558,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
-            mute: 0,
+            mute: 1,
             enablejsapi: 1,
             controls: 0,
             disablekb: 1,
