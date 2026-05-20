@@ -173,6 +173,7 @@ export type Database = {
           is_admin: boolean
           is_pinned: boolean
           message: string
+          reply_to_id: string | null
           token_id: string | null
           username: string
         }
@@ -182,6 +183,7 @@ export type Database = {
           is_admin?: boolean
           is_pinned?: boolean
           message: string
+          reply_to_id?: string | null
           token_id?: string | null
           username: string
         }
@@ -191,10 +193,18 @@ export type Database = {
           is_admin?: boolean
           is_pinned?: boolean
           message?: string
+          reply_to_id?: string | null
           token_id?: string | null
           username?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_token_id_fkey"
             columns: ["token_id"]
