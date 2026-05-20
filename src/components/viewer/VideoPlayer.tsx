@@ -3,6 +3,17 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 
 const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
+const USER_UNMUTED_KEY = "r48:user-unmuted";
+
+const readUserUnmuted = (): boolean => {
+  try { return sessionStorage.getItem(USER_UNMUTED_KEY) === "1"; } catch { return false; }
+};
+const writeUserUnmuted = (v: boolean) => {
+  try {
+    if (v) sessionStorage.setItem(USER_UNMUTED_KEY, "1");
+    else sessionStorage.removeItem(USER_UNMUTED_KEY);
+  } catch {}
+};
 
 type StoredM3u8Quality = {
   mode: "auto" | "manual";
@@ -361,12 +372,21 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hls.startLoad(-1);
         if (autoPlay) {
           const v = videoRef.current!;
-          // Start muted for guaranteed autoplay; user can unmute via overlay button.
-          v.muted = true;
-          setVideoMuted(true);
+          // If user already unmuted earlier in this session, try unmuted first
+          // so switching playlists doesn't silence audio.
+          const wantUnmuted = readUserUnmuted();
+          v.muted = !wantUnmuted;
+          setVideoMuted(!wantUnmuted);
           v.play()
             .then(() => setIsPlaying(true))
-            .catch(() => {});
+            .catch(() => {
+              // Autoplay rejected — fall back to muted autoplay
+              try {
+                v.muted = true;
+                setVideoMuted(true);
+                v.play().then(() => setIsPlaying(true)).catch(() => {});
+              } catch {}
+            });
         }
       });
 
@@ -558,7 +578,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           videoId,
           playerVars: {
             autoplay: autoPlay ? 1 : 0,
-            mute: 1,
+            mute: readUserUnmuted() ? 0 : 1,
             enablejsapi: 1,
             controls: 0,
             disablekb: 1,
@@ -585,7 +605,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 } catch {}
               };
 
-              // Force highest quality for best initial experience
               try {
                 const ytQuals = e.target.getAvailableQualityLevels?.() || [];
                 if (ytQuals.length > 0) {
@@ -593,9 +612,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 }
               } catch {}
 
-              // Fallback: release after 8s regardless
               const fallbackTimer = setTimeout(releaseQuality, 8000);
-              // Store release fn so onStateChange can call it on prolonged buffering
               (e.target as any).__releaseQuality = releaseQuality;
               (e.target as any).__fallbackTimer = fallbackTimer;
 
@@ -604,11 +621,17 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
                 if (iframe) {
                   iframe.removeAttribute("title");
                   iframe.setAttribute("referrerpolicy", "no-referrer");
-                  // NOTE: do NOT set sandbox here — adding sandbox after the
-                  // iframe loads forces a reload that breaks the YT IFrame API
-                  // bridge, leaving the player visually blank.
                 }
               } catch {}
+
+              // Restore unmute preference across playlist switches.
+              if (readUserUnmuted()) {
+                try {
+                  e.target.unMute?.();
+                  e.target.setVolume?.(100);
+                  setYtMuted(false);
+                } catch {}
+              }
 
               if (autoPlay) e.target.playVideo();
             },
@@ -870,17 +893,22 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     try {
       if (player.isMuted()) {
         player.unMute();
+        player.setVolume?.(100);
         setYtMuted(false);
+        writeUserUnmuted(true);
       } else {
         player.mute();
         setYtMuted(true);
+        writeUserUnmuted(false);
       }
     } catch {}
   }, [isYTReady]);
 
-  // Unified "tap to unmute" — works for HLS <video> and YouTube
+  // Unified "tap to unmute" — works for HLS <video> and YouTube.
+  // Persists the choice so switching playlists keeps audio on.
   const handleUnmuteAll = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
+    writeUserUnmuted(true);
     const v = videoRef.current;
     if (v) {
       try {
@@ -904,7 +932,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onVol = () => setVideoMuted(v.muted || v.volume === 0);
+    const onVol = () => {
+      const muted = v.muted || v.volume === 0;
+      setVideoMuted(muted);
+      if (!muted) writeUserUnmuted(true);
+    };
     v.addEventListener("volumechange", onVol);
     return () => v.removeEventListener("volumechange", onVol);
   }, []);
@@ -1014,8 +1046,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         </div>
       )}
 
-      {/* "Tap to unmute" prominent overlay — appears when stream is playing muted
-          (mobile/Chrome autoplay policy blocks audio without user gesture). */}
+      {/* "Aktifkan Suara" prominent overlay — appears when stream is playing muted.
+          Larger, glowing, more visible than the small player control. */}
       {(() => {
         const isMutedNow = playlist.type === "youtube" ? ytMuted : videoMuted;
         if (!isMutedNow || isLoading) return null;
@@ -1024,13 +1056,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             type="button"
             onClick={handleUnmuteAll}
             aria-label="Aktifkan suara"
-            className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg ring-2 ring-primary/40 backdrop-blur-md transition active:scale-95 hover:bg-primary/90 tv:top-6 tv:px-6 tv:py-3.5 tv:text-base animate-pulse"
+            className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-primary px-5 py-3 text-base font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.7)] ring-4 ring-primary/30 backdrop-blur-md transition active:scale-95 hover:bg-primary/90 tv:top-8 tv:px-8 tv:py-4 tv:text-lg animate-pulse"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 5L6 9H2v6h4l5 4V5z"/>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
             </svg>
-            <span>Aktifkan Suara</span>
+            <span>🔊 Aktifkan Suara</span>
           </button>
         );
       })()}
