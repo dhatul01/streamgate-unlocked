@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useTransition, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition, memo, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Pin, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy, LogIn } from "lucide-react";
+import { Send, Pin, PinOff, Trash2, ShieldBan, ShieldPlus, ShieldMinus, Users, Trophy, LogIn, Reply, X } from "lucide-react";
 import ChatLeaderboard from "@/components/viewer/ChatLeaderboard";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ interface ChatMessage {
   is_pinned: boolean;
   is_admin: boolean;
   token_id: string | null;
+  reply_to_id: string | null;
   created_at: string;
 }
 
@@ -42,8 +43,9 @@ const ModeratorBadge = () => (
   </span>
 );
 
-const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, onToggleMod, formatTime }: {
+const ChatMessageItem = memo(({ msg, replyTarget, isAdmin, isChatMod, chatModUsernames, onPin, onDelete, onBlock, onToggleMod, onReply, formatTime }: {
   msg: ChatMessage;
+  replyTarget?: ChatMessage | null;
   isAdmin: boolean;
   isChatMod: boolean;
   chatModUsernames: Set<string>;
@@ -51,14 +53,24 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
   onDelete: (id: string) => void;
   onBlock?: (tokenId: string) => void;
   onToggleMod?: (username: string, isMod: boolean) => void;
+  onReply: (msg: ChatMessage) => void;
   formatTime: (d: string) => string;
 }) => {
   const canModerate = isAdmin || isChatMod;
   const isMsgFromMod = chatModUsernames.has(msg.username);
 
   return (
-    <div className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
+    <div id={`msg-${msg.id}`} className="group flex items-start gap-2 rounded-lg px-2 py-1.5 tv:px-3 tv:py-2.5 text-sm transition-colors hover:bg-secondary/30">
       <div className="flex-1 min-w-0">
+        {replyTarget && (
+          <div className="mb-1 flex items-start gap-1.5 border-l-2 border-primary/50 bg-primary/5 rounded-r px-2 py-1 text-[10px] tv:text-xs">
+            <Reply className="mt-0.5 h-2.5 w-2.5 tv:h-3 tv:w-3 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold text-primary">{replyTarget.username}</span>
+              <span className="ml-1 text-muted-foreground line-clamp-1">{replyTarget.message}</span>
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-xs font-bold tv:text-sm ${msg.is_admin ? "text-yellow-400" : isMsgFromMod ? "text-cyan-400" : "text-foreground/90"}`}>
             {msg.username}
@@ -69,33 +81,37 @@ const ChatMessageItem = memo(({ msg, isAdmin, isChatMod, chatModUsernames, onPin
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed break-words tv:text-sm">{msg.message}</p>
       </div>
-      {canModerate && (
-        <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-          {isAdmin && (
-            <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Pin">
-              <Pin className="h-3 w-3 tv:h-4 tv:w-4" />
+      <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+        <button onClick={() => onReply(msg)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title="Balas">
+          <Reply className="h-3 w-3 tv:h-4 tv:w-4" />
+        </button>
+        {canModerate && (
+          <>
+            {isAdmin && (
+              <button onClick={() => onPin(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" title={msg.is_pinned ? "Unpin" : "Pin"}>
+                {msg.is_pinned ? <PinOff className="h-3 w-3 tv:h-4 tv:w-4" /> : <Pin className="h-3 w-3 tv:h-4 tv:w-4" />}
+              </button>
+            )}
+            <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
+              <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
             </button>
-          )}
-          <button onClick={() => onDelete(msg.id)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Hapus">
-            <Trash2 className="h-3 w-3 tv:h-4 tv:w-4" />
-          </button>
-          {msg.token_id && onBlock && (
-            <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
-              <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
-            </button>
-          )}
-          {/* Admin can toggle mod status directly from chat */}
-          {isAdmin && !msg.is_admin && onToggleMod && (
-            <button
-              onClick={() => onToggleMod(msg.username, isMsgFromMod)}
-              className={`rounded p-1 tv:p-1.5 text-muted-foreground ${isMsgFromMod ? "hover:bg-destructive/10 hover:text-destructive" : "hover:bg-cyan-500/10 hover:text-cyan-400"}`}
-              title={isMsgFromMod ? "Hapus Moderator" : "Jadikan Moderator"}
-            >
-              {isMsgFromMod ? <ShieldMinus className="h-3 w-3 tv:h-4 tv:w-4" /> : <ShieldPlus className="h-3 w-3 tv:h-4 tv:w-4" />}
-            </button>
-          )}
-        </div>
-      )}
+            {msg.token_id && onBlock && (
+              <button onClick={() => onBlock(msg.token_id!)} className="rounded p-1 tv:p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Blokir">
+                <ShieldBan className="h-3 w-3 tv:h-4 tv:w-4" />
+              </button>
+            )}
+            {isAdmin && !msg.is_admin && onToggleMod && (
+              <button
+                onClick={() => onToggleMod(msg.username, isMsgFromMod)}
+                className={`rounded p-1 tv:p-1.5 text-muted-foreground ${isMsgFromMod ? "hover:bg-destructive/10 hover:text-destructive" : "hover:bg-cyan-500/10 hover:text-cyan-400"}`}
+                title={isMsgFromMod ? "Hapus Moderator" : "Jadikan Moderator"}
+              >
+                {isMsgFromMod ? <ShieldMinus className="h-3 w-3 tv:h-4 tv:w-4" /> : <ShieldPlus className="h-3 w-3 tv:h-4 tv:w-4" />}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 });
@@ -109,6 +125,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const [onlineCount, setOnlineCount] = useState(0);
   const [chatModUsernames, setChatModUsernames] = useState<Set<string>>(new Set());
   const [hasSession, setHasSession] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [guestUsername, setGuestUsername] = useState<string>(() => {
     try { return localStorage.getItem("guest_chat_username") || ""; } catch { return ""; }
   });
@@ -117,12 +134,10 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   const inputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
-  // Effective username: prefer logged-in/token name, fall back to guest input
   const effectiveUsername = (username && username.trim()) || guestUsername.trim();
   const isGuest = !hasSession && !isAdmin;
   const isChatMod = chatModUsernames.has(effectiveUsername);
 
-  // Track Supabase session — required for inserting chat messages (RLS)
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -134,7 +149,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  // Load chat moderators
   useEffect(() => {
     const fetchMods = async () => {
       const { data } = await supabase.from("chat_moderators").select("username");
@@ -154,7 +168,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Presence for online count
   useEffect(() => {
     if (!effectiveUsername) return;
 
@@ -180,11 +193,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     };
   }, [effectiveUsername]);
 
-  // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
-      // Recent messages (limited) + ALL currently-pinned messages (separate query
-      // so pins don't disappear when they age out of the 30-msg window).
       const [recentRes, pinnedRes] = await Promise.all([
         supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(30),
         supabase.from("chat_messages").select("*").eq("is_pinned", true).order("created_at", { ascending: false }).limit(20),
@@ -192,8 +202,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       const recent = recentRes.data ? [...recentRes.data].reverse() : [];
       const pinned = pinnedRes.data || [];
       startTransition(() => {
-        setMessages(recent);
-        setPinnedMessages(pinned);
+        setMessages(recent as ChatMessage[]);
+        setPinnedMessages(pinned as ChatMessage[]);
       });
     };
 
@@ -237,7 +247,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     return () => { supabase.removeChannel(channel); };
   }, [tokenId]);
 
-  // Auto-scroll only when user is near bottom (prevents jump when reading older msgs / when trim happens)
   const isNearBottomRef = useRef(true);
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -252,7 +261,37 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     }
   }, [messages]);
 
-  // Chat throttle: limit to 1 message per 2 seconds
+  // Lookup map for reply targets (search both recent + pinned)
+  const replyLookup = useMemo(() => {
+    const map = new Map<string, ChatMessage>();
+    for (const m of messages) map.set(m.id, m);
+    for (const m of pinnedMessages) map.set(m.id, m);
+    return map;
+  }, [messages, pinnedMessages]);
+
+  // For reply targets that fell off the 30-msg window, fetch on-demand
+  const [extraReplyTargets, setExtraReplyTargets] = useState<Map<string, ChatMessage>>(new Map());
+  useEffect(() => {
+    const missing = new Set<string>();
+    for (const m of messages) {
+      if (m.reply_to_id && !replyLookup.has(m.reply_to_id) && !extraReplyTargets.has(m.reply_to_id)) {
+        missing.add(m.reply_to_id);
+      }
+    }
+    if (missing.size === 0) return;
+    (async () => {
+      const ids = Array.from(missing);
+      const { data } = await supabase.from("chat_messages").select("*").in("id", ids);
+      if (data && data.length) {
+        setExtraReplyTargets((prev) => {
+          const next = new Map(prev);
+          for (const m of data as ChatMessage[]) next.set(m.id, m);
+          return next;
+        });
+      }
+    })();
+  }, [messages, replyLookup, extraReplyTargets]);
+
   const lastSentRef = useRef(0);
 
   const sendMessage = useCallback(async (e: React.FormEvent) => {
@@ -264,7 +303,6 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       toast.error("Masukkan username dulu untuk berkomentar");
       return;
     }
-    // Validate guest username (matches RLS regex)
     if (isGuest) {
       if (finalName.length < 2 || finalName.length > 24 || !/^[A-Za-z0-9_. -]+$/.test(finalName)) {
         toast.error("Username 2-24 karakter (huruf/angka/_.-/spasi)");
@@ -285,8 +323,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
     const insertData: any = {
       username: finalName,
       message: newMessage.trim(),
-      // Guests cannot attach a token (RLS forbids it)
       token_id: isGuest ? null : (tokenId || null),
+      reply_to_id: replyingTo?.id || null,
     };
     if (isAdmin) {
       insertData.is_admin = true;
@@ -295,23 +333,30 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
     if (error) {
       toast.error("Gagal mengirim pesan", { description: error.message });
-      lastSentRef.current = 0; // allow retry immediately
+      lastSentRef.current = 0;
     } else {
       setNewMessage("");
+      setReplyingTo(null);
     }
     setSending(false);
     inputRef.current?.focus();
-  }, [newMessage, effectiveUsername, isGuest, tokenId, isAdmin]);
+  }, [newMessage, effectiveUsername, isGuest, tokenId, isAdmin, replyingTo]);
 
   const handlePin = useCallback(async (id: string) => {
     if (onPinMessage) onPinMessage(id);
     else {
-      const msg = messages.find((m) => m.id === id);
-      if (msg) {
-        await supabase.from("chat_messages").update({ is_pinned: !msg.is_pinned }).eq("id", id);
-      }
+      // Toggle from local state (covers pinned-only items not in messages window)
+      const m = messages.find((x) => x.id === id) || pinnedMessages.find((x) => x.id === id);
+      const next = m ? !m.is_pinned : true;
+      await supabase.from("chat_messages").update({ is_pinned: next }).eq("id", id);
     }
-  }, [messages, onPinMessage]);
+  }, [messages, pinnedMessages, onPinMessage]);
+
+  const handleUnpinFromLog = useCallback(async (id: string) => {
+    await supabase.from("chat_messages").update({ is_pinned: false }).eq("id", id);
+    // Optimistic update
+    setPinnedMessages((prev) => prev.filter((m) => m.id !== id));
+  }, []);
 
   const handleDelete = useCallback(async (id: string) => {
     if (onDeleteMessage) onDeleteMessage(id);
@@ -319,6 +364,11 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
       await supabase.from("chat_messages").delete().eq("id", id);
     }
   }, [onDeleteMessage]);
+
+  const handleReply = useCallback((msg: ChatMessage) => {
+    setReplyingTo(msg);
+    inputRef.current?.focus();
+  }, []);
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -329,10 +379,8 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
   return (
     <div className="relative flex h-full flex-col bg-card/50">
-      {/* Leaderboard overlay */}
       <ChatLeaderboard isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
 
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 tv:px-6 tv:py-4">
         <div className="flex items-center gap-2 tv:gap-3">
           <div className="flex h-8 w-8 tv:h-12 tv:w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -360,27 +408,37 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         </div>
       </div>
 
-      {/* Pinned messages */}
+      {/* Pinned messages log — admin can unpin directly without scrolling chat */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 tv:px-6 tv:py-3 space-y-1 tv:space-y-2">
+        <div className="border-b border-primary/20 bg-primary/5 px-3 py-2 tv:px-5 tv:py-3 space-y-1 tv:space-y-2 max-h-[30%] overflow-y-auto">
           {pinnedMessages.map((m) => (
-            <div key={m.id} className="flex items-start gap-2 text-xs tv:text-sm">
+            <div key={m.id} className="group flex items-start gap-2 text-xs tv:text-sm">
               <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <span className="font-bold text-primary">{m.username}</span>
-                <span className="ml-1 text-foreground/80">{m.message}</span>
+                <span className="ml-1 text-foreground/80 break-words">{m.message}</span>
               </div>
+              {isAdmin && (
+                <button
+                  onClick={() => handleUnpinFromLog(m.id)}
+                  className="shrink-0 rounded p-1 text-muted-foreground opacity-60 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                  title="Unpin pesan"
+                  aria-label="Unpin pesan"
+                >
+                  <PinOff className="h-3 w-3 tv:h-4 tv:w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Messages */}
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 tv:px-4 tv:py-3 space-y-0.5 tv:space-y-1">
         {messages.map((msg) => (
           <ChatMessageItem
             key={msg.id}
             msg={msg}
+            replyTarget={msg.reply_to_id ? (replyLookup.get(msg.reply_to_id) || extraReplyTargets.get(msg.reply_to_id) || null) : null}
             isAdmin={isAdmin}
             isChatMod={isChatMod}
             chatModUsernames={chatModUsernames}
@@ -388,6 +446,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
             onDelete={handleDelete}
             onBlock={onBlockUser}
             onToggleMod={onToggleChatMod}
+            onReply={handleReply}
             formatTime={formatTime}
           />
         ))}
@@ -399,7 +458,27 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
         )}
       </div>
 
-      {/* Guest username input — shown when not logged in and parent didn't pass a username */}
+      {/* Reply composer banner */}
+      {replyingTo && (
+        <div className="flex items-start gap-2 border-t border-primary/30 bg-primary/10 px-3 py-2 tv:px-4 tv:py-3">
+          <Reply className="mt-0.5 h-3.5 w-3.5 tv:h-4 tv:w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] tv:text-xs font-semibold text-primary">
+              Membalas {replyingTo.username}
+            </p>
+            <p className="truncate text-xs tv:text-sm text-muted-foreground">{replyingTo.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReplyingTo(null)}
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Batal balas"
+          >
+            <X className="h-3.5 w-3.5 tv:h-4 tv:w-4" />
+          </button>
+        </div>
+      )}
+
       {isGuest && !username && (
         <div className="flex items-center gap-2 border-t border-border bg-secondary/30 px-3 py-2 tv:px-4 tv:py-3">
           <Input
@@ -423,16 +502,16 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
           ref={inputRef}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={!effectiveUsername ? "Masukkan username dulu" : "Ketik pesan..."}
+          placeholder={!effectiveUsername ? "Masukkan username dulu" : replyingTo ? `Balas ke ${replyingTo.username}...` : "Ketik pesan..."}
           disabled={!effectiveUsername || sending}
           maxLength={300}
           className="flex-1 border-secondary bg-secondary/50 text-sm placeholder:text-muted-foreground/50 focus:bg-background tv:h-12 tv:text-base"
         />
         <Button
           type="submit"
+          disabled={!effectiveUsername || !newMessage.trim() || sending}
           size="icon"
-          disabled={!effectiveUsername || sending || !newMessage.trim()}
-          className="h-10 w-10 tv:h-12 tv:w-12 shrink-0 rounded-lg"
+          className="h-10 w-10 shrink-0 tv:h-12 tv:w-12"
         >
           <Send className="h-4 w-4 tv:h-5 tv:w-5" />
         </Button>
