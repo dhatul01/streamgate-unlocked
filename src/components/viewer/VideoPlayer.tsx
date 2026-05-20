@@ -878,6 +878,37 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     } catch {}
   }, [isYTReady]);
 
+  // Unified "tap to unmute" — works for HLS <video> and YouTube
+  const handleUnmuteAll = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const v = videoRef.current;
+    if (v) {
+      try {
+        v.muted = false;
+        if (v.volume === 0) v.volume = 1;
+        if (v.paused) v.play().catch(() => {});
+        setVideoMuted(false);
+      } catch {}
+    }
+    if (playlist.type === "youtube" && isYTReady()) {
+      try {
+        ytPlayerRef.current.unMute();
+        ytPlayerRef.current.setVolume?.(100);
+        ytPlayerRef.current.playVideo?.();
+        setYtMuted(false);
+      } catch {}
+    }
+  }, [playlist.type, isYTReady]);
+
+  // Track <video> mute state changes (user might unmute via native controls)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onVol = () => setVideoMuted(v.muted || v.volume === 0);
+    v.addEventListener("volumechange", onVol);
+    return () => v.removeEventListener("volumechange", onVol);
+  }, []);
+
   useEffect(() => {
     const onFsChange = () => {
       const doc = document as any;
