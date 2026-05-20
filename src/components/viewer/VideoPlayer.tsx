@@ -1046,12 +1046,6 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         </div>
       )}
 
-      {/* "Tap to unmute" prominent overlay — appears when stream is playing muted
-          (mobile/Chrome autoplay policy blocks audio without user gesture). */}
-      {(() => {
-        const isMutedNow = playlist.type === "youtube" ? ytMuted : videoMuted;
-        if (!isMutedNow || isLoading) return null;
-        return (
       {/* "Aktifkan Suara" prominent overlay — appears when stream is playing muted.
           Larger, glowing, more visible than the small player control. */}
       {(() => {
