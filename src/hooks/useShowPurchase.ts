@@ -184,9 +184,19 @@ export function useShowPurchase() {
   const pollPakasirOrder = async (orderId: string, showTitle: string) => {
     const start = Date.now();
     const maxMs = 30 * 60 * 1000; // 30 menit
+    let verifyTick = 0;
     const tick = async () => {
       if (Date.now() - start > maxMs) return;
       try {
+        // Ask backend to actively verify against Pakasir API every cycle.
+        // This handles cases where the Pakasir webhook didn't fire/was lost.
+        verifyTick++;
+        try {
+          await supabase.functions.invoke("pakasir-verify-payment", {
+            body: { order_id: orderId },
+          });
+        } catch { /* fall back to status check */ }
+
         const { data } = await supabase.rpc("get_pakasir_order_status", { _order_id: orderId });
         const r = data as any;
         if (r?.status === "completed" && r?.token_code) {
@@ -196,9 +206,10 @@ export function useShowPurchase() {
           return;
         }
       } catch {}
-      setTimeout(tick, 4000);
+      const interval = verifyTick < 30 ? 4000 : 8000;
+      setTimeout(tick, interval);
     };
-    setTimeout(tick, 4000);
+    setTimeout(tick, 3000);
   };
 
 

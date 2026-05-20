@@ -183,18 +183,18 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   // Load messages
   useEffect(() => {
     const fetchMessages = async () => {
-      const { data } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      if (data) data.reverse();
-      if (data) {
-        startTransition(() => {
-          setMessages(data);
-          setPinnedMessages(data.filter((m) => m.is_pinned));
-        });
-      }
+      // Recent messages (limited) + ALL currently-pinned messages (separate query
+      // so pins don't disappear when they age out of the 30-msg window).
+      const [recentRes, pinnedRes] = await Promise.all([
+        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(30),
+        supabase.from("chat_messages").select("*").eq("is_pinned", true).order("created_at", { ascending: false }).limit(20),
+      ]);
+      const recent = recentRes.data ? [...recentRes.data].reverse() : [];
+      const pinned = pinnedRes.data || [];
+      startTransition(() => {
+        setMessages(recent);
+        setPinnedMessages(pinned);
+      });
     };
 
     fetchMessages();
