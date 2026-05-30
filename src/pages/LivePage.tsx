@@ -810,18 +810,20 @@ const LivePage = () => {
         <Suspense fallback={null}>
           <LivePoll voterId={tokenData?.id || username} />
         </Suspense>
-        <Suspense fallback={
-          <div className="flex h-full items-center justify-center">
-            <p className="text-xs text-muted-foreground">Memuat chat...</p>
-          </div>
-        }>
-          <LiveChat
-            username={username}
-            tokenId={tokenData?.id}
-            isLive={isLive}
-            isAdmin={false}
-          />
-        </Suspense>
+        <div className="min-h-0 flex-1">
+          <Suspense fallback={
+            <div className="flex h-full items-center justify-center">
+              <p className="text-xs text-muted-foreground">Memuat chat...</p>
+            </div>
+          }>
+            <LiveChat
+              username={username}
+              tokenId={tokenData?.id}
+              isLive={isLive}
+              isAdmin={false}
+            />
+          </Suspense>
+        </div>
       </div>
     </div>
   );
