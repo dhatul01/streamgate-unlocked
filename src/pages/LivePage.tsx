@@ -7,6 +7,7 @@ import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 
 // Lazy load heavy components
 const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
+import JoinChannelBanner from "@/components/viewer/JoinChannelBanner";
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
@@ -42,6 +43,7 @@ const LivePage = () => {
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
+  const [channelBanner, setChannelBanner] = useState({ enabled: false, title: "", text: "", buttonText: "", url: "" });
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   // Auto-detect authenticated user and set their profile username
@@ -206,6 +208,7 @@ const LivePage = () => {
         syncPlaylistsState(playlistRes.data || []);
 
         if (settingsRes.data) {
+          const banner = { enabled: false, title: "", text: "", buttonText: "", url: "" };
           settingsRes.data.forEach((s: any) => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
             if (s.key === "watermark_text") setWatermarkText(s.value || "");
@@ -215,7 +218,13 @@ const LivePage = () => {
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
             if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
             if (s.key === "purchase_message" && s.value) setPurchaseMessage(s.value);
+            if (s.key === "channel_banner_enabled") banner.enabled = s.value === "true";
+            if (s.key === "channel_banner_title") banner.title = s.value || "";
+            if (s.key === "channel_banner_text") banner.text = s.value || "";
+            if (s.key === "channel_button_text") banner.buttonText = s.value || "";
+            if (s.key === "channel_url") banner.url = s.value || "";
           });
+          setChannelBanner(banner);
         }
 
         setLoading(false);
@@ -337,6 +346,11 @@ const LivePage = () => {
           if (row?.key === "watermark_text_size") setWatermarkTextSize(parseInt(row.value || "30", 10) || 30);
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
           if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
+          if (row?.key === "channel_banner_enabled") setChannelBanner((p) => ({ ...p, enabled: row.value === "true" }));
+          if (row?.key === "channel_banner_title") setChannelBanner((p) => ({ ...p, title: row.value || "" }));
+          if (row?.key === "channel_banner_text") setChannelBanner((p) => ({ ...p, text: row.value || "" }));
+          if (row?.key === "channel_button_text") setChannelBanner((p) => ({ ...p, buttonText: row.value || "" }));
+          if (row?.key === "channel_url") setChannelBanner((p) => ({ ...p, url: row.value || "" }));
         }
       )
       .subscribe();
@@ -783,23 +797,33 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+      <div className="flex h-[50vh] flex-col border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+        {/* Join channel banner (admin-controlled) */}
+        <JoinChannelBanner
+          enabled={channelBanner.enabled}
+          title={channelBanner.title}
+          text={channelBanner.text}
+          buttonText={channelBanner.buttonText}
+          url={channelBanner.url}
+        />
         {/* Live Poll - always visible when poll is active */}
         <Suspense fallback={null}>
           <LivePoll voterId={tokenData?.id || username} />
         </Suspense>
-        <Suspense fallback={
-          <div className="flex h-full items-center justify-center">
-            <p className="text-xs text-muted-foreground">Memuat chat...</p>
-          </div>
-        }>
-          <LiveChat
-            username={username}
-            tokenId={tokenData?.id}
-            isLive={isLive}
-            isAdmin={false}
-          />
-        </Suspense>
+        <div className="min-h-0 flex-1">
+          <Suspense fallback={
+            <div className="flex h-full items-center justify-center">
+              <p className="text-xs text-muted-foreground">Memuat chat...</p>
+            </div>
+          }>
+            <LiveChat
+              username={username}
+              tokenId={tokenData?.id}
+              isLive={isLive}
+              isAdmin={false}
+            />
+          </Suspense>
+        </div>
       </div>
     </div>
   );

@@ -113,14 +113,15 @@ const ReplayPage = () => {
       if (showsRes.data) {
         const streamLive = streamRes.data?.is_live ?? true;
         const pastShows = (showsRes.data as any[]).filter((s) => {
-          if (s.is_subscription || s.replay_coin_price <= 0) return false;
+          if (s.is_subscription) return false;
+          // Include all replay shows
           if (s.is_replay) return true;
-          if (isShowPast4Hours(s)) return true;
-          if (!streamLive && isShowPastSchedule(s)) return true;
-          return false;
+          // Include active (live/upcoming) shows so users see what's available
+          return true;
         });
-        // Sort newest first by schedule_date
+        // Replay first, then active; newest first within each group
         pastShows.sort((a, b) => {
+          if (a.is_replay !== b.is_replay) return a.is_replay ? -1 : 1;
           const dateA = a.schedule_date ? new Date(a.schedule_date).getTime() : 0;
           const dateB = b.schedule_date ? new Date(b.schedule_date).getTime() : 0;
           return dateB - dateA;

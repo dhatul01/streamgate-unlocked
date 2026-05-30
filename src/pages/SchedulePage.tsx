@@ -20,18 +20,16 @@ const SchedulePage = () => {
       const showsRes = await supabase.rpc("get_public_shows");
       if (showsRes.data) {
         const allShows = showsRes.data as Show[];
-        const upcoming = allShows.filter(s => {
-          if (s.is_subscription) return false;
-          if (!s.schedule_date) return false;
-          if (s.is_replay) return false;
-          return true;
-        });
-        upcoming.sort((a, b) => {
+        // Show both active and replay shows
+        const list = allShows.filter(s => !s.is_subscription);
+        list.sort((a, b) => {
+          // Active shows first, then replays; within each group newest first
+          if (a.is_replay !== b.is_replay) return a.is_replay ? 1 : -1;
           const dateA = a.schedule_date ? new Date(a.schedule_date).getTime() : 0;
           const dateB = b.schedule_date ? new Date(b.schedule_date).getTime() : 0;
           return dateB - dateA;
         });
-        setShows(upcoming);
+        setShows(list);
       }
       setLoading(false);
     };

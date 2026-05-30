@@ -353,6 +353,102 @@ const SiteSettingsManager = () => {
           </div>
         )}
       </div>
+
+      {/* Banner & tombol gabung saluran (di atas live chat) */}
+      <div className="space-y-3 rounded-lg border border-border bg-background/40 p-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-foreground">📣 Banner Gabung Saluran (di atas Live Chat)</label>
+          <p className="text-[10px] text-muted-foreground">Banner promosi + tombol untuk mengajak penonton bergabung ke saluran (WhatsApp/Telegram/dll).</p>
+        </div>
+
+        {/* Toggle */}
+        <div className="flex gap-2">
+          {[
+            { value: "true", label: "✅ Aktif" },
+            { value: "false", label: "❌ Nonaktif" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, channel_banner_enabled: opt.value }));
+                saveSetting("channel_banner_enabled", opt.value);
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                (values.channel_banner_enabled || "false") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-muted-foreground">Judul Banner</label>
+          <div className="flex gap-2">
+            <Input
+              value={values.channel_banner_title || ""}
+              onChange={(e) => setValues((p) => ({ ...p, channel_banner_title: e.target.value }))}
+              className="bg-background"
+              placeholder="🔔 Gabung Saluran Resmi Kami"
+              maxLength={80}
+            />
+            <Button size="sm" onClick={() => saveSetting("channel_banner_title")} disabled={saving === "channel_banner_title"}>Simpan</Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-muted-foreground">Teks Banner (deskripsi singkat & menarik)</label>
+          <div className="flex flex-col gap-2">
+            <Textarea
+              value={values.channel_banner_text || ""}
+              onChange={(e) => setValues((p) => ({ ...p, channel_banner_text: e.target.value }))}
+              className="bg-background"
+              rows={2}
+              placeholder="Dapatkan info show terbaru, jadwal live, dan promo eksklusif langsung di HP kamu."
+              maxLength={200}
+            />
+            <Button size="sm" onClick={() => saveSetting("channel_banner_text")} disabled={saving === "channel_banner_text"}>Simpan</Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-muted-foreground">Teks Tombol</label>
+          <div className="flex gap-2">
+            <Input
+              value={values.channel_button_text || ""}
+              onChange={(e) => setValues((p) => ({ ...p, channel_button_text: e.target.value }))}
+              className="bg-background"
+              placeholder="Gabung Sekarang"
+              maxLength={32}
+            />
+            <Button size="sm" onClick={() => saveSetting("channel_button_text")} disabled={saving === "channel_button_text"}>Simpan</Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-muted-foreground">Link Saluran (URL tujuan tombol)</label>
+          <div className="flex gap-2">
+            <Input
+              value={values.channel_url || ""}
+              onChange={(e) => setValues((p) => ({ ...p, channel_url: e.target.value }))}
+              className="bg-background"
+              placeholder="https://whatsapp.com/channel/... atau https://t.me/..."
+            />
+            <Button size="sm" onClick={() => saveSetting("channel_url")} disabled={saving === "channel_url"}>Simpan</Button>
+          </div>
+        </div>
+
+        {values.channel_banner_enabled === "true" && values.channel_url && (
+          <div className="rounded-md border border-primary/30 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{values.channel_banner_title || "🔔 Gabung Saluran Resmi Kami"}</p>
+            <p className="mt-1 text-[11px] text-foreground/85">{values.channel_banner_text || "Dapatkan info show terbaru, jadwal live, dan promo eksklusif langsung di HP kamu."}</p>
+            <span className="mt-2 inline-block rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1 text-[10px] font-semibold text-primary-foreground">{values.channel_button_text || "Gabung Sekarang"} →</span>
+            <p className="mt-1 text-[9px] text-muted-foreground">Preview</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
