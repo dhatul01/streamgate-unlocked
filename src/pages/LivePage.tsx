@@ -36,6 +36,9 @@ const LivePage = () => {
   const [purchaseMessage, setPurchaseMessage] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [watermarkUrl, setWatermarkUrl] = useState("");
+  const [watermarkText, setWatermarkText] = useState("");
+  const [watermarkTextEnabled, setWatermarkTextEnabled] = useState(false);
+  const [watermarkTextSize, setWatermarkTextSize] = useState(30);
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
@@ -205,6 +208,9 @@ const LivePage = () => {
         if (settingsRes.data) {
           settingsRes.data.forEach((s: any) => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
+            if (s.key === "watermark_text") setWatermarkText(s.value || "");
+            if (s.key === "watermark_text_enabled") setWatermarkTextEnabled(s.value === "true");
+            if (s.key === "watermark_text_size") setWatermarkTextSize(parseInt(s.value || "30", 10) || 30);
             if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
             if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
@@ -326,6 +332,9 @@ const LivePage = () => {
         (payload: any) => {
           const row = payload.new;
           if (row?.key === "watermark_image_url") setWatermarkUrl(row.value || "");
+          if (row?.key === "watermark_text") setWatermarkText(row.value || "");
+          if (row?.key === "watermark_text_enabled") setWatermarkTextEnabled(row.value === "true");
+          if (row?.key === "watermark_text_size") setWatermarkTextSize(parseInt(row.value || "30", 10) || 30);
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
           if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
         }
@@ -694,6 +703,9 @@ const LivePage = () => {
               }}
               autoPlay
               watermarkUrl={watermarkUrl}
+              watermarkText={watermarkText}
+              watermarkTextEnabled={watermarkTextEnabled}
+              watermarkTextSize={watermarkTextSize}
               tokenCode={tokenData?.code}
             />
           ) : isLive && activePlaylist && signedUrlLoading ? (
