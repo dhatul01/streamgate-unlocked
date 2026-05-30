@@ -245,7 +245,7 @@ const SiteSettingsManager = () => {
 
       {/* Watermark upload */}
       <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Watermark Player</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Watermark Player (Gambar Kecil)</label>
         <p className="mb-2 text-[10px] text-muted-foreground">Gambar kecil di pojok kanan bawah player. Upload gambar untuk mengaktifkan.</p>
         {values.watermark_image_url ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
@@ -261,6 +261,96 @@ const SiteSettingsManager = () => {
             {uploadingWatermark ? "Mengupload..." : "Upload Gambar Watermark"}
             <input type="file" accept="image/*" className="hidden" onChange={handleWatermarkUpload} disabled={uploadingWatermark} />
           </label>
+        )}
+      </div>
+
+      {/* Watermark teks transparan menutupi player */}
+      <div className="space-y-3 rounded-lg border border-border bg-background/40 p-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-foreground">💧 Watermark Teks Transparan</label>
+          <p className="text-[10px] text-muted-foreground">Teks transparan yang menutupi seluruh layar player. Ukuran & teks bisa diatur.</p>
+        </div>
+
+        {/* Toggle */}
+        <div className="flex gap-2">
+          {[
+            { value: "true", label: "✅ Aktif" },
+            { value: "false", label: "❌ Nonaktif" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setValues((p) => ({ ...p, watermark_text_enabled: opt.value }));
+                saveSetting("watermark_text_enabled", opt.value);
+              }}
+              className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
+                (values.watermark_text_enabled || "false") === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Text */}
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-muted-foreground">Teks Watermark</label>
+          <div className="flex gap-2">
+            <Input
+              value={values.watermark_text || ""}
+              onChange={(e) => setValues((p) => ({ ...p, watermark_text: e.target.value }))}
+              className="bg-background"
+              placeholder="RealTime48"
+              maxLength={40}
+            />
+            <Button size="sm" onClick={() => saveSetting("watermark_text")} disabled={saving === "watermark_text"}>
+              Simpan
+            </Button>
+          </div>
+        </div>
+
+        {/* Size slider */}
+        <div>
+          <label className="mb-1 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+            <span>Ukuran Watermark</span>
+            <span className="font-mono text-primary">{values.watermark_text_size || "30"}%</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={parseInt(values.watermark_text_size || "30", 10)}
+              onChange={(e) => setValues((p) => ({ ...p, watermark_text_size: e.target.value }))}
+              onMouseUp={(e) => saveSetting("watermark_text_size", (e.target as HTMLInputElement).value)}
+              onTouchEnd={(e) => saveSetting("watermark_text_size", (e.target as HTMLInputElement).value)}
+              className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+            />
+          </div>
+          <p className="mt-1 text-[9px] text-muted-foreground">10% = teks kecil, 100% = teks selebar player.</p>
+        </div>
+
+        {/* Preview */}
+        {values.watermark_text_enabled === "true" && values.watermark_text && (
+          <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-gradient-to-br from-secondary/40 to-background">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+                <text
+                  x="50" y="33" textAnchor="middle"
+                  fontFamily="Inter, sans-serif" fontWeight={800}
+                  fontSize={Math.min(60, (parseInt(values.watermark_text_size || "30", 10) / Math.max(values.watermark_text.length, 4)) * 1.85)}
+                  fill="white" fillOpacity={0.18}
+                  style={{ letterSpacing: "0.05em", textTransform: "uppercase" }}
+                >
+                  {values.watermark_text}
+                </text>
+              </svg>
+            </div>
+            <span className="absolute bottom-1 right-2 text-[9px] text-muted-foreground">Preview</span>
+          </div>
         )}
       </div>
     </div>

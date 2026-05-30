@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useCallback, lazy, Suspense } from "react";
 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
+const TextWatermark = lazy(() => import("@/components/viewer/TextWatermark"));
 
 const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
 const USER_UNMUTED_KEY = "r48:user-unmuted";
@@ -86,6 +87,12 @@ interface VideoPlayerProps {
   autoPlay?: boolean;
   watermarkUrl?: string;
   tokenCode?: string;
+  /** Watermark teks transparan menutupi player */
+  watermarkText?: string;
+  /** Skala watermark teks 10..100 (persen) */
+  watermarkTextSize?: number;
+  /** Aktifkan watermark teks */
+  watermarkTextEnabled?: boolean;
 }
 
 export interface VideoPlayerHandle {
@@ -95,7 +102,7 @@ export interface VideoPlayerHandle {
   getCurrentTime?: () => number;
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode, watermarkText, watermarkTextSize = 30, watermarkTextEnabled = false }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
@@ -1044,6 +1051,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         <div className="pointer-events-none absolute bottom-12 right-3 z-20 tv:bottom-20 tv:right-6">
           <img src={watermarkUrl} alt="" className="h-8 w-auto opacity-40 md:h-10 tv:h-16" loading="lazy" />
         </div>
+      )}
+
+      {/* Admin text watermark — transparan, sebesar player */}
+      {watermarkTextEnabled && watermarkText && (
+        <Suspense fallback={null}>
+          <TextWatermark text={watermarkText} size={watermarkTextSize} />
+        </Suspense>
       )}
 
       {/* "Aktifkan Suara" prominent overlay — appears when stream is playing muted.
