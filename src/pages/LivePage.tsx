@@ -797,7 +797,15 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="h-[50vh] border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+      <div className="flex h-[50vh] flex-col border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+        {/* Join channel banner (admin-controlled) */}
+        <JoinChannelBanner
+          enabled={channelBanner.enabled}
+          title={channelBanner.title}
+          text={channelBanner.text}
+          buttonText={channelBanner.buttonText}
+          url={channelBanner.url}
+        />
         {/* Live Poll - always visible when poll is active */}
         <Suspense fallback={null}>
           <LivePoll voterId={tokenData?.id || username} />
