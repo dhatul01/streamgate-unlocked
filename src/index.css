@@ -111,6 +111,74 @@
   border: 1px solid hsl(var(--border) / 0.6);
 }
 
+/* === Aurora & Gradient enhancements === */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(-10%, -10%, 0) scale(1);   }
+  33%  { transform: translate3d(15%, 5%, 0) scale(1.15);  }
+  66%  { transform: translate3d(-5%, 12%, 0) scale(0.95); }
+  100% { transform: translate3d(-10%, -10%, 0) scale(1);   }
+}
+@keyframes aurora-drift-2 {
+  0%   { transform: translate3d(20%, 10%, 0) scale(1.1);  }
+  50%  { transform: translate3d(-15%, -8%, 0) scale(0.9); }
+  100% { transform: translate3d(20%, 10%, 0) scale(1.1);  }
+}
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.aurora-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+.aurora-blob--cyan {
+  width: 55vw; height: 55vw;
+  top: -10%; left: -10%;
+  background: radial-gradient(circle, hsl(190 95% 60% / 0.7), transparent 70%);
+  animation: aurora-drift 22s ease-in-out infinite;
+}
+.aurora-blob--violet {
+  width: 50vw; height: 50vw;
+  bottom: -15%; right: -10%;
+  background: radial-gradient(circle, hsl(270 90% 65% / 0.65), transparent 70%);
+  animation: aurora-drift-2 28s ease-in-out infinite;
+}
+.aurora-blob--pink {
+  width: 40vw; height: 40vw;
+  top: 30%; right: 10%;
+  background: radial-gradient(circle, hsl(320 85% 60% / 0.45), transparent 70%);
+  animation: aurora-drift 34s ease-in-out infinite reverse;
+}
+
+.text-aurora {
+  background: linear-gradient(120deg, hsl(190 95% 70%), hsl(217 91% 65%), hsl(270 90% 70%), hsl(320 85% 65%));
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.glass-aurora {
+  background: linear-gradient(135deg, hsl(var(--card) / 0.5), hsl(var(--card) / 0.25));
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid hsl(0 0% 100% / 0.08);
+  box-shadow: 0 8px 32px -8px hsl(var(--primary) / 0.25), inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+
 /* Elegant CTA button */
 .btn-elegant {
   position: relative;
