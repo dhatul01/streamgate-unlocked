@@ -208,6 +208,7 @@ const LivePage = () => {
         syncPlaylistsState(playlistRes.data || []);
 
         if (settingsRes.data) {
+          const banner = { enabled: false, title: "", text: "", buttonText: "", url: "" };
           settingsRes.data.forEach((s: any) => {
             if (s.key === "watermark_image_url" && s.value) setWatermarkUrl(s.value);
             if (s.key === "watermark_text") setWatermarkText(s.value || "");
@@ -217,7 +218,13 @@ const LivePage = () => {
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
             if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
             if (s.key === "purchase_message" && s.value) setPurchaseMessage(s.value);
+            if (s.key === "channel_banner_enabled") banner.enabled = s.value === "true";
+            if (s.key === "channel_banner_title") banner.title = s.value || "";
+            if (s.key === "channel_banner_text") banner.text = s.value || "";
+            if (s.key === "channel_button_text") banner.buttonText = s.value || "";
+            if (s.key === "channel_url") banner.url = s.value || "";
           });
+          setChannelBanner(banner);
         }
 
         setLoading(false);
