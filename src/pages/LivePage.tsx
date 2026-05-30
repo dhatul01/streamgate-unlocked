@@ -346,6 +346,11 @@ const LivePage = () => {
           if (row?.key === "watermark_text_size") setWatermarkTextSize(parseInt(row.value || "30", 10) || 30);
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
           if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
+          if (row?.key === "channel_banner_enabled") setChannelBanner((p) => ({ ...p, enabled: row.value === "true" }));
+          if (row?.key === "channel_banner_title") setChannelBanner((p) => ({ ...p, title: row.value || "" }));
+          if (row?.key === "channel_banner_text") setChannelBanner((p) => ({ ...p, text: row.value || "" }));
+          if (row?.key === "channel_button_text") setChannelBanner((p) => ({ ...p, buttonText: row.value || "" }));
+          if (row?.key === "channel_url") setChannelBanner((p) => ({ ...p, url: row.value || "" }));
         }
       )
       .subscribe();
