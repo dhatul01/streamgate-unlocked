@@ -43,6 +43,7 @@ const LivePage = () => {
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
+  const [channelBanner, setChannelBanner] = useState({ enabled: false, title: "", text: "", buttonText: "", url: "" });
   const playerRef = useRef<VideoPlayerHandle>(null);
 
   // Auto-detect authenticated user and set their profile username
