@@ -119,8 +119,9 @@ const ReplayPage = () => {
           // Include active (live/upcoming) shows so users see what's available
           return true;
         });
-        // Sort newest first by schedule_date
+        // Replay first, then active; newest first within each group
         pastShows.sort((a, b) => {
+          if (a.is_replay !== b.is_replay) return a.is_replay ? -1 : 1;
           const dateA = a.schedule_date ? new Date(a.schedule_date).getTime() : 0;
           const dateB = b.schedule_date ? new Date(b.schedule_date).getTime() : 0;
           return dateB - dateA;
