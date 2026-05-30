@@ -7,6 +7,7 @@ import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 
 // Lazy load heavy components
 const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
+import JoinChannelBanner from "@/components/viewer/JoinChannelBanner";
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
 const ConnectionStatus = lazy(() => import("@/components/viewer/ConnectionStatus"));
