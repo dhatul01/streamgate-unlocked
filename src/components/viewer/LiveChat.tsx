@@ -221,7 +221,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
               setMessages((prev) => {
                 if (prev.some((m) => m.id === newMsg.id)) return prev;
                 const next = [...prev, newMsg];
-                return next.length > 30 ? next.slice(-30) : next;
+                return next.length > 60 ? next.slice(-60) : next;
               });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
             } else if (payload.eventType === "DELETE") {
