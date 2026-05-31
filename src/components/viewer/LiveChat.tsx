@@ -196,7 +196,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   useEffect(() => {
     const fetchMessages = async () => {
       const [recentRes, pinnedRes] = await Promise.all([
-        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(30),
+        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(60),
         supabase.from("chat_messages").select("*").eq("is_pinned", true).order("created_at", { ascending: false }).limit(20),
       ]);
       const recent = recentRes.data ? [...recentRes.data].reverse() : [];
