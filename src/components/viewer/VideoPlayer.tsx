@@ -1058,7 +1058,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       {/* Admin text watermark — transparan, sebesar player */}
       {watermarkTextEnabled && watermarkText && (
         <Suspense fallback={null}>
-          <TextWatermark text={watermarkText} size={watermarkTextSize} />
+          <TextWatermark text={watermarkText} size={watermarkTextSize} opacity={Math.max(1, Math.min(100, watermarkTextOpacity)) / 100} />
         </Suspense>
       )}
 
