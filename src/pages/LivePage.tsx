@@ -40,6 +40,7 @@ const LivePage = () => {
   const [watermarkText, setWatermarkText] = useState("");
   const [watermarkTextEnabled, setWatermarkTextEnabled] = useState(false);
   const [watermarkTextSize, setWatermarkTextSize] = useState(30);
+  const [watermarkTextOpacity, setWatermarkTextOpacity] = useState(12);
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
