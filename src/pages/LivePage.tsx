@@ -346,6 +346,7 @@ const LivePage = () => {
           if (row?.key === "watermark_text") setWatermarkText(row.value || "");
           if (row?.key === "watermark_text_enabled") setWatermarkTextEnabled(row.value === "true");
           if (row?.key === "watermark_text_size") setWatermarkTextSize(parseInt(row.value || "30", 10) || 30);
+          if (row?.key === "watermark_text_opacity") setWatermarkTextOpacity(parseInt(row.value || "12", 10) || 12);
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
           if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
           if (row?.key === "channel_banner_enabled") setChannelBanner((p) => ({ ...p, enabled: row.value === "true" }));
