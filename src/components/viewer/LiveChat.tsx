@@ -196,7 +196,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
   useEffect(() => {
     const fetchMessages = async () => {
       const [recentRes, pinnedRes] = await Promise.all([
-        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(30),
+        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(60),
         supabase.from("chat_messages").select("*").eq("is_pinned", true).order("created_at", { ascending: false }).limit(20),
       ]);
       const recent = recentRes.data ? [...recentRes.data].reverse() : [];
@@ -221,7 +221,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
               setMessages((prev) => {
                 if (prev.some((m) => m.id === newMsg.id)) return prev;
                 const next = [...prev, newMsg];
-                return next.length > 30 ? next.slice(-30) : next;
+                return next.length > 60 ? next.slice(-60) : next;
               });
               if (newMsg.is_pinned) setPinnedMessages((prev) => [...prev, newMsg]);
             } else if (payload.eventType === "DELETE") {
@@ -410,7 +410,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
       {/* Pinned messages log — admin can unpin directly without scrolling chat */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-3 py-2 tv:px-5 tv:py-3 space-y-1 tv:space-y-2 max-h-[30%] overflow-y-auto">
+        <div className="border-b border-primary/20 bg-primary/5 px-3 py-2 tv:px-5 tv:py-3 space-y-1 tv:space-y-2 max-h-[20%] overflow-y-auto">
           {pinnedMessages.map((m) => (
             <div key={m.id} className="group flex items-start gap-2 text-xs tv:text-sm">
               <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />

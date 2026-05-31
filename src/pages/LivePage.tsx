@@ -40,6 +40,7 @@ const LivePage = () => {
   const [watermarkText, setWatermarkText] = useState("");
   const [watermarkTextEnabled, setWatermarkTextEnabled] = useState(false);
   const [watermarkTextSize, setWatermarkTextSize] = useState(30);
+  const [watermarkTextOpacity, setWatermarkTextOpacity] = useState(12);
   const [nextShowTime, setNextShowTime] = useState("");
   const [countdown, setCountdown] = useState("");
   const [playerAnimation, setPlayerAnimation] = useState<AnimationType>("none");
@@ -214,6 +215,7 @@ const LivePage = () => {
             if (s.key === "watermark_text") setWatermarkText(s.value || "");
             if (s.key === "watermark_text_enabled") setWatermarkTextEnabled(s.value === "true");
             if (s.key === "watermark_text_size") setWatermarkTextSize(parseInt(s.value || "30", 10) || 30);
+            if (s.key === "watermark_text_opacity") setWatermarkTextOpacity(parseInt(s.value || "12", 10) || 12);
             if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
             if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
@@ -344,6 +346,7 @@ const LivePage = () => {
           if (row?.key === "watermark_text") setWatermarkText(row.value || "");
           if (row?.key === "watermark_text_enabled") setWatermarkTextEnabled(row.value === "true");
           if (row?.key === "watermark_text_size") setWatermarkTextSize(parseInt(row.value || "30", 10) || 30);
+          if (row?.key === "watermark_text_opacity") setWatermarkTextOpacity(parseInt(row.value || "12", 10) || 12);
           if (row?.key === "next_show_time") setNextShowTime(row.value || "");
           if (row?.key === "player_animation") setPlayerAnimation((row.value || "none") as AnimationType);
           if (row?.key === "channel_banner_enabled") setChannelBanner((p) => ({ ...p, enabled: row.value === "true" }));
@@ -720,6 +723,7 @@ const LivePage = () => {
               watermarkText={watermarkText}
               watermarkTextEnabled={watermarkTextEnabled}
               watermarkTextSize={watermarkTextSize}
+              watermarkTextOpacity={watermarkTextOpacity}
               tokenCode={tokenData?.code}
             />
           ) : isLive && activePlaylist && signedUrlLoading ? (
@@ -797,7 +801,7 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="flex h-[50vh] flex-col border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+      <div className="flex h-[72dvh] min-h-[520px] flex-col border-t border-border lg:h-screen lg:min-h-0 lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:min-h-0 max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
         {/* Join channel banner (admin-controlled) */}
         <JoinChannelBanner
           enabled={channelBanner.enabled}
