@@ -93,6 +93,8 @@ interface VideoPlayerProps {
   watermarkTextSize?: number;
   /** Aktifkan watermark teks */
   watermarkTextEnabled?: boolean;
+  /** Transparansi watermark teks 1..100 (persen). Default 12. */
+  watermarkTextOpacity?: number;
 }
 
 export interface VideoPlayerHandle {
@@ -102,7 +104,7 @@ export interface VideoPlayerHandle {
   getCurrentTime?: () => number;
 }
 
-const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode, watermarkText, watermarkTextSize = 30, watermarkTextEnabled = false }, ref) => {
+const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode, watermarkText, watermarkTextSize = 30, watermarkTextEnabled = false, watermarkTextOpacity = 12 }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
