@@ -1031,9 +1031,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             key={cloudflareKey}
             src={cloudflareSrc}
             className={`h-full w-full ${isFullscreen ? "max-h-screen aspect-video" : "absolute inset-0"}`}
-            allow="autoplay; fullscreen"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
-            loading="lazy"
+            onLoad={() => setIsLoading(false)}
           />
           <div className="absolute inset-0 z-10 cursor-pointer" onClick={handleSurfaceClick} style={{ pointerEvents: "auto" }} />
         </>
