@@ -723,6 +723,7 @@ const LivePage = () => {
               watermarkText={watermarkText}
               watermarkTextEnabled={watermarkTextEnabled}
               watermarkTextSize={watermarkTextSize}
+              watermarkTextOpacity={watermarkTextOpacity}
               tokenCode={tokenData?.code}
             />
           ) : isLive && activePlaylist && signedUrlLoading ? (
