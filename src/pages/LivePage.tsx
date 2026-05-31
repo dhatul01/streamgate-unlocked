@@ -215,6 +215,7 @@ const LivePage = () => {
             if (s.key === "watermark_text") setWatermarkText(s.value || "");
             if (s.key === "watermark_text_enabled") setWatermarkTextEnabled(s.value === "true");
             if (s.key === "watermark_text_size") setWatermarkTextSize(parseInt(s.value || "30", 10) || 30);
+            if (s.key === "watermark_text_opacity") setWatermarkTextOpacity(parseInt(s.value || "12", 10) || 12);
             if (s.key === "next_show_time" && s.value) setNextShowTime(s.value);
             if (s.key === "player_animation" && s.value) setPlayerAnimation(s.value as AnimationType);
             if (s.key === "whatsapp_number" && s.value) setWhatsappNumber(s.value);
