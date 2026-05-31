@@ -333,6 +333,28 @@ const SiteSettingsManager = () => {
           <p className="mt-1 text-[9px] text-muted-foreground">10% = teks kecil, 100% = teks selebar player.</p>
         </div>
 
+        {/* Opacity slider */}
+        <div>
+          <label className="mb-1 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+            <span>Transparansi Watermark</span>
+            <span className="font-mono text-primary">{values.watermark_text_opacity || "12"}%</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={1}
+              max={100}
+              step={1}
+              value={parseInt(values.watermark_text_opacity || "12", 10)}
+              onChange={(e) => setValues((p) => ({ ...p, watermark_text_opacity: e.target.value }))}
+              onMouseUp={(e) => saveSetting("watermark_text_opacity", (e.target as HTMLInputElement).value)}
+              onTouchEnd={(e) => saveSetting("watermark_text_opacity", (e.target as HTMLInputElement).value)}
+              className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+            />
+          </div>
+          <p className="mt-1 text-[9px] text-muted-foreground">1% = hampir tidak terlihat, 100% = teks penuh/jelas.</p>
+        </div>
+
         {/* Preview */}
         {values.watermark_text_enabled === "true" && values.watermark_text && (
           <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-gradient-to-br from-secondary/40 to-background">
