@@ -410,7 +410,7 @@ const LiveChat = ({ username, tokenId, isLive, isAdmin, onPinMessage, onDeleteMe
 
       {/* Pinned messages log — admin can unpin directly without scrolling chat */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-primary/20 bg-primary/5 px-3 py-2 tv:px-5 tv:py-3 space-y-1 tv:space-y-2 max-h-[30%] overflow-y-auto">
+        <div className="border-b border-primary/20 bg-primary/5 px-3 py-2 tv:px-5 tv:py-3 space-y-1 tv:space-y-2 max-h-[20%] overflow-y-auto">
           {pinnedMessages.map((m) => (
             <div key={m.id} className="group flex items-start gap-2 text-xs tv:text-sm">
               <Pin className="mt-0.5 h-3 w-3 tv:h-4 tv:w-4 text-primary shrink-0" />
