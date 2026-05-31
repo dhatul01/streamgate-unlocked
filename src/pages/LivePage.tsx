@@ -801,7 +801,7 @@ const LivePage = () => {
         </div>
       </div>
 
-      <div className="flex h-[50vh] flex-col border-t border-border lg:h-screen lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
+      <div className="flex h-[72dvh] min-h-[520px] flex-col border-t border-border lg:h-screen lg:min-h-0 lg:sticky lg:top-0 lg:w-80 lg:border-l lg:border-t-0 xl:w-96 tv:w-[480px] max-lg:landscape:h-[100dvh] max-lg:landscape:min-h-0 max-lg:landscape:w-[40%] max-lg:landscape:max-w-[360px] max-lg:landscape:border-l max-lg:landscape:border-t-0 max-lg:landscape:shrink-0">
         {/* Join channel banner (admin-controlled) */}
         <JoinChannelBanner
           enabled={channelBanner.enabled}
