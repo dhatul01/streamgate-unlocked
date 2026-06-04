@@ -1016,13 +1016,59 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       ref={containerRef}
       className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"} ${forcedLandscape ? "force-landscape" : ""}`}
     >
-      {/* Loading overlay */}
+      {/* Loading overlay — animasi kaya supaya pengguna tahu live sedang terhubung */}
       {isLoading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
-          <div className="flex flex-col items-center gap-3 tv:gap-5">
-            <div className="h-10 w-10 tv:h-16 tv:w-16 animate-spin rounded-full border-4 tv:border-[6px] border-primary border-t-transparent" />
-            <p className="text-xs text-muted-foreground animate-pulse tv:text-lg">Menghubungkan ke streaming...</p>
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-background/80 backdrop-blur-sm">
+          {/* Pulsing aura */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-72 w-72 rounded-full bg-primary/10 blur-3xl animate-pulse" />
           </div>
+          <div className="relative flex flex-col items-center gap-4 tv:gap-6">
+            {/* Multi-ring spinner */}
+            <div className="relative h-20 w-20 tv:h-28 tv:w-28">
+              <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <div
+                className="absolute inset-2 rounded-full border-2 border-primary/60 border-b-transparent animate-spin"
+                style={{ animationDuration: "1.6s", animationDirection: "reverse" }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="relative flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
+                </span>
+              </div>
+            </div>
+            {/* Status text — berputar */}
+            <div className="flex flex-col items-center gap-1.5">
+              <p className="text-sm font-semibold text-foreground tv:text-xl">
+                {["Menghubungkan ke streaming…","Menyiapkan kualitas terbaik…","Memuat live show…","Hampir siap, mohon tunggu…"][loadingPhase]}
+              </p>
+              {/* Animated dots */}
+              <div className="flex items-center gap-1.5 mt-1">
+                {[0,1,2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  />
+                ))}
+              </div>
+              {isSlowConnection && (
+                <p className="mt-2 text-[10px] text-muted-foreground tv:text-xs">
+                  Mode hemat data aktif — kami pilih kualitas paling lancar untuk Anda
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buffering pill — kecil, tidak menutupi player, muncul saat re-buffer */}
+      {!isLoading && isBuffering && (
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-2 rounded-full bg-background/85 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-md ring-1 ring-border animate-in fade-in zoom-in-95 duration-200 tv:top-6 tv:right-6 tv:text-base tv:px-4 tv:py-2">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent tv:h-4 tv:w-4" />
+          <span>Buffering…</span>
         </div>
       )}
 
