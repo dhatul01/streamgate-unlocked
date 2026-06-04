@@ -127,6 +127,9 @@ const LivePage = () => {
     tokenCode
   );
 
+  // Pre-warm non-active playlists in background so admin switches feel instant
+  usePlaylistPrefetch(playlists, activePlaylist?.id, tokenCode, !!stream?.is_live);
+
   const playerKey = useMemo(() => {
     if (!stream?.is_live || !activePlaylist) return "offline";
     // Stable key: only change when stream or playlist identity changes, NOT on signed URL refresh
