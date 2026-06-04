@@ -568,8 +568,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       destroyed = true;
       videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
       videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("playing", onPlayingClear);
+      videoRef.current?.removeEventListener("timeupdate", onPlayingClear);
       videoRef.current?.removeEventListener("waiting", onWaiting);
       videoRef.current?.removeEventListener("stalled", onWaiting);
+      clearTimeout(bufferingTimerRef.current);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
@@ -577,7 +580,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate]);
+  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate, isSlowConnection]);
 
   // Load YouTube IFrame API
   useEffect(() => {
