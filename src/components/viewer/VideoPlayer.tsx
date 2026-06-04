@@ -107,6 +107,8 @@ export interface VideoPlayerHandle {
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode, watermarkText, watermarkTextSize = 30, watermarkTextEnabled = false, watermarkTextOpacity = 12 }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState(0);
   const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
   const [qualities, setQualities] = useState<{ label: string; index: number; ytKey?: string; height?: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
@@ -127,6 +129,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const bufferingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
   const latestHlsUrlRef = useRef<string | null>(null);
   const loadedHlsUrlRef = useRef<string | null>(null);
@@ -140,6 +143,27 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     () => playlist.type === "m3u8" ? getHlsSourceIdentity(playlist.url) : playlist.url,
     [playlist.type, playlist.url]
   );
+
+  // Network-aware: deteksi koneksi lambat / Save-Data agar mulai dari bitrate terendah
+  const isSlowConnection = useMemo(() => {
+    try {
+      const c: any = (navigator as any).connection;
+      if (!c) return false;
+      if (c.saveData) return true;
+      const t = c.effectiveType || "";
+      if (t === "slow-2g" || t === "2g" || t === "3g") return true;
+      if (typeof c.downlink === "number" && c.downlink > 0 && c.downlink < 1.5) return true;
+      return false;
+    } catch { return false; }
+  }, []);
+
+  // Pesan loading berputar agar pengguna tahu sedang ada proses
+  useEffect(() => {
+    if (!isLoading) return;
+    setLoadingPhase(0);
+    const id = setInterval(() => setLoadingPhase((p) => (p + 1) % 4), 1800);
+    return () => clearInterval(id);
+  }, [isLoading]);
 
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
