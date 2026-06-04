@@ -426,6 +426,124 @@ export type Database = {
         }
         Relationships: []
       }
+      jkt48_lyrics: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          content: string
+          contributor_name: string | null
+          contributor_user_id: string | null
+          created_at: string
+          id: string
+          song_id: string
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content: string
+          contributor_name?: string | null
+          contributor_user_id?: string | null
+          created_at?: string
+          id?: string
+          song_id: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content?: string
+          contributor_name?: string | null
+          contributor_user_id?: string | null
+          created_at?: string
+          id?: string
+          song_id?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jkt48_lyrics_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "jkt48_songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jkt48_setlists: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      jkt48_songs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          setlist_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          setlist_id: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          setlist_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jkt48_songs_setlist_id_fkey"
+            columns: ["setlist_id"]
+            isOneToOne: false
+            referencedRelation: "jkt48_setlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_descriptions: {
         Row: {
           content: string
