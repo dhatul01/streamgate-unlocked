@@ -301,12 +301,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       hasHlsPlaybackStartedRef.current = true;
       setIsLoading(false);
       setIsPlaying(true);
+      clearTimeout(bufferingTimerRef.current);
+      setIsBuffering(false);
     };
-    // Silent buffer/stall hint: never toggles the overlay after first playback.
+    // Silent buffer/stall hint: never toggles the main overlay after first playback.
+    // Tampilkan pill kecil "Buffering..." setelah 700ms supaya pengguna tahu tidak freeze.
     const onWaiting = () => {
       if (destroyed || !hlsRef.current) return;
       if (!hasHlsPlaybackStartedRef.current) return;
       try { hlsRef.current.startLoad(videoRef.current?.currentTime ?? -1); } catch {}
+      clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = setTimeout(() => {
+        if (!destroyed) setIsBuffering(true);
+      }, 700);
+    };
+    const onPlayingClear = () => {
+      clearTimeout(bufferingTimerRef.current);
+      setIsBuffering(false);
     };
 
     const initHls = async () => {
