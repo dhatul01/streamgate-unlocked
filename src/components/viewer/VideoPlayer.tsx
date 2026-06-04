@@ -107,6 +107,8 @@ export interface VideoPlayerHandle {
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist, autoPlay = true, watermarkUrl, tokenCode, watermarkText, watermarkTextSize = 30, watermarkTextEnabled = false, watermarkTextOpacity = 12 }, ref) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState(0);
   const [isSwitchingQuality, setIsSwitchingQuality] = useState(false);
   const [qualities, setQualities] = useState<{ label: string; index: number; ytKey?: string; height?: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState(-1);
@@ -127,6 +129,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const bufferingTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const hlsInitRef = useRef(false);
   const latestHlsUrlRef = useRef<string | null>(null);
   const loadedHlsUrlRef = useRef<string | null>(null);
@@ -140,6 +143,27 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     () => playlist.type === "m3u8" ? getHlsSourceIdentity(playlist.url) : playlist.url,
     [playlist.type, playlist.url]
   );
+
+  // Network-aware: deteksi koneksi lambat / Save-Data agar mulai dari bitrate terendah
+  const isSlowConnection = useMemo(() => {
+    try {
+      const c: any = (navigator as any).connection;
+      if (!c) return false;
+      if (c.saveData) return true;
+      const t = c.effectiveType || "";
+      if (t === "slow-2g" || t === "2g" || t === "3g") return true;
+      if (typeof c.downlink === "number" && c.downlink > 0 && c.downlink < 1.5) return true;
+      return false;
+    } catch { return false; }
+  }, []);
+
+  // Pesan loading berputar agar pengguna tahu sedang ada proses
+  useEffect(() => {
+    if (!isLoading) return;
+    setLoadingPhase(0);
+    const id = setInterval(() => setLoadingPhase((p) => (p + 1) % 4), 1800);
+    return () => clearInterval(id);
+  }, [isLoading]);
 
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
@@ -277,12 +301,23 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       hasHlsPlaybackStartedRef.current = true;
       setIsLoading(false);
       setIsPlaying(true);
+      clearTimeout(bufferingTimerRef.current);
+      setIsBuffering(false);
     };
-    // Silent buffer/stall hint: never toggles the overlay after first playback.
+    // Silent buffer/stall hint: never toggles the main overlay after first playback.
+    // Tampilkan pill kecil "Buffering..." setelah 700ms supaya pengguna tahu tidak freeze.
     const onWaiting = () => {
       if (destroyed || !hlsRef.current) return;
       if (!hasHlsPlaybackStartedRef.current) return;
       try { hlsRef.current.startLoad(videoRef.current?.currentTime ?? -1); } catch {}
+      clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = setTimeout(() => {
+        if (!destroyed) setIsBuffering(true);
+      }, 700);
+    };
+    const onPlayingClear = () => {
+      clearTimeout(bufferingTimerRef.current);
+      setIsBuffering(false);
     };
 
     const initHls = async () => {
@@ -303,41 +338,41 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         // Live stream tuning — buffer LEBIH BESAR supaya tidak patah-patah.
         // Trade-off: latensi naik ~5–10 detik dibanding sebelumnya, tapi
         // playback jauh lebih mulus terutama di koneksi mobile yang fluktuatif.
-        liveSyncDurationCount: 6,
-        liveMaxLatencyDurationCount: 14,
+        liveSyncDurationCount: isSlowConnection ? 8 : 6,
+        liveMaxLatencyDurationCount: isSlowConnection ? 20 : 14,
         liveDurationInfinity: true,
-        maxBufferLength: 90,
-        maxMaxBufferLength: 180,
-        maxBufferSize: 180 * 1000 * 1000,
+        maxBufferLength: isSlowConnection ? 120 : 90,
+        maxMaxBufferLength: isSlowConnection ? 240 : 180,
+        maxBufferSize: 240 * 1000 * 1000,
         maxBufferHole: 1.5,
         maxFragLookUpTolerance: 0.35,
         highBufferWatchdogPeriod: 3,
         nudgeOffset: 0.1,
         nudgeMaxRetry: 20,
-        backBufferLength: 90,
+        backBufferLength: 60,
         // ABR — biarkan hls.js naik level secara konservatif agar tidak
         // bouncing antar resolusi (penyebab utama "patah-patah" yang terasa).
-        abrEwmaDefaultEstimate: 700_000,
-        abrEwmaFastLive: 6,
-        abrEwmaSlowLive: 18,
-        abrBandWidthFactor: 0.7,
-        abrBandWidthUpFactor: 0.45,
+        abrEwmaDefaultEstimate: isSlowConnection ? 350_000 : 700_000,
+        abrEwmaFastLive: isSlowConnection ? 8 : 6,
+        abrEwmaSlowLive: isSlowConnection ? 24 : 18,
+        abrBandWidthFactor: isSlowConnection ? 0.55 : 0.7,
+        abrBandWidthUpFactor: isSlowConnection ? 0.3 : 0.45,
         abrMaxWithRealBitrate: true,
         // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
-        fragLoadingMaxRetry: 8,
-        fragLoadingRetryDelay: 800,
+        fragLoadingMaxRetry: 10,
+        fragLoadingRetryDelay: 600,
         fragLoadingMaxRetryTimeout: 30_000,
-        manifestLoadingMaxRetry: 8,
-        manifestLoadingRetryDelay: 800,
+        manifestLoadingMaxRetry: 10,
+        manifestLoadingRetryDelay: 600,
         manifestLoadingMaxRetryTimeout: 30_000,
-        levelLoadingMaxRetry: 8,
-        levelLoadingRetryDelay: 800,
+        levelLoadingMaxRetry: 10,
+        levelLoadingRetryDelay: 600,
         levelLoadingMaxRetryTimeout: 30_000,
         // Start only after manifest is parsed so we can lock the lowest/user-selected level first.
         autoStartLoad: false,
         startLevel: 0,
         startFragPrefetch: true,
-        testBandwidth: true,
+        testBandwidth: !isSlowConnection,
         // `progressive: true` mem-stream fragmen yang belum selesai download —
         // di banyak encoder ini malah bikin micro-stall. Matikan untuk smoothness.
         progressive: false,
@@ -418,6 +453,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       videoRef.current?.addEventListener("playing", markPlaybackSmooth);
       videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.addEventListener("playing", onPlayingClear);
+      videoRef.current?.addEventListener("timeupdate", onPlayingClear);
 
       videoRef.current?.addEventListener("waiting", onWaiting);
       videoRef.current?.addEventListener("stalled", onWaiting);
@@ -531,8 +568,11 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       destroyed = true;
       videoRef.current?.removeEventListener("playing", markPlaybackSmooth);
       videoRef.current?.removeEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.removeEventListener("playing", onPlayingClear);
+      videoRef.current?.removeEventListener("timeupdate", onPlayingClear);
       videoRef.current?.removeEventListener("waiting", onWaiting);
       videoRef.current?.removeEventListener("stalled", onWaiting);
+      clearTimeout(bufferingTimerRef.current);
       clearInterval(stallWatchdogRef.current);
       window.removeEventListener("online", onOnline);
       if (hls) {
@@ -540,7 +580,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         hlsRef.current = null;
       }
     };
-  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate]);
+  }, [playlist.type, hlsSourceIdentity, autoPlay, obfuscate, deobfuscate, isSlowConnection]);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -976,13 +1016,59 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       ref={containerRef}
       className={`relative w-full bg-card overflow-hidden ${isFullscreen ? "flex items-center justify-center !h-screen" : "aspect-video"} ${forcedLandscape ? "force-landscape" : ""}`}
     >
-      {/* Loading overlay */}
+      {/* Loading overlay — animasi kaya supaya pengguna tahu live sedang terhubung */}
       {isLoading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80">
-          <div className="flex flex-col items-center gap-3 tv:gap-5">
-            <div className="h-10 w-10 tv:h-16 tv:w-16 animate-spin rounded-full border-4 tv:border-[6px] border-primary border-t-transparent" />
-            <p className="text-xs text-muted-foreground animate-pulse tv:text-lg">Menghubungkan ke streaming...</p>
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-background/80 backdrop-blur-sm">
+          {/* Pulsing aura */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-72 w-72 rounded-full bg-primary/10 blur-3xl animate-pulse" />
           </div>
+          <div className="relative flex flex-col items-center gap-4 tv:gap-6">
+            {/* Multi-ring spinner */}
+            <div className="relative h-20 w-20 tv:h-28 tv:w-28">
+              <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <div
+                className="absolute inset-2 rounded-full border-2 border-primary/60 border-b-transparent animate-spin"
+                style={{ animationDuration: "1.6s", animationDirection: "reverse" }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="relative flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
+                </span>
+              </div>
+            </div>
+            {/* Status text — berputar */}
+            <div className="flex flex-col items-center gap-1.5">
+              <p className="text-sm font-semibold text-foreground tv:text-xl">
+                {["Menghubungkan ke streaming…","Menyiapkan kualitas terbaik…","Memuat live show…","Hampir siap, mohon tunggu…"][loadingPhase]}
+              </p>
+              {/* Animated dots */}
+              <div className="flex items-center gap-1.5 mt-1">
+                {[0,1,2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  />
+                ))}
+              </div>
+              {isSlowConnection && (
+                <p className="mt-2 text-[10px] text-muted-foreground tv:text-xs">
+                  Mode hemat data aktif — kami pilih kualitas paling lancar untuk Anda
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buffering pill — kecil, tidak menutupi player, muncul saat re-buffer */}
+      {!isLoading && isBuffering && (
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-2 rounded-full bg-background/85 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-md ring-1 ring-border animate-in fade-in zoom-in-95 duration-200 tv:top-6 tv:right-6 tv:text-base tv:px-4 tv:py-2">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent tv:h-4 tv:w-4" />
+          <span>Buffering…</span>
         </div>
       )}
 
