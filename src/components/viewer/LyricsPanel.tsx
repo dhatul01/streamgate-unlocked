@@ -11,7 +11,7 @@ import { useActiveLyric } from "@/hooks/useActiveLyric";
 
 interface Setlist { id: string; name: string; sort_order: number; }
 interface Song { id: string; setlist_id: string; title: string; sort_order: number; }
-interface Lyric { id: string; song_id: string; content: string; source_url: string; status: string; }
+interface Lyric { id: string; song_id: string; content: string; source_url: string; status: string; is_link_only?: boolean; external_title?: string; }
 
 const LyricsPanel = () => {
   const [setlists, setSetlists] = useState<Setlist[]>([]);
@@ -36,7 +36,7 @@ const LyricsPanel = () => {
     const [sl, sg, ly] = await Promise.all([
       supabase.from("jkt48_setlists").select("id,name,sort_order").eq("is_active", true).order("sort_order"),
       supabase.from("jkt48_songs").select("id,setlist_id,title,sort_order").eq("is_active", true).order("sort_order"),
-      supabase.from("jkt48_lyrics").select("id,song_id,content,source_url,status").eq("status", "approved"),
+      supabase.from("jkt48_lyrics").select("id,song_id,content,source_url,status,is_link_only,external_title").eq("status", "approved"),
     ]);
     setSetlists((sl.data as Setlist[]) || []);
     setSongs((sg.data as Song[]) || []);
@@ -126,18 +126,42 @@ const LyricsPanel = () => {
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 tv:px-6">
-          <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90 tv:text-base">
-            {activeLyric.content}
-          </pre>
-          {activeLyric.source_url && (
-            <a
-              href={activeLyric.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-            >
-              <ExternalLink className="h-3 w-3" /> Sumber lirik
-            </a>
+          {activeLyric.is_link_only ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card/40 p-6 text-center">
+              <ExternalLink className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Lirik tersedia di situs sumber</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Untuk menghormati hak cipta, lirik lagu ini tidak disalin ke sini. Buka link di bawah untuk membaca lirik resmi.
+                </p>
+              </div>
+              {activeLyric.source_url && (
+                <a
+                  href={activeLyric.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Buka di situs sumber
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90 tv:text-base">
+                {activeLyric.content}
+              </pre>
+              {activeLyric.source_url && (
+                <a
+                  href={activeLyric.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+                >
+                  <ExternalLink className="h-3 w-3" /> Sumber lirik
+                </a>
+              )}
+            </>
           )}
         </div>
       </div>
