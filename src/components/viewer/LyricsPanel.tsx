@@ -19,7 +19,7 @@ const LyricsPanel = () => {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLyricId, setActiveLyricId] = useActiveLyric();
-  const [view, setView] = useState<"setlists" | "songs" | "search">("setlists");
+  const [view, setView] = useState<"setlists" | "songs" | "search" | "online">("setlists");
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [hasSession, setHasSession] = useState(false);
