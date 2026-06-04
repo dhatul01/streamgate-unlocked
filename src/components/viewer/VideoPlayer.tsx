@@ -976,6 +976,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       try {
         if (index === -1) {
           writeStoredM3u8Quality({ mode: "auto" });
+          userManualQualityRef.current = false;
+          // Lepaskan auto-fallback cap supaya ABR bebas memilih lagi.
+          try { hlsRef.current.autoLevelCapping = -1; } catch {}
           hlsRef.current.currentLevel = -1;
           hlsRef.current.nextLevel = -1;
           hlsRef.current.loadLevel = -1;
@@ -987,11 +990,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             bitrate: selectedLevel?.bitrate ?? null,
             label: getLevelLabel(selectedLevel),
           });
+          // User memilih resolusi → kunci. Auto-fallback DIMATIKAN sampai
+          // user mengubahnya sendiri ke level lain / Auto.
+          userManualQualityRef.current = true;
+          try { hlsRef.current.autoLevelCapping = -1; } catch {}
           hlsRef.current.nextLevel = index;
           hlsRef.current.currentLevel = index;
           hlsRef.current.loadLevel = index;
         }
       } catch {}
+      // Reset streak fallback supaya pilihan user diberi waktu evaluasi.
+      stallStreakRef.current = 0;
+      lastFallbackAtRef.current = Date.now();
       setCurrentQuality(index);
       // Fallback: revert pending state if LEVEL_SWITCHED never fires
       clearTimeout(qualitySwitchTimerRef.current);
