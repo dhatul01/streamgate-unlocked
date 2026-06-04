@@ -168,6 +168,13 @@ const LyricsPanel = () => {
     );
   }
 
+  // === Online search view (in-panel, no leaving site) ===
+  if (view === "online") {
+    return (
+      <OnlineSearchPanel onBack={() => setView("setlists")} />
+    );
+  }
+
   // === Browser view ===
   return (
     <div className="flex h-full flex-col bg-card/50">
@@ -192,6 +199,13 @@ const LyricsPanel = () => {
             </p>
           </div>
         </div>
+        <button
+          onClick={() => setView("online")}
+          className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 tv:text-xs"
+          title="Cari lirik di Google / mesin pencari lain tanpa keluar dari sini"
+        >
+          <Globe className="h-3 w-3" /> Cari Online
+        </button>
       </div>
 
       <div className="border-b border-border bg-card/50 p-3">
@@ -214,6 +228,7 @@ const LyricsPanel = () => {
           )}
         </div>
       </div>
+
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
         {loading && (
