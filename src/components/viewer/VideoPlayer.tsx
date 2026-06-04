@@ -453,6 +453,8 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
       videoRef.current?.addEventListener("playing", markPlaybackSmooth);
       videoRef.current?.addEventListener("canplay", markPlaybackSmooth);
+      videoRef.current?.addEventListener("playing", onPlayingClear);
+      videoRef.current?.addEventListener("timeupdate", onPlayingClear);
 
       videoRef.current?.addEventListener("waiting", onWaiting);
       videoRef.current?.addEventListener("stalled", onWaiting);
