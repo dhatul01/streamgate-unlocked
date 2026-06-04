@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Pencil, Plus, Check, X, ExternalLink, Link2, Loader2, Download } from "lucide-react";
+import { Trash2, Pencil, Plus, Check, X, ExternalLink, Link2, Loader2, Download, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 interface Setlist { id: string; name: string; slug: string; sort_order: number; is_active: boolean; }
