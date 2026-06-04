@@ -467,4 +467,166 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
   );
 };
 
+// === Auto link-only add: paste URL → fetch metadata → auto-match song → insert link-only approved ===
+const AutoLinkPanel = ({ setlists, songs, onDone }: { setlists: Setlist[]; songs: Song[]; onDone: () => void }) => {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [pendingMeta, setPendingMeta] = useState<{ title: string; url: string } | null>(null);
+  const [manualSongId, setManualSongId] = useState("");
+  const [manualSetlistId, setManualSetlistId] = useState("");
+  const [newSongTitle, setNewSongTitle] = useState("");
+
+  const setlistById = useMemo(() => new Map(setlists.map((s) => [s.id, s])), [setlists]);
+
+  const insertLinkOnly = async (songId: string, title: string, sourceUrl: string) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from("jkt48_lyrics").insert({
+      song_id: songId,
+      content: "",
+      source_url: sourceUrl,
+      is_link_only: true,
+      external_title: title,
+      status: "approved",
+      contributor_user_id: u.user?.id,
+      contributor_name: "admin",
+      approved_by: u.user?.id,
+      approved_at: new Date().toISOString(),
+    } as any);
+    if (error) throw error;
+  };
+
+  const handleAuto = async () => {
+    const trimmed = url.trim();
+    if (!trimmed) { toast.error("Tempel URL dulu"); return; }
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-lyric-source", { body: { url: trimmed } });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || data?.error || "Gagal fetch");
+
+      const title = String(data.song_guess || data.title || "").trim();
+      const guess = title.toLowerCase();
+      const match = guess
+        ? songs.find((s) => s.title.toLowerCase() === guess)
+          || songs.find((s) => s.title.toLowerCase().includes(guess) || guess.includes(s.title.toLowerCase()))
+        : null;
+
+      if (match) {
+        await insertLinkOnly(match.id, title, trimmed);
+        toast.success(`Link-only ditambah: ${match.title}`);
+        setUrl("");
+        onDone();
+      } else {
+        setPendingMeta({ title, url: trimmed });
+        setManualSongId("");
+        setManualSetlistId(setlists[0]?.id || "");
+        setNewSongTitle(title);
+        toast.info("Tidak menemukan lagu cocok. Pilih lagu atau buat judul baru.");
+      }
+    } catch (e: any) {
+      toast.error("Gagal", { description: e?.message || String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const finalizeManual = async () => {
+    if (!pendingMeta) return;
+    setBusy(true);
+    try {
+      let songId = manualSongId;
+      if (!songId) {
+        if (!manualSetlistId || !newSongTitle.trim()) { toast.error("Pilih setlist & judul"); setBusy(false); return; }
+        const { data: created, error: insErr } = await supabase
+          .from("jkt48_songs")
+          .insert({ setlist_id: manualSetlistId, title: newSongTitle.trim(), sort_order: 999, is_active: true } as any)
+          .select("id")
+          .single();
+        if (insErr) throw insErr;
+        songId = created!.id;
+      }
+      await insertLinkOnly(songId, pendingMeta.title, pendingMeta.url);
+      toast.success("Link-only ditambah");
+      setPendingMeta(null);
+      setUrl("");
+      onDone();
+    } catch (e: any) {
+      toast.error("Gagal", { description: e?.message || String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const songsForSetlist = manualSetlistId ? songs.filter((s) => s.setlist_id === manualSetlistId) : [];
+
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Zap className="h-4 w-4 text-primary" />
+        <p className="text-sm font-semibold text-primary">Auto Tambah Link-only (1 klik)</p>
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Tempel URL situs lirik (Genius, JKT48.com, dll). Sistem akan ambil judul dari metadata, cocokkan dengan daftar lagu, dan simpan sebagai entri link-only otomatis.
+      </p>
+      <div className="flex gap-2">
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://genius.com/..."
+          className="h-9 text-xs"
+          disabled={busy}
+        />
+        <Button size="sm" onClick={handleAuto} disabled={busy || !url.trim()} className="gap-1.5 shrink-0">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+          Auto Tambah
+        </Button>
+      </div>
+
+      {pendingMeta && (
+        <div className="mt-2 rounded-md border border-warning/40 bg-warning/5 p-2.5 space-y-2">
+          <p className="text-xs">
+            Judul terdeteksi: <span className="font-mono text-foreground">{pendingMeta.title || "(kosong)"}</span>
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground">Pilih lagu yang sudah ada</label>
+              <Select value={manualSongId} onValueChange={setManualSongId}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="(pilih)" /></SelectTrigger>
+                <SelectContent>
+                  {songs.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.title} — {setlistById.get(s.setlist_id)?.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="text-center text-[10px] text-muted-foreground self-center">— atau —</div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Setlist (untuk judul baru)</label>
+              <Select value={manualSetlistId} onValueChange={setManualSetlistId} disabled={!!manualSongId}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {setlists.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Judul lagu baru</label>
+              <Input
+                value={newSongTitle}
+                onChange={(e) => setNewSongTitle(e.target.value)}
+                className="h-8 text-xs"
+                disabled={!!manualSongId}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setPendingMeta(null)}>Batal</Button>
+            <Button size="sm" onClick={finalizeManual} disabled={busy}>Simpan link-only</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default LyricsManager;
