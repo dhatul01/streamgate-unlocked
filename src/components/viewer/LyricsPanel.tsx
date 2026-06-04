@@ -333,101 +333,121 @@ const LyricsPanel = () => {
   );
 };
 
-const SubmitLyricDialog = ({ open, onClose, setlists, songsBySetlist, hasSession }: {
+const SubmitLyricDialog = ({ open, onClose, setlists, hasSession }: {
   open: boolean;
   onClose: () => void;
   setlists: Setlist[];
   songsBySetlist: Map<string, Song[]>;
   hasSession: boolean;
 }) => {
-  const [setlistId, setSetlistId] = useState("");
-  const [songId, setSongId] = useState("");
-  const [newSongTitle, setNewSongTitle] = useState("");
+  const NO_SETLIST = "__none__";
+  const [setlistId, setSetlistId] = useState<string>(NO_SETLIST);
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [isLinkOnly, setIsLinkOnly] = useState(false);
   const [sending, setSending] = useState(false);
 
-  useEffect(() => { if (!open) { setSetlistId(""); setSongId(""); setNewSongTitle(""); setContent(""); setSourceUrl(""); } }, [open]);
+  useEffect(() => {
+    if (!open) {
+      setSetlistId(NO_SETLIST); setTitle(""); setContent(""); setSourceUrl(""); setIsLinkOnly(false);
+    }
+  }, [open]);
 
   const submit = async () => {
-    if (!hasSession) { toast.error("Login dulu untuk submit lirik"); return; }
-    if (!setlistId) { toast.error("Pilih setlist"); return; }
-    if (!content.trim() || content.trim().length < 20) { toast.error("Lirik terlalu pendek"); return; }
-    if (!sourceUrl.trim()) { toast.error("URL sumber lirik wajib diisi"); return; }
+    if (!hasSession) { toast.error("Login dulu untuk menyumbang lirik"); return; }
+    const t = title.trim();
+    if (t.length < 2) { toast.error("Judul lagu wajib diisi"); return; }
+    if (isLinkOnly) {
+      if (!sourceUrl.trim()) { toast.error("Mode link wajib URL sumber"); return; }
+    } else {
+      if (content.trim().length < 20) { toast.error("Lirik minimal 20 karakter"); return; }
+    }
 
     setSending(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id;
-    if (!uid) { toast.error("Sesi tidak valid"); setSending(false); return; }
-
-    let finalSongId = songId;
-    if (!finalSongId && newSongTitle.trim()) {
-      // Need admin to create song. Save as pending with placeholder via inserting a song... but only admins can.
-      // Instead require user to pick an existing song.
-      toast.error("Admin akan menambah judul baru. Untuk sekarang pilih lagu yang sudah ada.");
-      setSending(false);
+    const { data, error } = await supabase.rpc("submit_lyric_contribution", {
+      _title: t,
+      _setlist_id: setlistId === NO_SETLIST ? null : setlistId,
+      _content: isLinkOnly ? "" : content,
+      _source_url: sourceUrl.trim(),
+      _is_link_only: isLinkOnly,
+    } as any);
+    setSending(false);
+    const res = data as any;
+    if (error || !res?.success) {
+      toast.error("Gagal mengirim", { description: res?.error || error?.message || "Unknown" });
       return;
     }
-    if (!finalSongId) { toast.error("Pilih judul lagu"); setSending(false); return; }
-
-    const { data: profile } = await supabase.from("profiles").select("username").eq("id", uid).maybeSingle();
-
-    const { error } = await supabase.from("jkt48_lyrics").insert({
-      song_id: finalSongId,
-      content: content.trim(),
-      source_url: sourceUrl.trim(),
-      contributor_user_id: uid,
-      contributor_name: profile?.username || "",
-      status: "pending",
-    });
-    setSending(false);
-    if (error) { toast.error("Gagal submit", { description: error.message }); return; }
-    toast.success("Lirik dikirim, menunggu approval admin");
+    toast.success("Sumbangan dikirim — menunggu persetujuan admin");
     onClose();
   };
 
-  const songsForSetlist = setlistId ? (songsBySetlist.get(setlistId) || []) : [];
-
   return (
-    <DialogContent className="max-w-md">
+    <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Sumbang Lirik JKT48</DialogTitle>
       </DialogHeader>
       {!hasSession ? (
-        <p className="text-sm text-muted-foreground">Login dulu untuk submit lirik. Submission akan ditinjau admin.</p>
+        <p className="text-sm text-muted-foreground">Login dulu untuk menyumbang lirik. Sumbanganmu akan ditinjau admin sebelum tampil.</p>
       ) : (
         <div className="space-y-3">
+          <div className="rounded-md border border-warning/30 bg-warning/5 p-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Kamu hanya bisa <span className="font-semibold text-foreground">menyumbang</span>. Sumbangan tidak menimpa lirik yang sudah ada — admin akan meninjau dulu. Lirik yang sudah disetujui tidak bisa kamu ubah atau hapus.
+            </p>
+          </div>
+
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Setlist</label>
-            <Select value={setlistId} onValueChange={(v) => { setSetlistId(v); setSongId(""); }}>
-              <SelectTrigger><SelectValue placeholder="Pilih setlist" /></SelectTrigger>
+            <label className="text-xs font-medium text-muted-foreground">Setlist (opsional)</label>
+            <Select value={setlistId} onValueChange={setSetlistId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value={NO_SETLIST}>Tanpa setlist</SelectItem>
                 {setlists.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+
           <div>
             <label className="text-xs font-medium text-muted-foreground">Judul Lagu</label>
-            <Select value={songId} onValueChange={setSongId} disabled={!setlistId}>
-              <SelectTrigger><SelectValue placeholder={setlistId ? "Pilih judul lagu" : "Pilih setlist dulu"} /></SelectTrigger>
-              <SelectContent>
-                {songsForSetlist.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                {songsForSetlist.length === 0 && <div className="p-2 text-xs text-muted-foreground">Belum ada lagu. Minta admin tambahkan judul dulu.</div>}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Isi Lirik</label>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={8}
-              placeholder="Tempel isi lirik di sini..."
-              maxLength={10000}
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Judul lagu JKT48"
+              maxLength={200}
             />
           </div>
+
+          <div className="flex items-center justify-between rounded-md border border-border bg-card p-2.5">
+            <div>
+              <p className="text-xs font-semibold">Mode link saja</p>
+              <p className="text-[10px] text-muted-foreground">Hanya simpan link ke situs lirik (tanpa menyalin teks).</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={isLinkOnly}
+              onChange={(e) => setIsLinkOnly(e.target.checked)}
+              className="h-4 w-4"
+            />
+          </div>
+
+          {!isLinkOnly && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Isi Lirik</label>
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={8}
+                placeholder="Tempel isi lirik di sini..."
+                maxLength={20000}
+              />
+            </div>
+          )}
+
           <div>
-            <label className="text-xs font-medium text-muted-foreground">URL Sumber (wajib)</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              URL Sumber {isLinkOnly ? "(wajib)" : "(opsional, tapi dianjurkan)"}
+            </label>
             <Input
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
@@ -435,12 +455,11 @@ const SubmitLyricDialog = ({ open, onClose, setlists, songsBySetlist, hasSession
               maxLength={500}
             />
           </div>
-          <p className="text-[10px] text-muted-foreground">Lirik akan diperiksa admin sebelum tampil.</p>
         </div>
       )}
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Batal</Button>
-        {hasSession && <Button onClick={submit} disabled={sending}>{sending ? "Mengirim..." : "Kirim"}</Button>}
+        {hasSession && <Button onClick={submit} disabled={sending}>{sending ? "Mengirim..." : "Kirim untuk Ditinjau"}</Button>}
       </DialogFooter>
     </DialogContent>
   );
