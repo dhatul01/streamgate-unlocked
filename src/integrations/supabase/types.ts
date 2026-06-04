@@ -517,7 +517,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
-          setlist_id: string
+          setlist_id: string | null
           sort_order: number
           title: string
           updated_at: string
@@ -526,7 +526,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          setlist_id: string
+          setlist_id?: string | null
           sort_order?: number
           title: string
           updated_at?: string
@@ -535,7 +535,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          setlist_id?: string
+          setlist_id?: string | null
           sort_order?: number
           title?: string
           updated_at?: string
@@ -1908,6 +1908,16 @@ export type Database = {
       }
       set_pakasir_qr: {
         Args: { _expires_at: string; _order_id: string; _qr_string: string }
+        Returns: Json
+      }
+      submit_lyric_contribution: {
+        Args: {
+          _content: string
+          _is_link_only: boolean
+          _setlist_id: string
+          _source_url: string
+          _title: string
+        }
         Returns: Json
       }
       validate_token: { Args: { _code: string }; Returns: Json }
