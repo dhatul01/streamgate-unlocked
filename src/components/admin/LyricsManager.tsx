@@ -151,7 +151,7 @@ const SongsTab = ({ setlists, songs, onChange }: { setlists: Setlist[]; songs: S
 
   const openEdit = (s: Song | null) => {
     setEditing(s);
-    setSetlistId(s?.setlist_id || filter !== "all" ? filter : "");
+    setSetlistId(s?.setlist_id || (filter !== "all" ? filter : ""));
     setTitle(s?.title || "");
     setSortOrder(s?.sort_order ?? 0);
     setIsActive(s?.is_active ?? true);
