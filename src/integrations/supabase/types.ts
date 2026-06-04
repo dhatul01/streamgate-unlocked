@@ -430,11 +430,13 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          content: string
+          content: string | null
           contributor_name: string | null
           contributor_user_id: string | null
           created_at: string
+          external_title: string | null
           id: string
+          is_link_only: boolean
           song_id: string
           source_url: string | null
           status: string
@@ -443,11 +445,13 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          content: string
+          content?: string | null
           contributor_name?: string | null
           contributor_user_id?: string | null
           created_at?: string
+          external_title?: string | null
           id?: string
+          is_link_only?: boolean
           song_id: string
           source_url?: string | null
           status?: string
@@ -456,11 +460,13 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          content?: string
+          content?: string | null
           contributor_name?: string | null
           contributor_user_id?: string | null
           created_at?: string
+          external_title?: string | null
           id?: string
+          is_link_only?: boolean
           song_id?: string
           source_url?: string | null
           status?: string

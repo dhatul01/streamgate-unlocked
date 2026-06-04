@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Pencil, Plus, Check, X, ExternalLink } from "lucide-react";
+import { Trash2, Pencil, Plus, Check, X, ExternalLink, Link2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 
 interface Setlist { id: string; name: string; slug: string; sort_order: number; is_active: boolean; }
@@ -16,6 +16,7 @@ interface Song { id: string; setlist_id: string; title: string; sort_order: numb
 interface Lyric {
   id: string; song_id: string; content: string; source_url: string;
   status: string; contributor_name: string; created_at: string;
+  is_link_only?: boolean; external_title?: string;
 }
 
 const LyricsManager = () => {
@@ -229,7 +230,10 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
   const [editing, setEditing] = useState<Lyric | null>(null);
   const [content, setContent] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [externalTitle, setExternalTitle] = useState("");
+  const [isLinkOnly, setIsLinkOnly] = useState(false);
   const [songId, setSongId] = useState("");
+  const [importing, setImporting] = useState(false);
 
   const songById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
   const setlistById = useMemo(() => new Map(setlists.map((s) => [s.id, s])), [setlists]);
@@ -237,14 +241,50 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
   const filtered = statusFilter === "all" ? lyrics : lyrics.filter((l) => l.status === statusFilter);
 
   const openEdit = (l: Lyric) => {
-    setEditing(l); setContent(l.content); setSourceUrl(l.source_url || ""); setSongId(l.song_id); setEditOpen(true);
+    setEditing(l);
+    setContent(l.content || "");
+    setSourceUrl(l.source_url || "");
+    setExternalTitle(l.external_title || "");
+    setIsLinkOnly(!!l.is_link_only);
+    setSongId(l.song_id);
+    setEditOpen(true);
+  };
+
+  const importFromUrl = async () => {
+    if (!sourceUrl.trim()) { toast.error("Isi URL dulu"); return; }
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-lyric-source", {
+        body: { url: sourceUrl.trim() },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || data?.error || "Gagal fetch");
+      if (data.song_guess) setExternalTitle(data.song_guess);
+      // Try to auto-match song by title
+      const guess = String(data.song_guess || "").toLowerCase();
+      if (guess) {
+        const match = songs.find((s) => s.title.toLowerCase().includes(guess) || guess.includes(s.title.toLowerCase()));
+        if (match) { setSongId(match.id); toast.success(`Cocok dengan: ${match.title}`); }
+        else toast.info(`Judul ditemukan: "${data.song_guess}". Pilih lagu manual.`);
+      }
+    } catch (e: any) {
+      toast.error("Import gagal", { description: e?.message || String(e) });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const save = async () => {
     if (!editing) return;
+    if (!isLinkOnly && !content.trim()) { toast.error("Isi lirik atau aktifkan mode link-only"); return; }
+    if (isLinkOnly && !sourceUrl.trim()) { toast.error("Mode link-only butuh URL sumber"); return; }
     const { error } = await supabase.from("jkt48_lyrics").update({
-      content: content.trim(), source_url: sourceUrl.trim(), song_id: songId,
-    }).eq("id", editing.id);
+      content: isLinkOnly ? "" : content.trim(),
+      source_url: sourceUrl.trim(),
+      song_id: songId,
+      is_link_only: isLinkOnly,
+      external_title: externalTitle.trim(),
+    } as any).eq("id", editing.id);
     if (error) toast.error(error.message); else { toast.success("Tersimpan"); setEditOpen(false); onChange(); }
   };
 
@@ -268,20 +308,83 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
   };
 
   const openAdd = () => {
-    setContent(""); setSourceUrl(""); setSongId("");
+    setContent(""); setSourceUrl(""); setExternalTitle(""); setIsLinkOnly(false); setSongId("");
     setAddOpen(true);
   };
 
   const saveAdd = async () => {
-    if (!songId || !content.trim()) { toast.error("Lagu & lirik wajib"); return; }
+    if (!songId) { toast.error("Pilih lagu"); return; }
+    if (!isLinkOnly && !content.trim()) { toast.error("Isi lirik atau pilih mode link-only"); return; }
+    if (isLinkOnly && !sourceUrl.trim()) { toast.error("Mode link-only butuh URL sumber"); return; }
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("jkt48_lyrics").insert({
-      song_id: songId, content: content.trim(), source_url: sourceUrl.trim(),
-      status: "approved", contributor_user_id: u.user?.id, contributor_name: "admin",
-      approved_by: u.user?.id, approved_at: new Date().toISOString(),
-    });
+      song_id: songId,
+      content: isLinkOnly ? "" : content.trim(),
+      source_url: sourceUrl.trim(),
+      is_link_only: isLinkOnly,
+      external_title: externalTitle.trim(),
+      status: "approved",
+      contributor_user_id: u.user?.id,
+      contributor_name: "admin",
+      approved_by: u.user?.id,
+      approved_at: new Date().toISOString(),
+    } as any);
     if (error) toast.error(error.message); else { toast.success("Lirik ditambah"); setAddOpen(false); onChange(); }
   };
+
+  const FormFields = (
+    <div className="space-y-3">
+      <div>
+        <label className="text-xs">Lagu</label>
+        <Select value={songId} onValueChange={setSongId}>
+          <SelectTrigger><SelectValue placeholder="Pilih lagu" /></SelectTrigger>
+          <SelectContent>
+            {songs.map((s) => <SelectItem key={s.id} value={s.id}>{s.title} — {setlistById.get(s.setlist_id)?.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Link2 className="h-3.5 w-3.5 text-primary" />
+          <p className="text-xs font-semibold text-primary">Import dari URL situs lirik</p>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            placeholder="https://genius.com/... atau jkt48.com/..."
+            className="h-8 text-xs"
+          />
+          <Button size="sm" onClick={importFromUrl} disabled={importing || !sourceUrl.trim()} className="gap-1.5 shrink-0">
+            {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Cek
+          </Button>
+        </div>
+        {externalTitle && (
+          <p className="text-[10px] text-muted-foreground">Judul terdeteksi: <span className="font-mono text-foreground">{externalTitle}</span></p>
+        )}
+        <p className="text-[10px] text-muted-foreground">
+          Hanya mengambil judul (metadata). Isi lirik tetap ditempel manual atau pilih mode link-only di bawah untuk menghormati hak cipta situs sumber.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-2.5">
+        <div>
+          <p className="text-xs font-semibold">Mode link-only</p>
+          <p className="text-[10px] text-muted-foreground">Tidak menyimpan teks lirik. User akan diarahkan ke situs sumber.</p>
+        </div>
+        <Switch checked={isLinkOnly} onCheckedChange={setIsLinkOnly} />
+      </div>
+
+      {!isLinkOnly && (
+        <div>
+          <label className="text-xs">Isi Lirik (tempel manual)</label>
+          <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={10} placeholder="Tempel teks lirik di sini..." />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-3">
@@ -306,7 +409,10 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
             <div key={l.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{song?.title || "—"}</p>
+                  <p className="truncate text-sm font-semibold">
+                    {song?.title || "—"}
+                    {l.is_link_only && <Badge variant="outline" className="ml-2 gap-1"><Link2 className="h-3 w-3" />link-only</Badge>}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">
                     {setlist?.name || "—"} · oleh {l.contributor_name || "?"} ·{" "}
                     <Badge variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "secondary"}>{l.status}</Badge>
@@ -323,9 +429,11 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
                   <Button size="icon" variant="ghost" onClick={() => del(l.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                 </div>
               </div>
-              <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded bg-secondary/30 p-2 font-sans text-[11px] text-muted-foreground">
-                {l.content.slice(0, 400)}{l.content.length > 400 ? "..." : ""}
-              </pre>
+              {!l.is_link_only && l.content && (
+                <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded bg-secondary/30 p-2 font-sans text-[11px] text-muted-foreground">
+                  {l.content.slice(0, 400)}{l.content.length > 400 ? "..." : ""}
+                </pre>
+              )}
               {l.source_url && (
                 <a href={l.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
                   <ExternalLink className="h-3 w-3" /> {l.source_url}
@@ -338,41 +446,17 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Lirik</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs">Lagu</label>
-              <Select value={songId} onValueChange={setSongId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {songs.map((s) => <SelectItem key={s.id} value={s.id}>{s.title} — {setlistById.get(s.setlist_id)?.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div><label className="text-xs">Isi Lirik</label><Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} /></div>
-            <div><label className="text-xs">URL Sumber</label><Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} /></div>
-          </div>
+          {FormFields}
           <DialogFooter><Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button><Button onClick={save}>Simpan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Tambah Lirik (langsung approved)</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs">Lagu</label>
-              <Select value={songId} onValueChange={setSongId}>
-                <SelectTrigger><SelectValue placeholder="Pilih lagu" /></SelectTrigger>
-                <SelectContent>
-                  {songs.map((s) => <SelectItem key={s.id} value={s.id}>{s.title} — {setlistById.get(s.setlist_id)?.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div><label className="text-xs">Isi Lirik</label><Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} /></div>
-            <div><label className="text-xs">URL Sumber</label><Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://..." /></div>
-          </div>
+          {FormFields}
           <DialogFooter><Button variant="outline" onClick={() => setAddOpen(false)}>Batal</Button><Button onClick={saveAdd}>Simpan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
