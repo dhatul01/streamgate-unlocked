@@ -30,6 +30,7 @@ import ReplayTokenManager from "@/components/admin/ReplayTokenManager";
 import ResellerManager from "@/components/admin/ResellerManager";
 import ResellerAuditView from "@/components/admin/ResellerAuditView";
 import BotTokenHistory from "@/components/admin/BotTokenHistory";
+import LyricsManager from "@/components/admin/LyricsManager";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("live");
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
         </div>
       );
       case "moderators": return userRole === "admin" ? <ModeratorAccountManager /> : null;
+      case "lyrics": return userRole === "admin" ? <LyricsManager /> : null;
       default: return <LiveControl />;
     }
   };

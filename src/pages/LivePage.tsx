@@ -7,7 +7,7 @@ import { useSignedStreamUrl } from "@/hooks/useSignedStreamUrl";
 import { usePlaylistPrefetch } from "@/hooks/usePlaylistPrefetch";
 
 // Lazy load heavy components
-const LiveChat = lazy(() => import("@/components/viewer/LiveChat"));
+const ChatLyricsTabs = lazy(() => import("@/components/viewer/ChatLyricsTabs"));
 import JoinChannelBanner from "@/components/viewer/JoinChannelBanner";
 const UsernameModal = lazy(() => import("@/components/viewer/UsernameModal"));
 const PlayerAnimations = lazy(() => import("@/components/viewer/PlayerAnimations"));
@@ -838,7 +838,7 @@ const LivePage = () => {
               <p className="text-xs text-muted-foreground">Memuat chat...</p>
             </div>
           }>
-            <LiveChat
+            <ChatLyricsTabs
               username={username}
               tokenId={tokenData?.id}
               isLive={isLive}
