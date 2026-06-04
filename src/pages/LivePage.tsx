@@ -239,29 +239,43 @@ const LivePage = () => {
     validateToken();
   }, [tokenCode, getFingerprint]);
 
-  // Release session on tab close
+  // Release session on tab close — pagehide is more reliable on iOS Safari & PWA than beforeunload
   useEffect(() => {
     if (!tokenCode) return;
     const fingerprint = getFingerprint();
+    let released = false;
 
-    const handleBeforeUnload = () => {
+    const releaseSession = () => {
+      if (released) return;
+      released = true;
       const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/release_token_session`;
       const body = JSON.stringify({ _token_code: tokenCode, _fingerprint: fingerprint });
-      // sendBeacon doesn't support custom headers, so we use fetch keepalive instead
-      // This ensures the apikey header is sent and Supabase accepts the request
-      fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body,
-        keepalive: true,
-      }).catch(() => {});
+      try {
+        // Prefer sendBeacon for unload reliability — Supabase accepts apikey in URL via headers,
+        // so we still need fetch keepalive as the primary path.
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    const onPageHide = (e: PageTransitionEvent) => {
+      // Only release on true unload, not on back/forward cache navigation
+      if (!e.persisted) releaseSession();
+    };
+
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", releaseSession);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", releaseSession);
+    };
   }, [tokenCode, getFingerprint]);
 
   // Realtime + polling fallback: streams
