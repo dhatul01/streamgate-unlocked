@@ -139,6 +139,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   const reconnectAttemptRef = useRef(0);
   const stallWatchdogRef = useRef<ReturnType<typeof setInterval>>();
   const lastProgressRef = useRef({ time: 0, at: Date.now() });
+  // Auto-fallback ke level lebih rendah ketika stall berulang. Tidak pernah
+  // aktif bila user telah mengunci resolusi (mode "manual").
+  const stallStreakRef = useRef(0);
+  const lastFallbackAtRef = useRef(0);
+  const userManualQualityRef = useRef<boolean>(
+    typeof window !== "undefined" && readStoredM3u8Quality()?.mode === "manual"
+  );
   const hlsSourceIdentity = useMemo(
     () => playlist.type === "m3u8" ? getHlsSourceIdentity(playlist.url) : playlist.url,
     [playlist.type, playlist.url]
