@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, X, ChevronRight, Plus, ExternalLink, Music, ArrowLeft, Loader2 } from "lucide-react";
+import { Search, X, ChevronRight, Plus, ExternalLink, Music, ArrowLeft, Loader2, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveLyric } from "@/hooks/useActiveLyric";
 
@@ -19,7 +19,7 @@ const LyricsPanel = () => {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLyricId, setActiveLyricId] = useActiveLyric();
-  const [view, setView] = useState<"setlists" | "songs" | "search">("setlists");
+  const [view, setView] = useState<"setlists" | "songs" | "search" | "online">("setlists");
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [hasSession, setHasSession] = useState(false);
@@ -168,6 +168,13 @@ const LyricsPanel = () => {
     );
   }
 
+  // === Online search view (in-panel, no leaving site) ===
+  if (view === "online") {
+    return (
+      <OnlineSearchPanel onBack={() => setView("setlists")} />
+    );
+  }
+
   // === Browser view ===
   return (
     <div className="flex h-full flex-col bg-card/50">
@@ -192,6 +199,13 @@ const LyricsPanel = () => {
             </p>
           </div>
         </div>
+        <button
+          onClick={() => setView("online")}
+          className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 tv:text-xs"
+          title="Cari lirik di Google / mesin pencari lain tanpa keluar dari sini"
+        >
+          <Globe className="h-3 w-3" /> Cari Online
+        </button>
       </div>
 
       <div className="border-b border-border bg-card/50 p-3">
@@ -214,6 +228,7 @@ const LyricsPanel = () => {
           )}
         </div>
       </div>
+
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
         {loading && (
@@ -428,6 +443,170 @@ const SubmitLyricDialog = ({ open, onClose, setlists, songsBySetlist, hasSession
         {hasSession && <Button onClick={submit} disabled={sending}>{sending ? "Mengirim..." : "Kirim"}</Button>}
       </DialogFooter>
     </DialogContent>
+  );
+};
+
+// === Online search panel — Google/DuckDuckGo/Bing/Genius without leaving the site ===
+const ONLINE_QUERY_KEY = "jkt48_online_search_q";
+const ONLINE_ENGINE_KEY = "jkt48_online_search_engine";
+
+type Engine = "ddg" | "google" | "bing" | "genius";
+
+const buildSearchUrl = (engine: Engine, q: string) => {
+  const fullQ = `${q} JKT48 lirik`;
+  const enc = encodeURIComponent(fullQ);
+  switch (engine) {
+    case "ddg": return `https://duckduckgo.com/?q=${enc}&kp=-2&kl=id-id`;
+    case "google": return `https://www.google.com/search?q=${enc}`;
+    case "bing": return `https://www.bing.com/search?q=${enc}`;
+    case "genius": return `https://genius.com/search?q=${encodeURIComponent(q + " JKT48")}`;
+  }
+};
+
+const buildEmbedUrl = (engine: Engine, q: string) => {
+  const fullQ = `${q} JKT48 lirik`;
+  const enc = encodeURIComponent(fullQ);
+  // DuckDuckGo HTML version generally allows embedding via iframe.
+  if (engine === "ddg") return `https://html.duckduckgo.com/html/?q=${enc}&kl=id-id`;
+  // Google/Bing/Genius typically block framing — we use them as "open new tab" only.
+  return null;
+};
+
+const OnlineSearchPanel = ({ onBack }: { onBack: () => void }) => {
+  const [query, setQuery] = useState<string>(() => {
+    try { return localStorage.getItem(ONLINE_QUERY_KEY) || ""; } catch { return ""; }
+  });
+  const [engine, setEngine] = useState<Engine>(() => {
+    try { return (localStorage.getItem(ONLINE_ENGINE_KEY) as Engine) || "ddg"; } catch { return "ddg"; }
+  });
+  const [submitted, setSubmitted] = useState<string>(query);
+  const [iframeFailed, setIframeFailed] = useState(false);
+
+  useEffect(() => { try { localStorage.setItem(ONLINE_QUERY_KEY, query); } catch {} }, [query]);
+  useEffect(() => { try { localStorage.setItem(ONLINE_ENGINE_KEY, engine); } catch {} }, [engine]);
+
+  const go = () => {
+    setIframeFailed(false);
+    setSubmitted(query.trim());
+  };
+
+  const embedUrl = submitted ? buildEmbedUrl(engine, submitted) : null;
+  const openUrl = submitted ? buildSearchUrl(engine, submitted) : null;
+
+  const engines: { id: Engine; label: string }[] = [
+    { id: "ddg", label: "DuckDuckGo" },
+    { id: "google", label: "Google" },
+    { id: "bing", label: "Bing" },
+    { id: "genius", label: "Genius" },
+  ];
+
+  return (
+    <div className="flex h-full flex-col bg-card/50">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Globe className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground tv:text-base">Cari Lirik Online</h3>
+            <p className="text-[10px] text-muted-foreground tv:text-xs">Tetap di sini — hasil ditampilkan di dalam panel</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 border-b border-border bg-card/50 p-3">
+        <div className="flex gap-2">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") go(); }}
+            placeholder="Judul lagu JKT48..."
+            className="h-9 text-xs"
+          />
+          <Button size="sm" onClick={go} disabled={!query.trim()} className="shrink-0 gap-1.5">
+            <Search className="h-3.5 w-3.5" /> Cari
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {engines.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => { setEngine(e.id); setIframeFailed(false); }}
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition ${
+                engine === e.id
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {e.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        {!submitted ? (
+          <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
+            Ketik judul lagu lalu klik Cari. Hasil akan muncul di panel ini tanpa keluar dari website.
+          </div>
+        ) : embedUrl && !iframeFailed ? (
+          <>
+            <iframe
+              key={`${engine}-${submitted}`}
+              src={embedUrl}
+              title="Hasil pencarian"
+              className="absolute inset-0 h-full w-full border-0 bg-white"
+              referrerPolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              onError={() => setIframeFailed(true)}
+            />
+            {openUrl && (
+              <a
+                href={openUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-card/95 px-2 py-1 text-[10px] font-semibold text-primary shadow hover:bg-card"
+              >
+                <ExternalLink className="h-3 w-3" /> Buka tab baru
+              </a>
+            )}
+          </>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+            <Globe className="h-8 w-8 text-primary" />
+            <p className="text-sm font-semibold text-foreground">{engines.find((e) => e.id === engine)?.label} tidak bisa di-embed</p>
+            <p className="text-xs text-muted-foreground">
+              Mesin pencari ini memblokir tampilan dalam iframe. Buka di tab baru atau coba DuckDuckGo untuk hasil yang tampil langsung di sini.
+            </p>
+            {openUrl && (
+              <a
+                href={openUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Buka di tab baru
+              </a>
+            )}
+            {engine !== "ddg" && (
+              <button
+                onClick={() => { setEngine("ddg"); setIframeFailed(false); }}
+                className="text-[11px] text-primary underline"
+              >
+                Coba DuckDuckGo di dalam panel
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
