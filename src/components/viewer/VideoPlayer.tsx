@@ -535,6 +535,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     // Strategi: biarkan buffer mengalir; hanya seek bila buffer benar-benar kosong
     // dan stall berkepanjangan (>25s). Jeda kecil cukup di-nudge oleh hls.js sendiri.
     lastProgressRef.current = { time: 0, at: Date.now() };
+    stallStreakRef.current = 0;
     stallWatchdogRef.current = setInterval(() => {
       if (destroyed || !videoRef.current || !hlsRef.current) return;
       const v = videoRef.current;
@@ -544,7 +545,9 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
       const now = Date.now();
       if (v.currentTime !== lastProgressRef.current.time) {
+        // Playback memang jalan → reset semua counter stall.
         lastProgressRef.current = { time: v.currentTime, at: now };
+        stallStreakRef.current = 0;
         return;
       }
       const sinceStall = now - lastProgressRef.current.at;
@@ -571,11 +574,57 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       // Buffer hampir habis & stall >12s → trigger reload pelan, JANGAN seek.
       try { hlsRef.current.startLoad(v.currentTime); } catch {}
 
+      // ============ AUTO-FALLBACK KE VARIAN PALING STABIL ============
+      // Hanya ketika user TIDAK memilih resolusi manual. Stall berturut-turut
+      // berarti bitrate saat ini terlalu tinggi untuk jaringan → step down.
+      // Tidak pernah loncat ke live edge sebelum fallback dicoba.
+      stallStreakRef.current += 1;
+      const canAutoFallback =
+        !userManualQualityRef.current &&
+        sinceStall > 14_000 &&
+        stallStreakRef.current >= 2 &&
+        now - lastFallbackAtRef.current > 20_000;
+
+      if (canAutoFallback) {
+        try {
+          const hls = hlsRef.current;
+          const levels: HlsQualityLevel[] = hls.levels || [];
+          if (levels.length > 1) {
+            const lowestIdx = getLowestLevelIndex(levels);
+            const currentIdx =
+              typeof hls.currentLevel === "number" && hls.currentLevel >= 0
+                ? hls.currentLevel
+                : typeof hls.loadLevel === "number" && hls.loadLevel >= 0
+                  ? hls.loadLevel
+                  : -1;
+            // Pilih satu langkah lebih rendah; fallback langsung ke level terendah
+            // bila step-down tidak tersedia.
+            let targetIdx = lowestIdx;
+            if (currentIdx > 0) {
+              const stepDown = currentIdx - 1;
+              targetIdx = stepDown >= 0 ? stepDown : lowestIdx;
+            }
+            if (targetIdx !== currentIdx && targetIdx >= 0) {
+              lastFallbackAtRef.current = now;
+              // Batasi level tertinggi yang boleh dipilih ABR — bukan kunci
+              // permanen — sehingga bila stall lagi, ABR tidak naik balik.
+              try { hls.autoLevelCapping = targetIdx; } catch {}
+              hls.nextLevel = targetIdx;
+              hls.loadLevel = targetIdx;
+              setActiveHeight(levels[targetIdx]?.height ?? null);
+              // Reset streak agar tidak langsung step-down lagi sebelum
+              // sempat dievaluasi.
+              stallStreakRef.current = 0;
+            }
+          }
+        } catch {}
+      }
+
       if (sinceStall > 25_000) {
         // Stall berat: coba media recovery dulu (tidak menyebabkan loncat visual).
         try { hlsRef.current.recoverMediaError(); } catch {}
       }
-      if (sinceStall > 45_000) {
+      if (sinceStall > 60_000) {
         // Benar-benar mati: barulah pindah ke live edge agar tidak nge-freeze permanen.
         try {
           if (hlsRef.current.liveSyncPosition) {
@@ -584,13 +633,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           v.play().catch(() => {});
         } catch {}
       }
-      if (sinceStall > 75_000) {
+      if (sinceStall > 90_000) {
         // Last resort — full reinit
         try { hlsRef.current.destroy(); } catch {}
         hlsRef.current = null;
         hlsInitRef.current = false;
         if (!destroyed) initHls();
         lastProgressRef.current = { time: v.currentTime, at: now };
+        stallStreakRef.current = 0;
       }
     }, 4_000);
 
