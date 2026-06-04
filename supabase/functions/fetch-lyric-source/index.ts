@@ -1,5 +1,10 @@
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 const ALLOWED_HOSTS = [
   'genius.com', 'www.genius.com',
@@ -18,12 +23,18 @@ function decodeEntities(s: string): string {
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!authHeader) return json({ error: 'unauthorized' }, 401);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -31,33 +42,31 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!user) return json({ error: 'unauthorized' }, 401);
 
-    // Require admin
     const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
     const isAdmin = (roles || []).some((r: any) => r.role === 'admin');
-    if (!isAdmin) return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!isAdmin) return json({ error: 'forbidden' }, 403);
 
     const body = await req.json().catch(() => ({}));
     const rawUrl: string = String(body?.url || '').trim();
-    if (!rawUrl) return new Response(JSON.stringify({ error: 'url required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!rawUrl) return json({ error: 'url required' }, 400);
 
     let parsed: URL;
     try { parsed = new URL(rawUrl); } catch {
-      return new Response(JSON.stringify({ error: 'invalid url' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ error: 'invalid url' }, 400);
     }
     if (!/^https?:$/.test(parsed.protocol)) {
-      return new Response(JSON.stringify({ error: 'only http(s) allowed' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ error: 'only http(s) allowed' }, 400);
     }
     if (!ALLOWED_HOSTS.includes(parsed.hostname.toLowerCase())) {
-      return new Response(JSON.stringify({
+      return json({
         error: 'host_not_allowed',
         message: `Domain ${parsed.hostname} belum diizinkan. Hubungi developer untuk menambah ke allow-list.`,
         allowed: ALLOWED_HOSTS,
-      }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }, 400);
     }
 
-    // Fetch the page (HEAD-ish: limit body to ~200KB by aborting early)
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     let html = '';
@@ -71,11 +80,10 @@ Deno.serve(async (req) => {
       html = new TextDecoder('utf-8', { fatal: false }).decode(buf.slice(0, 200_000));
     } catch (e) {
       clearTimeout(timer);
-      return new Response(JSON.stringify({ error: 'fetch_failed', message: String((e as Error).message) }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return json({ error: 'fetch_failed', message: String((e as Error).message) }, 502);
     }
     clearTimeout(timer);
 
-    // Extract metadata only — title, og:title, artist hints. We deliberately DO NOT extract lyric body.
     const pick = (re: RegExp) => {
       const m = html.match(re);
       return m ? decodeEntities(m[1]).trim() : '';
@@ -86,21 +94,18 @@ Deno.serve(async (req) => {
     const siteName = pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
 
     let title = ogTitle || titleTag;
-    // Strip common site suffixes
     title = title.replace(/\s*[\|–-]\s*(Genius Lyrics|Genius|JKT48 Official Website|Lirik Lagu.*|Kapanlagi.*|Musixmatch).*$/i, '').trim();
-    // Try to extract artist + song
     let artist = '';
     let song = title;
     const dashMatch = title.match(/^(.+?)\s*[–-]\s*(.+)$/);
     if (dashMatch) {
-      // Genius often: "Artist – Song Lyrics"
       artist = dashMatch[1].trim();
       song = dashMatch[2].replace(/\s*Lyrics?\s*$/i, '').trim();
     } else {
       song = song.replace(/\s*Lyrics?\s*$/i, '').trim();
     }
 
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       url: parsed.toString(),
       host: parsed.hostname,
@@ -109,9 +114,9 @@ Deno.serve(async (req) => {
       artist_guess: artist,
       description: ogDesc.slice(0, 300),
       site_name: siteName,
-      note: 'Hanya metadata judul yang diambil. Isi lirik harus ditempel manual atau simpan sebagai link-only untuk menghindari masalah hak cipta.',
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      note: 'Hanya metadata judul yang diambil.',
+    });
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'server_error', message: String((e as Error).message) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return json({ error: 'server_error', message: String((e as Error).message) }, 500);
   }
 });
