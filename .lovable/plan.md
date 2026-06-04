@@ -1,49 +1,86 @@
-## Tujuan
-Memecah `src/pages/Index.tsx` (1237 baris) menjadi komponen-komponen presentasional kecil agar JSX lebih ringkas, mudah dirawat, dan minim risiko error JSX seperti yang sempat terjadi. Fokus refactor murni di layer presentasi — tanpa mengubah logika, RPC, atau alur Pakasir/koin yang sudah berjalan.
+# Fitur Lirik Lagu JKT48 di Panel Chat
 
-## Komponen yang akan dibuat (di `src/components/landing/`)
+Menambahkan tab **Lirik** di sebelah **Chat** pada halaman Live. User bisa berpindah bebas tanpa kehilangan lirik yang sedang dibuka. Lirik dan referensi setlist disimpan di database — admin dan user bisa menambahkan, dengan moderasi admin.
 
-1. **`LandingNavbar.tsx`** — navbar atas + tombol coin shop + Sheet profil/koin.
-2. **`HeroSection.tsx`** — hero + floating particles + CTA scroll.
-3. **`AnnouncementBanner.tsx`** — banner pengumuman multi-baris (jika ada).
-4. **`DescriptionsSection.tsx`** — grid kartu deskripsi landing.
-5. **`SubscriptionsSection.tsx`** — banner langganan (Membership card list).
-6. **`ShowsSection.tsx`** — grid show reguler + tombol beli/koin/tonton replay.
-7. **`PurchaseModal.tsx`** — modal pembelian (Pakasir QRIS info → QR → done; subscription QRIS upload → info → done).
-8. **`CoinPurchaseDialog.tsx`** — dialog beli pakai koin + hasil token + replay password.
-9. **`ReplayPasswordDialog.tsx`** — dialog wajib copy password replay.
-
-## Yang TIDAK dipindah
-- Semua `useState`, `useEffect`, RPC call, handler (`handleConfirmRegular`, `handleUploadProof`, `handleSubmitSubscription`, `handleCoinRedeem`, `pollPakasirOrder`, dll) tetap di `Index.tsx`.
-- Helper waktu (`isShowPastSchedule`, `isShowPast2Hours`, `isShowPast4Hours`, `isShowReplayMode`) tetap di `Index.tsx` dan dioper sebagai props.
-- Tidak menyentuh `useShowPurchase`, edge function, RPC, atau migration.
-
-## Cara passing data
-Setiap komponen menerima props eksplisit (data + handler) dari `Index.tsx`. Tidak menggunakan context baru agar perubahan minimal dan diff mudah di-review. Tipe `Show`, `LandingDescription`, `SiteSettings` di-share via export dari file types kecil baru `src/components/landing/types.ts` (atau di-import kembali dari `Index.tsx`).
-
-## Detail teknis
+## Struktur UI
 
 ```text
-src/pages/Index.tsx                 (logic + state, ~400 baris)
-└─ src/components/landing/
-   ├─ types.ts                       (Show, LandingDescription, SiteSettings)
-   ├─ LandingNavbar.tsx
-   ├─ HeroSection.tsx
-   ├─ AnnouncementBanner.tsx
-   ├─ DescriptionsSection.tsx
-   ├─ SubscriptionsSection.tsx
-   ├─ ShowsSection.tsx
-   ├─ PurchaseModal.tsx
-   ├─ CoinPurchaseDialog.tsx
-   └─ ReplayPasswordDialog.tsx
+┌─ Panel Kanan ───────────────────┐
+│ [ Chat ]  [ Lirik ]   ← tabs    │
+├─────────────────────────────────┤
+│ Mode Lirik:                     │
+│  ┌─ Kalau lirik aktif ──────┐   │
+│  │ Judul Lagu          [X]  │   │ ← X = tutup lirik, kembali pilih
+│  │ ─────────────────────    │   │
+│  │ [scroll teks lirik]      │   │
+│  │ Sumber: link ke situs    │   │
+│  └──────────────────────────┘   │
+│                                  │
+│  ┌─ Kalau belum pilih ──────┐   │
+│  │ 🔍 Cari lirik...         │   │
+│  │                          │   │
+│  │ Setlist:                 │   │
+│  │ • Sambil Menggandeng…    │   │
+│  │ • Pajama Drive           │   │
+│  │ • Cara Meminum Ramuan    │   │
+│  │ • Pajama Drive Passion   │   │
+│  │ • Dream Bakudan          │   │
+│  │ • Otadaki Love           │   │
+│  │                          │   │
+│  │ [+ Tambah lirik]         │   │
+│  └──────────────────────────┘   │
+└──────────────────────────────────┘
 ```
 
-Catatan: sudah ada `src/components/viewer/PurchaseModal.tsx` yang berbeda (dipakai komponen lain). File baru diletakkan di folder `landing/` agar tidak bentrok.
+Flow:
+1. User klik setlist → daftar judul lagu dari setlist itu muncul → pilih judul → lirik tampil.
+2. Tombol **X** di header lirik = kembali ke daftar (lirik dibersihkan dari state).
+3. Pindah ke tab **Chat** tidak menghilangkan lirik — saat tab Lirik dibuka lagi, lirik yang sama masih tampil. Disimpan di `localStorage` (`jkt48_active_lyric_id`).
+4. Kolom **Cari** mencari lintas semua lirik (judul + setlist).
+5. Tombol **+ Tambah lirik** membuka dialog: judul, setlist, isi lirik, sumber URL. User submit → masuk antrian moderasi (`status='pending'`). Admin approve → tampil ke semua user.
 
-## Verifikasi
-- Jalankan `vite build` untuk memastikan tidak ada error JSX/TS.
-- Buka preview `/` untuk smoke test: hero, list show, klik beli (Pakasir flow), klik beli koin, replay password modal, sheet profil.
+## Database (3 tabel baru)
 
-## Risiko
-- Refactor besar → potensi typo di props. Mitigasi: pindahkan satu section per satu, lalu build setiap kali.
-- Tidak ada perubahan fungsional yang dijanjikan ke user di luar struktur file.
+`jkt48_setlists` — daftar setlist (seed 6 setlist permintaan user).
+- nama, slug, urutan tampil, aktif
+
+`jkt48_songs` — judul lagu per setlist.
+- setlist_id, judul, urutan tampil
+
+`jkt48_lyrics` — lirik per lagu.
+- song_id, isi lirik, url sumber, kontributor (user id atau 'admin'), status (`pending`/`approved`/`rejected`), approved_by
+
+RLS:
+- Setlists & songs: SELECT publik untuk yang aktif. INSERT/UPDATE/DELETE admin only.
+- Lyrics: SELECT publik hanya untuk `status='approved'`. INSERT authenticated user (default pending). UPDATE/DELETE admin only. User bisa lihat submission-nya sendiri.
+
+Seed data: 6 setlist yang user sebut. Daftar lagu per setlist & isi lirik **dikosongkan** — diisi admin/user lewat UI (alasan: hak cipta, kami tidak menyalin lirik resmi ke seed).
+
+## Panel Admin
+
+Section baru di `AdminDashboard` → **Lirik JKT48**:
+- Tab "Setlist": CRUD setlist (nama, urutan, aktif).
+- Tab "Lagu": CRUD lagu per setlist.
+- Tab "Lirik": list semua lirik. Filter status. Approve/reject submission user. Edit/hapus lirik. Field URL sumber (situs referensi lirik).
+
+## File yang Dibuat / Diubah
+
+Baru:
+- `src/components/viewer/LyricsPanel.tsx` — UI tab Lirik (search, setlist list, song list, lyric viewer, dialog tambah).
+- `src/components/viewer/ChatLyricsTabs.tsx` — wrapper dengan 2 tab (Chat | Lirik), keep-alive (kedua komponen tetap mounted, hanya `hidden`) supaya state Chat & Lirik tidak reset saat ganti tab.
+- `src/components/admin/LyricsManager.tsx` — panel admin 3 tab.
+- `src/hooks/useActiveLyric.ts` — sinkron lirik aktif ke `localStorage`.
+
+Diubah:
+- `src/pages/LivePage.tsx` — ganti `<LiveChat>` di kolom kanan dengan `<ChatLyricsTabs>`.
+- `src/components/admin/AdminSidebar.tsx` + `AdminDashboard.tsx` — tambah menu "Lirik JKT48".
+
+## Catatan Hak Cipta
+
+Lirik lagu JKT48/AKB48 berhak cipta. Pendekatan ini menempatkan tanggung jawab konten pada admin/kontributor (mirip wiki). Kami **tidak** menyalin lirik di seed dan **tidak** memakai AI untuk membangkitkan teks lirik. Field "URL sumber" wajib diisi kontributor agar pembaca bisa verifikasi ke sumber resmi. Admin yang memutuskan publikasi.
+
+## Yang Tidak Dilakukan
+
+- Tidak memakai Google AI / Lovable AI untuk menghasilkan teks lirik (risiko hukum + sering tidak akurat).
+- Tidak menyentuh logika Video Player atau Watermark.
+- Tidak mengubah skema chat.
