@@ -335,28 +335,31 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
       }
 
       hls = new Hls({
-        // Live stream tuning — buffer LEBIH BESAR supaya tidak patah-patah.
-        // Trade-off: latensi naik ~5–10 detik dibanding sebelumnya, tapi
-        // playback jauh lebih mulus terutama di koneksi mobile yang fluktuatif.
-        liveSyncDurationCount: isSlowConnection ? 8 : 6,
-        liveMaxLatencyDurationCount: isSlowConnection ? 20 : 14,
+        // Live tuning — JAUH dari live edge supaya tidak rebase / loncat-loncat.
+        // Trade-off: latency naik tapi playback jauh lebih halus pada koneksi fluktuatif.
+        liveSyncDurationCount: isSlowConnection ? 10 : 8,
+        liveMaxLatencyDurationCount: isSlowConnection ? 30 : 24,
         liveDurationInfinity: true,
+        // Penting: jangan pernah percepat playback untuk mengejar live edge (penyebab "rubber-band").
+        maxLiveSyncPlaybackRate: 1,
+        liveBackBufferLength: 60,
         maxBufferLength: isSlowConnection ? 120 : 90,
         maxMaxBufferLength: isSlowConnection ? 240 : 180,
         maxBufferSize: 240 * 1000 * 1000,
-        maxBufferHole: 1.5,
-        maxFragLookUpTolerance: 0.35,
-        highBufferWatchdogPeriod: 3,
-        nudgeOffset: 0.1,
-        nudgeMaxRetry: 20,
+        // Lubang buffer kecil dilewati senyap tanpa nudge yang terasa.
+        maxBufferHole: 2.0,
+        maxFragLookUpTolerance: 0.5,
+        highBufferWatchdogPeriod: 5,
+        nudgeOffset: 0.3,
+        nudgeMaxRetry: 10,
         backBufferLength: 60,
-        // ABR — biarkan hls.js naik level secara konservatif agar tidak
-        // bouncing antar resolusi (penyebab utama "patah-patah" yang terasa).
-        abrEwmaDefaultEstimate: isSlowConnection ? 350_000 : 700_000,
-        abrEwmaFastLive: isSlowConnection ? 8 : 6,
-        abrEwmaSlowLive: isSlowConnection ? 24 : 18,
-        abrBandWidthFactor: isSlowConnection ? 0.55 : 0.7,
-        abrBandWidthUpFactor: isSlowConnection ? 0.3 : 0.45,
+        // ABR — sangat konservatif: lebih baik tetap di resolusi rendah yang
+        // mulus daripada naik turun (sumber utama "loncat-loncat" yang dirasakan).
+        abrEwmaDefaultEstimate: isSlowConnection ? 300_000 : 600_000,
+        abrEwmaFastLive: isSlowConnection ? 10 : 8,
+        abrEwmaSlowLive: isSlowConnection ? 30 : 24,
+        abrBandWidthFactor: isSlowConnection ? 0.5 : 0.65,
+        abrBandWidthUpFactor: isSlowConnection ? 0.2 : 0.3,
         abrMaxWithRealBitrate: true,
         // Recovery & retry — generous on manifest so a flaky CDN won't leave the player blank
         fragLoadingMaxRetry: 10,
@@ -520,7 +523,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     initHls();
 
-    // Stall watchdog: if currentTime hasn't advanced in 15s while supposedly playing → recover
+    // Stall watchdog — DESAIN ULANG: jangan pernah seek paksa ke live edge bila
+    // masih ada buffer. Loncat ke live edge = "loncat-loncat" yang user rasakan.
+    // Strategi: biarkan buffer mengalir; hanya seek bila buffer benar-benar kosong
+    // dan stall berkepanjangan (>25s). Jeda kecil cukup di-nudge oleh hls.js sendiri.
     lastProgressRef.current = { time: 0, at: Date.now() };
     stallWatchdogRef.current = setInterval(() => {
       if (destroyed || !videoRef.current || !hlsRef.current) return;
@@ -534,28 +540,52 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         lastProgressRef.current = { time: v.currentTime, at: now };
         return;
       }
-      if (now - lastProgressRef.current.at > 15_000) {
-        // Stalled — try jump to live edge first, then recover
+      const sinceStall = now - lastProgressRef.current.at;
+      if (sinceStall < 12_000) return;
+
+      // Cek apakah masih ada buffer di depan current time
+      let bufferedAhead = 0;
+      try {
+        const b = v.buffered;
+        for (let i = 0; i < b.length; i++) {
+          if (v.currentTime >= b.start(i) && v.currentTime <= b.end(i) + 0.5) {
+            bufferedAhead = b.end(i) - v.currentTime;
+            break;
+          }
+        }
+      } catch {}
+
+      // Masih ada buffer ≥3s → bukan stall network. Cukup pastikan loader jalan.
+      if (bufferedAhead > 3) {
+        try { hlsRef.current.startLoad(v.currentTime); v.play().catch(() => {}); } catch {}
+        return;
+      }
+
+      // Buffer hampir habis & stall >12s → trigger reload pelan, JANGAN seek.
+      try { hlsRef.current.startLoad(v.currentTime); } catch {}
+
+      if (sinceStall > 25_000) {
+        // Stall berat: coba media recovery dulu (tidak menyebabkan loncat visual).
+        try { hlsRef.current.recoverMediaError(); } catch {}
+      }
+      if (sinceStall > 45_000) {
+        // Benar-benar mati: barulah pindah ke live edge agar tidak nge-freeze permanen.
         try {
           if (hlsRef.current.liveSyncPosition) {
             v.currentTime = hlsRef.current.liveSyncPosition;
           }
           v.play().catch(() => {});
         } catch {}
-        const sinceStall = now - lastProgressRef.current.at;
-        if (sinceStall > 30_000) {
-          try { hlsRef.current.recoverMediaError(); } catch {}
-        }
-        if (sinceStall > 60_000) {
-          // Full reinit as last resort
-          try { hlsRef.current.destroy(); } catch {}
-          hlsRef.current = null;
-          hlsInitRef.current = false;
-          if (!destroyed) initHls();
-        }
+      }
+      if (sinceStall > 75_000) {
+        // Last resort — full reinit
+        try { hlsRef.current.destroy(); } catch {}
+        hlsRef.current = null;
+        hlsInitRef.current = false;
+        if (!destroyed) initHls();
         lastProgressRef.current = { time: v.currentTime, at: now };
       }
-    }, 5_000);
+    }, 4_000);
 
     // Auto-recover on network reconnect
     const onOnline = () => {
