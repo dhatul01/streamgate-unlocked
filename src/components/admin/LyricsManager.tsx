@@ -388,6 +388,8 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
 
   return (
     <div className="space-y-3">
+      <AutoLinkPanel setlists={setlists} songs={songs} onDone={onChange} />
+
       <div className="flex flex-wrap items-center gap-2">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -400,6 +402,7 @@ const LyricsTab = ({ setlists, songs, lyrics, onChange }: { setlists: Setlist[];
         </Select>
         <Button onClick={openAdd} size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Tambah Lirik</Button>
       </div>
+
 
       <div className="space-y-2">
         {filtered.map((l) => {
