@@ -523,7 +523,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
 
     initHls();
 
-    // Stall watchdog: if currentTime hasn't advanced in 15s while supposedly playing → recover
+    // Stall watchdog — DESAIN ULANG: jangan pernah seek paksa ke live edge bila
+    // masih ada buffer. Loncat ke live edge = "loncat-loncat" yang user rasakan.
+    // Strategi: biarkan buffer mengalir; hanya seek bila buffer benar-benar kosong
+    // dan stall berkepanjangan (>25s). Jeda kecil cukup di-nudge oleh hls.js sendiri.
     lastProgressRef.current = { time: 0, at: Date.now() };
     stallWatchdogRef.current = setInterval(() => {
       if (destroyed || !videoRef.current || !hlsRef.current) return;
@@ -537,28 +540,52 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
         lastProgressRef.current = { time: v.currentTime, at: now };
         return;
       }
-      if (now - lastProgressRef.current.at > 15_000) {
-        // Stalled — try jump to live edge first, then recover
+      const sinceStall = now - lastProgressRef.current.at;
+      if (sinceStall < 12_000) return;
+
+      // Cek apakah masih ada buffer di depan current time
+      let bufferedAhead = 0;
+      try {
+        const b = v.buffered;
+        for (let i = 0; i < b.length; i++) {
+          if (v.currentTime >= b.start(i) && v.currentTime <= b.end(i) + 0.5) {
+            bufferedAhead = b.end(i) - v.currentTime;
+            break;
+          }
+        }
+      } catch {}
+
+      // Masih ada buffer ≥3s → bukan stall network. Cukup pastikan loader jalan.
+      if (bufferedAhead > 3) {
+        try { hlsRef.current.startLoad(v.currentTime); v.play().catch(() => {}); } catch {}
+        return;
+      }
+
+      // Buffer hampir habis & stall >12s → trigger reload pelan, JANGAN seek.
+      try { hlsRef.current.startLoad(v.currentTime); } catch {}
+
+      if (sinceStall > 25_000) {
+        // Stall berat: coba media recovery dulu (tidak menyebabkan loncat visual).
+        try { hlsRef.current.recoverMediaError(); } catch {}
+      }
+      if (sinceStall > 45_000) {
+        // Benar-benar mati: barulah pindah ke live edge agar tidak nge-freeze permanen.
         try {
           if (hlsRef.current.liveSyncPosition) {
             v.currentTime = hlsRef.current.liveSyncPosition;
           }
           v.play().catch(() => {});
         } catch {}
-        const sinceStall = now - lastProgressRef.current.at;
-        if (sinceStall > 30_000) {
-          try { hlsRef.current.recoverMediaError(); } catch {}
-        }
-        if (sinceStall > 60_000) {
-          // Full reinit as last resort
-          try { hlsRef.current.destroy(); } catch {}
-          hlsRef.current = null;
-          hlsInitRef.current = false;
-          if (!destroyed) initHls();
-        }
+      }
+      if (sinceStall > 75_000) {
+        // Last resort — full reinit
+        try { hlsRef.current.destroy(); } catch {}
+        hlsRef.current = null;
+        hlsInitRef.current = false;
+        if (!destroyed) initHls();
         lastProgressRef.current = { time: v.currentTime, at: now };
       }
-    }, 5_000);
+    }, 4_000);
 
     // Auto-recover on network reconnect
     const onOnline = () => {
