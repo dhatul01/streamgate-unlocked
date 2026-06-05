@@ -68,21 +68,32 @@ Deno.serve(async (req) => {
     }
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const timer = setTimeout(() => ctrl.abort(), 10000);
     let html = '';
+    let fetchStatus = 0;
     try {
       const res = await fetch(parsed.toString(), {
         signal: ctrl.signal,
-        headers: { 'User-Agent': 'Mozilla/5.0 LovableLyricMeta/1.0', 'Accept': 'text/html' },
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'identity',
+        },
       });
-      if (!res.ok) throw new Error(`fetch ${res.status}`);
+      fetchStatus = res.status;
       const buf = await res.arrayBuffer();
-      html = new TextDecoder('utf-8', { fatal: false }).decode(buf.slice(0, 200_000));
+      html = new TextDecoder('utf-8', { fatal: false }).decode(buf.slice(0, 250_000));
     } catch (e) {
       clearTimeout(timer);
-      return json({ error: 'fetch_failed', message: String((e as Error).message) }, 502);
+      // Return 200 supaya UI bisa fallback ke input manual tanpa toast "non-2xx".
+      return json({ success: false, error: 'fetch_failed', message: String((e as Error).message), url: parsed.toString() });
     }
     clearTimeout(timer);
+    if (!html || fetchStatus >= 400) {
+      return json({ success: false, error: 'fetch_blocked', status: fetchStatus, url: parsed.toString(), message: `Situs sumber menolak permintaan (status ${fetchStatus}). Silakan isi judul manual.` });
+    }
 
     const pick = (re: RegExp) => {
       const m = html.match(re);
