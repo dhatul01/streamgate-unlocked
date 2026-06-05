@@ -172,6 +172,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return () => clearInterval(id);
   }, [isLoading]);
 
+  // Safety net: jangan biarkan overlay loading nyangkut. Apapun jenis sumbernya,
+  // maksimal 8 detik overlay harus hilang — player tetap dirender di belakang.
+  useEffect(() => {
+    if (!isLoading) return;
+    const safety = setTimeout(() => setIsLoading(false), 8000);
+    return () => clearTimeout(safety);
+  }, [isLoading, playlist.type, playlist.url]);
+
   // Helper: check if YT player API is usable
   const isYTReady = useCallback(() => {
     const p = ytPlayerRef.current;
