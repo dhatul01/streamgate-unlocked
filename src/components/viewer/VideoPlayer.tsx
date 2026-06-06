@@ -835,15 +835,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   // Cloudflare loading + auto-reconnect on network/visibility
   useEffect(() => {
     if (playlist.type !== "cloudflare") return;
-    const timer = setTimeout(() => setIsLoading(false), 2000);
+    // Safety fallback only — onLoad iframe akan menghilangkan overlay segera.
+    const timer = setTimeout(() => setIsLoading(false), 2500);
     let lastReload = Date.now();
     const reload = () => {
-      // Throttle reloads to max 1 per 10s
       if (Date.now() - lastReload < 10_000) return;
       lastReload = Date.now();
       setCloudflareKey((k) => k + 1);
       setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 2000);
     };
     const onOnline = () => reload();
     const onVisible = () => { if (!document.hidden) reload(); };
