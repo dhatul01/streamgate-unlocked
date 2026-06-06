@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, 
 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 const TextWatermark = lazy(() => import("@/components/viewer/TextWatermark"));
+const CastButton = lazy(() => import("@/components/viewer/CastButton"));
 
 const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
 const USER_UNMUTED_KEY = "r48:user-unmuted";
