@@ -172,11 +172,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return () => clearInterval(id);
   }, [isLoading]);
 
-  // Safety net: jangan biarkan overlay loading nyangkut. Apapun jenis sumbernya,
-  // maksimal 8 detik overlay harus hilang — player tetap dirender di belakang.
+  // Safety net: jangan biarkan overlay loading nyangkut. Maksimal 3.5 detik
+  // overlay harus hilang — player tetap dirender di belakang dan biasanya sudah
+  // mulai memutar jauh sebelum batas ini.
   useEffect(() => {
     if (!isLoading) return;
-    const safety = setTimeout(() => setIsLoading(false), 8000);
+    const safety = setTimeout(() => setIsLoading(false), 3500);
     return () => clearTimeout(safety);
   }, [isLoading, playlist.type, playlist.url]);
 
