@@ -97,6 +97,7 @@ const App = () => {
               </RouteTransition>
             </Suspense>
             <MobileBottomNav />
+            <WhatsAppFab />
           </IpGate>
         </BrowserRouter>
         <InstallBanner />
