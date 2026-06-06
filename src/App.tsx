@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import IpGate from "@/components/viewer/IpGate";
 import RouteTransition from "@/components/viewer/RouteTransition";
 import MobileBottomNav from "@/components/viewer/MobileBottomNav";
+import WhatsAppFab from "@/components/viewer/WhatsAppFab";
 
 const Index = lazy(() => import("./pages/Index"));
 const LivePage = lazy(() => import("./pages/LivePage"));
@@ -96,6 +97,7 @@ const App = () => {
               </RouteTransition>
             </Suspense>
             <MobileBottomNav />
+            <WhatsAppFab />
           </IpGate>
         </BrowserRouter>
         <InstallBanner />

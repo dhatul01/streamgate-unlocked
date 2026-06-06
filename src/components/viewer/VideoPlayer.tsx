@@ -833,27 +833,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     };
   }, [playlist, autoPlay, decryptUrl, obfuscate, deobfuscate]);
 
-  // Cloudflare loading + auto-reconnect on network/visibility
+  // Cloudflare loading — JANGAN reload otomatis saat tab fokus / online kembali.
+  // Iframe Cloudflare Stream sudah self-healing, dan reload paksa membuat
+  // live putus-putus / restart sendiri setiap user pindah tab.
   useEffect(() => {
     if (playlist.type !== "cloudflare") return;
     // Safety fallback only — onLoad iframe akan menghilangkan overlay segera.
     const timer = setTimeout(() => setIsLoading(false), 2500);
-    let lastReload = Date.now();
-    const reload = () => {
-      if (Date.now() - lastReload < 10_000) return;
-      lastReload = Date.now();
-      setCloudflareKey((k) => k + 1);
-      setIsLoading(true);
-    };
-    const onOnline = () => reload();
-    const onVisible = () => { if (!document.hidden) reload(); };
-    window.addEventListener("online", onOnline);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("online", onOnline);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => clearTimeout(timer);
   }, [playlist]);
 
   // Click on video surface only toggles control visibility — never play/pause.
