@@ -1353,6 +1353,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
           </div>
         )}
 
+        <Suspense fallback={null}>
+          <CastButton
+            videoEl={videoRef.current}
+            iframeMode={playlist.type === "youtube" || playlist.type === "cloudflare"}
+          />
+        </Suspense>
+
         <button
           onClick={toggleOrientation}
           className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-sm transition active:scale-95 hover:bg-secondary tv:h-14 tv:w-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
