@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useMemo, 
 
 const Watermark = lazy(() => import("@/components/viewer/Watermark"));
 const TextWatermark = lazy(() => import("@/components/viewer/TextWatermark"));
+const CastButton = lazy(() => import("@/components/viewer/CastButton"));
 
 const M3U8_QUALITY_STORAGE_KEY = "r48:m3u8-quality-lock";
 const USER_UNMUTED_KEY = "r48:user-unmuted";
@@ -172,11 +173,12 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
     return () => clearInterval(id);
   }, [isLoading]);
 
-  // Safety net: jangan biarkan overlay loading nyangkut. Apapun jenis sumbernya,
-  // maksimal 8 detik overlay harus hilang — player tetap dirender di belakang.
+  // Safety net: jangan biarkan overlay loading nyangkut. Maksimal 3.5 detik
+  // overlay harus hilang — player tetap dirender di belakang dan biasanya sudah
+  // mulai memutar jauh sebelum batas ini.
   useEffect(() => {
     if (!isLoading) return;
-    const safety = setTimeout(() => setIsLoading(false), 8000);
+    const safety = setTimeout(() => setIsLoading(false), 3500);
     return () => clearTimeout(safety);
   }, [isLoading, playlist.type, playlist.url]);
 
@@ -834,15 +836,14 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
   // Cloudflare loading + auto-reconnect on network/visibility
   useEffect(() => {
     if (playlist.type !== "cloudflare") return;
-    const timer = setTimeout(() => setIsLoading(false), 2000);
+    // Safety fallback only — onLoad iframe akan menghilangkan overlay segera.
+    const timer = setTimeout(() => setIsLoading(false), 2500);
     let lastReload = Date.now();
     const reload = () => {
-      // Throttle reloads to max 1 per 10s
       if (Date.now() - lastReload < 10_000) return;
       lastReload = Date.now();
       setCloudflareKey((k) => k + 1);
       setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 2000);
     };
     const onOnline = () => reload();
     const onVisible = () => { if (!document.hidden) reload(); };
@@ -1351,6 +1352,13 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ playlist,
             )}
           </div>
         )}
+
+        <Suspense fallback={null}>
+          <CastButton
+            videoEl={videoRef.current}
+            iframeMode={playlist.type === "youtube" || playlist.type === "cloudflare"}
+          />
+        </Suspense>
 
         <button
           onClick={toggleOrientation}
